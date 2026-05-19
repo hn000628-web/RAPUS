@@ -1,0 +1,756 @@
+/* FILE : frontend/app/(pos)/pos/rooms/[roomNo]/RoomDetailPage.module.css */
+/* ROOT : frontend/app/(pos)/pos/rooms/[roomNo]/RoomDetailPage.module.css */
+/* STATUS : CREATE MODE */
+/* ROLE : POS ROOM DETAIL MOCK UI STYLE */
+/* CHANGE SUMMARY :
+- POS 객실 상세 목업 UI 전용 CSS Module 신규 생성
+- 기존 테이블 상세 페이지의 100dvh / topbar / mainGrid / footer 고정 구조 참고
+- PC 3영역 레이아웃 및 모바일 1열 반응형 구성
+- 전역 CSS 수정 없음
+*/
+
+.page {
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f7fb;
+}
+
+.posShell {
+  min-width: 1024px;
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbarWrap {
+  flex: 0 0 64px;
+  height: 64px;
+  min-height: 64px;
+  width: 100%;
+  overflow: visible;
+  background-color: #111827;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.topbarInner {
+  width: 100%;
+  height: 100%;
+  padding: 0 20px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.topbarTitle {
+  flex: 0 0 auto;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.topbarActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.syncBadge {
+  height: 32px;
+  border: none;
+  border-radius: 10px;
+  background-color: #dcfce7;
+  color: #14532d;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.keyboardBadge {
+  height: 32px;
+  border: none;
+  border-radius: 10px;
+  background-color: #1e3a8a;
+  color: #ffffff;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.topbarButton {
+  height: 32px;
+  min-width: 62px;
+  border: none;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #111827;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mainViewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mainGrid {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+  grid-template-columns: 190px minmax(420px, 1fr) 300px;
+}
+
+.sidebar {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sidebarBox {
+  height: 100%;
+  min-height: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background-color: #ffffff;
+  padding: 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebarTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.sideMenu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.sideMenuButton {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #111827;
+  padding: 0 12px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.sideMenuButtonActive {
+  border-color: #111827;
+  background-color: #111827;
+  color: #ffffff;
+}
+
+.main {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.headerTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  color: #020617;
+  font-size: 30px;
+  line-height: 1.12;
+  font-weight: 1000;
+  letter-spacing: -0.04em;
+}
+
+.description {
+  margin: 6px 0 0;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.primaryButton,
+.secondaryButton {
+  min-width: 96px;
+  height: 42px;
+  border-radius: 12px;
+  padding: 0 14px;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.primaryButton {
+  border: 1px solid #111827;
+  background-color: #111827;
+  color: #ffffff;
+}
+
+.secondaryButton {
+  border: 1px solid #111827;
+  background-color: #ffffff;
+  color: #111827;
+}
+
+.detailScrollArea {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.infoCard {
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background-color: #ffffff;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.cardHeader {
+  min-height: 30px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.statusCheckIn {
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+
+.statusEmpty {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.statusReserved {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.statusCleaning {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
+.statusInspection {
+  background-color: #fef3c7;
+  color: #b45309;
+}
+
+.infoGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.infoRow {
+  min-height: 38px;
+  border-radius: 10px;
+  background-color: #f8fafc;
+  padding: 9px 10px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.infoLabel {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.infoValue {
+  min-width: 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.orderPanel {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.summaryPanel {
+  height: 100%;
+  min-height: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background-color: #ffffff;
+  padding: 16px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.summaryHeader {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.summaryTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 1000;
+  letter-spacing: -0.03em;
+}
+
+.clearButton {
+  flex: 0 0 auto;
+  min-width: 70px;
+  height: 38px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.summaryList {
+  display: grid;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.summaryRow,
+.summaryTotal {
+  min-height: 38px;
+  border-radius: 10px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.summaryRow {
+  background-color: #f8fafc;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.summaryRow strong {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.summaryTotal {
+  margin-top: 6px;
+  background-color: #111827;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.summaryTotal strong {
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.summaryNotice {
+  margin-top: 14px;
+  border-radius: 12px;
+  background-color: #fefce8;
+  color: #854d0e;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 800;
+}
+
+.footerWrap {
+  flex: 0 0 80px;
+  height: 80px;
+  min-height: 80px;
+  width: 100%;
+  overflow: hidden;
+  border-top: 1px solid #e5e7eb;
+  background-color: #ffffff;
+}
+
+.footerInner {
+  height: 100%;
+  padding: 0 20px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.footerAmount {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #111827;
+  font-size: 22px;
+  font-weight: 1000;
+  letter-spacing: -0.03em;
+}
+
+.footerAmount strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footerIcon {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background-color: #111827;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.footerActions {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 160px));
+  justify-content: end;
+  gap: 10px;
+}
+
+.footerButton {
+  min-width: 120px;
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  background-color: #111827;
+  color: #ffffff;
+  padding: 0 16px;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.footerButtonDisabled {
+  background-color: #cfd4dc;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1024px) {
+  .mainGrid {
+    grid-template-columns: 176px minmax(360px, 1fr) 280px;
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .page {
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .posShell {
+    min-width: 0;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .topbarWrap {
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 64px;
+  }
+
+  .topbarInner {
+    min-height: 64px;
+    padding: 10px 12px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .topbarActions {
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-bottom: 2px;
+  }
+
+  .mainViewport {
+    overflow: visible;
+  }
+
+  .mainGrid {
+    height: auto;
+    overflow: visible;
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  .sidebar {
+    height: auto;
+    overflow: visible;
+  }
+
+  .sidebarBox {
+    height: auto;
+    padding: 12px;
+  }
+
+  .sideMenu {
+    overflow-x: auto;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(110px, 1fr);
+    gap: 8px;
+  }
+
+  .sideMenuButton {
+    min-height: 40px;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  .main {
+    height: auto;
+    overflow: visible;
+  }
+
+  .headerTop {
+    flex-direction: column;
+  }
+
+  .headerActions {
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .detailScrollArea {
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .orderPanel {
+    height: auto;
+    overflow: visible;
+  }
+
+  .summaryPanel {
+    height: auto;
+  }
+
+  .footerWrap {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    flex: 0 0 auto;
+    height: auto;
+    min-height: 88px;
+    overflow: visible;
+  }
+
+  .footerInner {
+    min-height: 88px;
+    padding: 12px;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .footerAmount {
+    font-size: 18px;
+  }
+
+  .footerActions {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .footerButton {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: 26px;
+  }
+
+  .topbarButton,
+  .syncBadge,
+  .keyboardBadge {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    min-width: 86px;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .infoCard {
+    padding: 14px;
+  }
+
+  .infoRow {
+    min-height: 44px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .infoValue {
+    width: 100%;
+    text-align: left;
+  }
+
+  .summaryHeader {
+    flex-direction: column;
+  }
+
+  .clearButton {
+    width: 100%;
+  }
+
+  .footerActions {
+    grid-template-columns: 1fr;
+  }
+
+  .footerButton {
+    height: 46px;
+  }
+}

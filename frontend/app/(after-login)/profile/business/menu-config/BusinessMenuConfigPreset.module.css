@@ -1,0 +1,138 @@
+﻿.menuConfigLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.manualMenuColumn {
+  min-width: 0;
+}
+
+.presetColumn {
+  min-width: 0;
+  position: sticky;
+  top: 24px;
+}
+
+.presetCard {
+  border: 1px solid #d8e0ea;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 20px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+}
+
+.presetHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+
+.presetTitle {
+  font-size: 20px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.presetDescription {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.industryBox {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.sectionLabel {
+  font-size: 12px;
+  font-weight: 900;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.industryName {
+  font-size: 16px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.industryMeta {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.recommendedList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.recommendedChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eef6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.presetActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.primaryPresetButton {
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #ffffff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.secondaryPresetButton {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid #d8e0ea;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.mockNotice {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 1024px) {
+  .menuConfigLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .presetColumn {
+    position: static;
+  }
+}

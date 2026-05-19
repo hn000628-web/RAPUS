@@ -1,0 +1,468 @@
+/* ==================================================
+
+BACKEND DOMAIN INTERACTION MATRIX
+
+DB 15 SECTION BASED SERVICE INTERACTION RULE
+
+SNAPSHOT_BACKEND_DOMAIN_INTERACTION_v1
+
+================================================== */
+
+
+/* ==================================================
+
+DOMAIN LIST
+
+================================================== */
+
+
+FEED DOMAIN
+POST DOMAIN
+REGION DOMAIN
+PHOTO DOMAIN
+PROFILE DOMAIN
+
+
+
+/* ==================================================
+
+DOMAIN ACCESS MATRIX
+
+R = READ
+W = WRITE
+X = FORBIDDEN
+
+================================================== */
+
+
+                FEED   POST   REGION  PHOTO  PROFILE
+
+
+FEED            -      R      R       R      R
+
+POST            X      -      R       R      R
+
+REGION          X      X      -       X      X
+
+PHOTO           X      R      X       -      R
+
+PROFILE         X      X      R       R      -
+
+
+
+/* ==================================================
+
+INTERACTION RULE DETAIL
+
+================================================== */
+
+
+/* =========================
+
+FEED DOMAIN RULE
+
+========================= */
+
+
+FEED → POST
+
+ALLOWED :
+
+READ ONLY
+
+SELECT posts
+SELECT engagement
+
+FORBIDDEN :
+
+CREATE post ❌
+UPDATE post ❌
+DELETE post ❌
+
+
+
+FEED → PROFILE
+
+ALLOWED :
+
+READ ONLY
+
+SELECT profile
+
+FORBIDDEN :
+
+UPDATE profile ❌
+CREATE profile ❌
+
+
+
+FEED → REGION
+
+ALLOWED :
+
+READ ONLY
+
+SELECT region
+
+FORBIDDEN :
+
+INSERT region ❌
+UPDATE region ❌
+
+
+
+FEED → PHOTO
+
+ALLOWED :
+
+READ ONLY
+
+SELECT image
+
+FORBIDDEN :
+
+image upload ❌
+image delete ❌
+
+
+
+STRICT RULE :
+
+Feed must never call write functions.
+
+
+
+/* =========================
+
+POST DOMAIN RULE
+
+========================= */
+
+
+POST → PROFILE
+
+ALLOWED :
+
+READ profileId
+validate ownership
+
+FORBIDDEN :
+
+profile update ❌
+
+
+
+POST → REGION
+
+ALLOWED :
+
+READ regionId
+
+FORBIDDEN :
+
+region update ❌
+
+
+
+POST → PHOTO
+
+ALLOWED :
+
+request image mapping
+
+FORBIDDEN :
+
+direct image insert ❌
+
+image lifecycle owned by Photo domain.
+
+
+
+STRICT RULE :
+
+Post domain owns posts only.
+
+
+
+/* =========================
+
+REGION DOMAIN RULE
+
+========================= */
+
+
+REGION → ANY DOMAIN
+
+FORBIDDEN :
+
+Post access ❌
+Profile access ❌
+Image access ❌
+Feed access ❌
+
+STRICT RULE :
+
+Region is isolated foundation domain.
+
+
+
+/* =========================
+
+PHOTO DOMAIN RULE
+
+========================= */
+
+
+PHOTO → POST
+
+ALLOWED :
+
+mapping post_images
+
+FORBIDDEN :
+
+post creation ❌
+post delete ❌
+
+
+
+PHOTO → PROFILE
+
+ALLOWED :
+
+profile image mapping
+
+FORBIDDEN :
+
+profile update ❌
+
+
+
+STRICT RULE :
+
+Photo owns media lifecycle only.
+
+
+
+/* =========================
+
+PROFILE DOMAIN RULE
+
+========================= */
+
+
+PROFILE → REGION
+
+ALLOWED :
+
+region validation
+
+FORBIDDEN :
+
+region update ❌
+
+
+
+PROFILE → PHOTO
+
+ALLOWED :
+
+request image mapping
+
+FORBIDDEN :
+
+image lifecycle ❌
+
+
+
+PROFILE → POST
+
+FORBIDDEN :
+
+post creation ❌
+post update ❌
+
+
+
+STRICT RULE :
+
+Profile owns identity only.
+
+
+
+/* ==================================================
+
+ABSOLUTE VIOLATION LIST
+
+================================================== */
+
+
+Feed writing any table = ERROR
+
+Feed creating region = ERROR
+
+Feed creating profile = ERROR
+
+Feed creating post = ERROR
+
+Feed creating image = ERROR
+
+
+
+Photo creating post = ERROR
+
+Profile creating post = ERROR
+
+Region modifying post = ERROR
+
+Region modifying profile = ERROR
+
+
+
+Post modifying profile = ERROR
+
+Post modifying region = ERROR
+
+
+
+/* ==================================================
+
+ALLOWED SERVICE CALL FLOW
+
+================================================== */
+
+
+Feed.service
+
+→ post.service (READ ONLY)
+
+→ profile.service (READ ONLY)
+
+→ region.service (READ ONLY)
+
+→ image.service (READ ONLY)
+
+→ engagement.service (READ ONLY)
+
+
+
+Post.service
+
+→ profile.service (VALIDATION ONLY)
+
+→ region.service (VALIDATION ONLY)
+
+→ photo.service (mapping request)
+
+
+
+Photo.service
+
+→ post.service (mapping validation)
+
+→ profile.service (mapping validation)
+
+
+
+Profile.service
+
+→ region.service (validation)
+
+→ photo.service (image request)
+
+
+
+Region.service
+
+→ NONE
+
+
+
+/* ==================================================
+
+FORBIDDEN SERVICE CALL FLOW
+
+================================================== */
+
+
+Feed → post.create ❌
+
+Feed → profile.update ❌
+
+Feed → image.upload ❌
+
+Feed → region.create ❌
+
+
+
+Post → profile.update ❌
+
+Post → region.update ❌
+
+
+
+Photo → post.create ❌
+
+
+
+Profile → post.create ❌
+
+
+
+Region → post.update ❌
+
+
+
+/* ==================================================
+
+DOMAIN AUTHORITY STRUCTURE
+
+================================================== */
+
+
+REGION owns geography
+
+PROFILE owns identity
+
+POST owns content
+
+PHOTO owns media
+
+FEED owns nothing
+
+
+
+/* ==================================================
+
+FINAL DOMAIN PRINCIPLE
+
+================================================== */
+
+
+WRITE DOMAINS :
+
+POST
+PHOTO
+PROFILE
+REGION
+
+
+READ DOMAIN :
+
+FEED
+
+
+
+RULE :
+
+Write domains own data.
+
+Feed consumes data.
+
+
+
+/* ==================================================
+
+END OF DOMAIN INTERACTION MATRIX
+
+================================================== */

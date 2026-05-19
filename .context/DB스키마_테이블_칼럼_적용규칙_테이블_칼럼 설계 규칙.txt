@@ -1,0 +1,9411 @@
+☆[코드/답변에 출력에 대한 강력/강제/규칙/지침(절대고정값)]☆
+-SQLite는[개발용],PostgreSQL(운영/정규) 상호 호환 가능한 DB스키마로 출력
+모든 DB 코드는 PostgreSQL dialect 기준으로 작성하며,
+SQLite는 호환 가능한 제한된 문법만 사용한다.
+==========================================================================
+- 모든 코드/답변에 대한 판단은 반드시 프로젝트 폴더 내 모든 규칙 파일을 
+[최우선규칙]으로 읽고 따른다.
+-프로젝트 규칙(모든) 파일이 불완전하거나 누락된 경우, 추정으로 보완하지 말고 반드시 중단하고 수정 및 보완을 요청하거나 대안을 제시한다.
+
+☆작업규칙 절대 준수☆
+- 코드 출력 전 해당위치(코드 루트) 부터 안내
+- 사용자는  UI/UX디자인 담당
+- AI는 프론트/벡엔드 개발엔지니어 담당.
+=========================================================================
+☆ 개발컨셉 : [지역피드]기반 SNS+비지니스 플랫폼 / 당근 플랫폼과 동일한 지역피드 개념 사용
+=========================================================================
+☆ DB스키마 베이스
+
+// FILE: C:\Users\kjm\social-platform\backend\src\init\init-db.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\init-db.ts
+// STATUS : PRODUCTION SAFE INIT + TEST ACCOUNTS + 4 PROFILES + CHANNELCODE PRESERVED
+// NOTE : 개발용 DB(dev.sqlite) 절대 사용 금지, 경로 강제 절대값 지정, 자동 리셋/삭제 금지
+
+import fs from 'fs';
+import path from 'path';
+import Database from 'better-sqlite3';
+import * as bcrypt from 'bcrypt';
+
+export async function initDatabase() {
+  console.log('===== PRODUCTION DB INIT START =====');
+
+  // ==================================================
+  // DB 경로 강제 절대값 지정
+  // (개발용 dev.sqlite 사용/경로 지정금지)
+  // ==================================================
+  const dbDir = path.resolve(__dirname, '../../data');
+  if (!fs.existsSync(dbDir)) fs.mkdirSync(dbDir, { recursive: true });
+  const dbPath = path.join(dbDir, 'prod.sqlite'); // 절대값 지정
+  console.log('DB PATH FIXED →', dbPath);
+
+  // ==================================================
+  // 운영환경 자동 DROP/RESET 금지
+  // ==================================================
+  // DB_RESET 환경변수나 DROP TABLE 절대 실행 금지
+  const db = new Database(dbPath);
+
+  // ==================================================
+  // USERS TABLE
+  // ==================================================
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS users(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL UNIQUE,
+      passwordHash TEXT NOT NULL,
+      phone TEXT DEFAULT '010-1234-1234',
+      displayName TEXT,
+      accountType TEXT DEFAULT 'USER',
+      status TEXT CHECK(status IN('ACTIVE','INACTIVE')) DEFAULT 'ACTIVE',
+      type TEXT DEFAULT 'normal',
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  const testPassword = bcrypt.hashSync('1234', 10);
+  const insertUser = db.prepare(`
+    INSERT OR IGNORE INTO users(email,passwordHash,displayName,phone,accountType,status,type)
+    VALUES(?,?,?,?,?,?,?)
+  `);
+
+  // ==================================================
+  // 2 TEST ACCOUNTS (AI 임의 수정 금지)
+  // ==================================================
+  const userId1 = insertUser.run('test1@prod.com', testPassword, '테스트유저1', '010-1234-1234', 'USER', 'ACTIVE', 'normal').lastInsertRowid;
+  const userId2 = insertUser.run('test2@prod.com', testPassword, '테스트유저2', '010-1234-1234', 'USER', 'ACTIVE', 'normal').lastInsertRowid;
+
+  // ==================================================
+  // PROFILES TABLE
+  // ==================================================
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS profiles(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      profileType TEXT NOT NULL CHECK(profileType IN('GENERAL','BUSINESS')),
+      displayName TEXT,
+      channelCode TEXT NOT NULL UNIQUE,
+      channelURL TEXT,
+      contactPhone TEXT DEFAULT '010-1234-1234',
+      profilePhotoId INTEGER,
+      activityRegionId INTEGER,
+      feedRegionId INTEGER,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(userId) REFERENCES users(id)
+    )
+  `);
+
+  const insertProfile = db.prepare(`
+    INSERT OR IGNORE INTO profiles(userId,profileType,displayName,channelCode,channelURL,contactPhone)
+    VALUES(?,?,?,?,?,?)
+  `);
+
+  // ==================================================
+  // 4 PROFILES: 2 GENERAL, 2 BUSINESS (1:1 per TEST ACCOUNT)
+  // ※ 테스트 프로필: 채널코드/폰번호 AI 임의 수정 금지
+  // ==================================================
+  insertProfile.run(userId1,'GENERAL','test1@prod.com_general','A1B2C3D4E5F6','xxx.com/@A1B2C3D4E5F6','010-1234-1234');
+  insertProfile.run(userId1,'BUSINESS','test1@prod.com_business','9K2M8P4Q7R1T','xxx.com/@9K2M8P4Q7R1T','010-1234-1234');
+  insertProfile.run(userId2,'GENERAL','test2@prod.com_general','Z8X7C6V5B4N3','xxx.com/@Z8X7C6V5B4N3','010-1234-1234');
+  insertProfile.run(userId2,'BUSINESS','test2@prod.com_business','Q2W4E6R8T0Y1','xxx.com/@Q2W4E6R8T0Y1','010-1234-1234');
+
+  // ==================================================
+  // PROFILE SESSIONS TABLE
+  // ==================================================
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS profile_sessions(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      profileId INTEGER NOT NULL,
+      profileType TEXT NOT NULL CHECK(profileType IN('GENERAL','BUSINESS')),
+      channelCode TEXT NOT NULL,
+      deviceId TEXT,
+      status TEXT DEFAULT 'ACTIVE',
+      loginAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      lastSeenAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(userId) REFERENCES users(id),
+      FOREIGN KEY(profileId) REFERENCES profiles(id),
+      FOREIGN KEY(channelCode) REFERENCES profiles(channelCode)
+    )
+  `);
+
+  console.log('===== PRODUCTION DB INIT COMPLETE =====');
+}
+
+// ==================================================
+// ENTRY POINT (단일 실행 보장, import 시 중복 실행 방지)
+// ==================================================
+if (require.main === module) {
+  initDatabase()
+    .then(()=>{ console.log('PRODUCTION DB INIT DONE'); process.exit(0); })
+    .catch(err=>{ console.error('PRODUCTION DB INIT FAILED',err); process.exit(1); });
+}
+==================================================================
+
+
+
+// FILE : backend/src/init/profiles.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\profiles.schema.ts
+// STATUS : PRODUCTION READY (CHANNELCODE CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : PROFILES TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS profiles (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  profileId TEXT NOT NULL UNIQUE,
+  -- 외부 노출 가능 ID (UUID 권장)
+
+  ownerChannelCode TEXT NOT NULL UNIQUE,
+  -- 채널 절대 식별자 (ROOT / 외부 기준)
+
+  userId INTEGER NOT NULL,
+  -- 계정 소유자 (users FK)
+
+  channelType TEXT NOT NULL CHECK(channelType IN ('PERSONAL','BUSINESS')),
+  -- 채널 타입 제한 (2개 구조 고정)
+
+  displayName TEXT,
+  -- 채널 표시 이름
+
+  bio TEXT,
+  -- 채널 소개
+
+  activityRegionId INTEGER, 
+  -- 활동 지역 (현재 위치)(당근개념)
+
+  feedRegionId INTEGER,
+  -- 피드 기준 지역(당근개념)
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / DISABLED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+
+  FOREIGN KEY(userId) REFERENCES users(id),
+  FOREIGN KEY(activityRegionId) REFERENCES regions(id),
+  FOREIGN KEY(feedRegionId) REFERENCES regions(id)
+
+);
+
+/* ================================================== */
+// SECTION 02 : UNIQUE CONSTRAINT (CHANNEL LIMIT)
+// user당 channelCode 최대 2개 제한 (부분 인덱스 기반)
+/* ================================================== */
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_user_personal
+ON profiles(userId)
+WHERE channelType = 'PERSONAL';
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_user_business
+ON profiles(userId)
+WHERE channelType = 'BUSINESS';
+
+/* ================================================== */
+// SECTION 03 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_profiles_channelCode
+ON profiles(ownerChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_user
+ON profiles(userId);
+
+/* ================================================== */
+// SECTION 04 : TRIGGER (CHANNEL IMMUTABLE)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_profiles_channelcode_immutable
+BEFORE UPDATE OF ownerChannelCode ON profiles
+BEGIN
+  SELECT RAISE(ABORT, 'channelCode is immutable');
+END;
+
+/* ================================================== */
+// SECTION 05 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (ROOT 자산)
+-- userId 사용 ✔ (허용 테이블)
+-- channelType 제한 ✔
+-- 최대 2개 제한 ✔
+-- FK 존재 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/posts.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\posts.schema.ts
+// STATUS : PRODUCTION READY (CONTENT CORE TABLE + LOCATION)
+
+/* ================================================== */
+// SECTION 01 : POSTS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS posts (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  postId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 포스트 ID
+
+  authorChannelCode TEXT NOT NULL,
+  -- 작성 주체 (SINGLE CHANNEL)
+
+  profileId INTEGER NOT NULL,
+  -- 내부 JOIN (profiles FK)
+
+  regionId INTEGER NOT NULL,
+  -- 작성 당시 지역 (피드 기준 / immutable)
+
+  latitude REAL,
+  -- 포스트 위치 위도 (거리 계산용)
+
+  longitude REAL,
+  -- 포스트 위치 경도 (거리 계산용)
+
+  geohash TEXT,
+  -- 위치 검색 최적화 (선택)
+
+  content TEXT,
+  -- 본문
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / HIDDEN / DELETED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+
+  FOREIGN KEY(profileId) REFERENCES profiles(id),
+  FOREIGN KEY(regionId) REFERENCES regions(id)
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_posts_author_created
+ON posts(authorChannelCode, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_posts_region_created
+ON posts(regionId, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_posts_location
+ON posts(latitude, longitude);
+
+/* ================================================== */
+// SECTION 03 : TRIGGER (REGION IMMUTABLE)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_posts_region_immutable
+BEFORE UPDATE OF regionId ON posts
+BEGIN
+  SELECT RAISE(ABORT, 'regionId is immutable');
+END;
+
+/* ================================================== */
+// SECTION 04 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (행위 주체)
+-- SINGLE CHANNEL 구조 ✔
+-- profileId 존재 ✔
+-- regionId 필수 ✔
+-- 좌표 추가 ✔ (거리 계산)
+-- FK 정상 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+/* ================================================== */
+// SECTION 05 : CHANNEL CONSISTENCY VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_posts_channel_profile_match_insert
+BEFORE INSERT ON posts
+BEGIN
+
+SELECT
+CASE
+WHEN
+(SELECT ownerChannelCode
+ FROM profiles
+ WHERE id = NEW.profileId)
+
+!= NEW.authorChannelCode
+
+THEN
+RAISE(ABORT,'posts channel mismatch with profile')
+
+END;
+
+END;
+
+
+CREATE TRIGGER IF NOT EXISTS trg_posts_channel_profile_match_update
+BEFORE UPDATE OF profileId, authorChannelCode ON posts
+BEGIN
+
+SELECT
+CASE
+WHEN
+(SELECT ownerChannelCode
+ FROM profiles
+ WHERE id = NEW.profileId)
+
+!= NEW.authorChannelCode
+
+THEN
+RAISE(ABORT,'posts channel mismatch with profile')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : CHANNEL EXISTENCE VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_posts_channel_registry_check
+BEFORE INSERT ON posts
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.authorChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'channel not registered')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : POSTS STATUS VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_posts_status_validation
+BEFORE UPDATE OF status ON posts
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.status NOT IN
+('ACTIVE','HIDDEN','DELETED')
+
+THEN
+RAISE(ABORT,'invalid post status')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 08 : GEO DATA VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_posts_geo_validation
+BEFORE INSERT ON posts
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.latitude IS NOT NULL
+AND (NEW.latitude < -90 OR NEW.latitude > 90)
+
+THEN
+RAISE(ABORT,'invalid latitude')
+
+END;
+
+SELECT
+CASE
+WHEN NEW.longitude IS NOT NULL
+AND (NEW.longitude < -180 OR NEW.longitude > 180)
+
+THEN
+RAISE(ABORT,'invalid longitude')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 09 : ADD OPTIONAL VISIBILITY COLUMN (ADD)
+/* ================================================== */
+
+ALTER TABLE posts
+ADD COLUMN visibility TEXT DEFAULT 'PUBLIC';
+
+
+CREATE INDEX IF NOT EXISTS idx_posts_visibility
+ON posts(visibility);
+
+
+/* ================================================== */
+// SECTION 10 : ADD DESIGN NOTES
+/* ================================================== */
+
+-- channel/profile mismatch 방지
+-- registry 존재 채널만 허용
+-- status 값 제한 강화
+-- 좌표 데이터 오류 방지
+-- visibility 확장 (SNS 기본 구조)
+-- 기존 구조 변경 없음
+-- ADD only 안정성 강화
+
+/* ================================================== */
+// END ADD SECTION
+/* ================================================== */
+
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+
+// FILE : backend/src/init/image-assets.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\image-assets.schema.ts
+// STATUS : PRODUCTION READY (MEDIA CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : IMAGE_ASSETS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS image_assets (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  imageAssetId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 이미지 ID
+
+  ownerChannelCode TEXT NOT NULL,
+  -- 파일 소유 채널 (SINGLE CHANNEL)
+
+  profileId INTEGER NOT NULL,
+  -- 내부 JOIN (profiles FK)
+
+  filePath TEXT NOT NULL,
+  -- 파일 경로 (backend/uploads/{channelCode}/...)
+
+  usageType TEXT NOT NULL CHECK(usageType IN (
+    'avatar',
+    'post',
+    'gallery',
+    'business',
+    'qr'
+  )),
+  -- 사용 목적
+
+  mimeType TEXT,
+  -- image/png, image/jpeg 등
+
+  size INTEGER,
+  -- 파일 크기 (bytes)
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / DELETED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(profileId) REFERENCES profiles(id)
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_image_assets_owner_created
+ON image_assets(ownerChannelCode, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_image_assets_profile
+ON image_assets(profileId);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (파일 소유권)
+-- SINGLE CHANNEL 구조 ✔
+-- profileId 존재 ✔
+-- 파생 데이터 없음 (filePath만 저장) ✔
+-- FK 정상 ✔
+-- INDEX 최소화 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/payments.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\payments.schema.ts
+// STATUS : PRODUCTION READY (PAYMENT CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : PAYMENTS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS payments (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  paymentId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 결제 ID
+
+  payerChannelCode TEXT NOT NULL,
+  -- 결제 주체 (구매자)
+
+  receiverChannelCode TEXT NOT NULL,
+  -- 수신자 (판매자)
+
+  amount INTEGER NOT NULL,
+  -- 결제 금액
+
+  currency TEXT DEFAULT 'KRW',
+  -- 통화
+
+  status TEXT DEFAULT 'PENDING',
+  -- PENDING / SUCCESS / FAIL / CANCELLED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_payments_payer_created
+ON payments(payerChannelCode, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_payments_receiver_created
+ON payments(receiverChannelCode, createdAt);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (다자 관계)
+-- MULTI CHANNEL 구조 ✔
+-- 단일 channelCode 사용 없음 ✔
+-- 역할 기반 컬럼명 ✔
+-- FK 없음 (채널코드 직접 사용 구조) ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+/* ================================================== */
+// SECTION 05 : PAYMENT STATUS VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_payments_status_validation
+BEFORE INSERT ON payments
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.status NOT IN
+('PENDING','SUCCESS','FAILED','CANCELLED','REFUNDED')
+
+THEN
+RAISE(ABORT,'invalid payment status')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : AMOUNT VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_payments_amount_validation
+BEFORE INSERT ON payments
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.amount <= 0
+THEN
+RAISE(ABORT,'invalid payment amount')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : CHANNEL VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_payments_channel_check
+BEFORE INSERT ON payments
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.payerChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'payer channel not registered')
+
+END;
+
+END;
+
+
+CREATE TRIGGER IF NOT EXISTS trg_payments_receiver_check
+BEFORE INSERT ON payments
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.receiverChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'receiver channel not registered')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 08 : WALLET CONSISTENCY CHECK (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_payments_wallet_check
+BEFORE INSERT ON payments
+WHEN NEW.walletId IS NOT NULL
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM wallets
+WHERE walletId = NEW.walletId
+
+)
+
+THEN
+RAISE(ABORT,'wallet not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 09 : PAYMENT DUPLICATION PROTECT (ADD)
+/* ================================================== */
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_external
+ON payments(externalPaymentId);
+
+
+/* ================================================== */
+// SECTION 10 : DESIGN NOTES (ADD)
+/* ================================================== */
+
+-- payment status 제한
+-- 음수 금액 방지
+-- payer channel 검증
+-- receiver channel 검증
+-- wallet 존재 확인
+-- 외부 결제 중복 방지
+-- 금융 데이터 안정성 확보
+-- 기존 구조 영향 없음
+-- ADD only 안정화
+
+/* ================================================== */
+// END ADD SECTION
+/* ================================================== */
+
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/orders.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\orders.schema.ts
+// STATUS : PRODUCTION READY (ORDER CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : ORDERS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS orders (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  orderId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 주문 ID
+
+  buyerChannelCode TEXT NOT NULL,
+  -- 구매자
+
+  sellerChannelCode TEXT NOT NULL,
+  -- 판매자
+
+  totalAmount INTEGER NOT NULL,
+  -- 총 주문 금액
+
+  currency TEXT DEFAULT 'KRW',
+  -- 통화
+
+  status TEXT DEFAULT 'CREATED',
+  -- CREATED / PAID / CANCELLED / COMPLETED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_orders_buyer_created
+ON orders(buyerChannelCode, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_orders_seller_created
+ON orders(sellerChannelCode, createdAt);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (거래 주체)
+-- MULTI CHANNEL 구조 ✔
+-- 역할 기반 컬럼명 ✔
+-- 단일 channelCode 없음 ✔
+-- FK 없음 (채널코드 기반 구조) ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+
+// FILE : backend/src/init/post-comments.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\post-comments.schema.ts
+// STATUS : PRODUCTION READY (COMMENT CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : POST_COMMENTS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS post_comments (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  commentId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 댓글 ID
+
+  postId TEXT NOT NULL,
+  -- 대상 포스트 (외부 ID 기준)
+
+  authorChannelCode TEXT NOT NULL,
+  -- 댓글 작성 주체 (SINGLE CHANNEL)
+
+  profileId INTEGER NOT NULL,
+  -- 내부 JOIN (profiles FK)
+
+  parentCommentId TEXT,
+  -- 대댓글 구조 (nullable)
+
+  content TEXT NOT NULL,
+  -- 댓글 내용
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / HIDDEN / DELETED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+
+  FOREIGN KEY(profileId) REFERENCES profiles(id)
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_post_comments_post_created
+ON post_comments(postId, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_post_comments_author_created
+ON post_comments(authorChannelCode, createdAt);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (행위 주체)
+-- SINGLE CHANNEL 구조 ✔
+-- postId 관계 ✔
+-- profileId 존재 ✔
+-- FK 정상 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/follows.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\follows.schema.ts
+// STATUS : PRODUCTION READY (SOCIAL GRAPH CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : FOLLOWS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS follows (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  followerChannelCode TEXT NOT NULL,
+  -- 팔로우 하는 주체
+
+  followingChannelCode TEXT NOT NULL,
+  -- 팔로우 대상
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(followerChannelCode, followingChannelCode)
+  -- 중복 팔로우 방지
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_follows_follower
+ON follows(followerChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_follows_following
+ON follows(followingChannelCode);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (다자 관계)
+-- MULTI CHANNEL 구조 ✔
+-- 역할 기반 컬럼명 ✔
+-- 단일 channelCode 없음 ✔
+-- UNIQUE 제약으로 중복 방지 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/notifications.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\notifications.schema.ts
+// STATUS : PRODUCTION READY (NOTIFICATION CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : NOTIFICATIONS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS notifications (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  notificationId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 알림 ID
+
+  senderChannelCode TEXT,
+  -- 발신자 (시스템 알림일 경우 NULL 허용)
+
+  receiverChannelCode TEXT NOT NULL,
+  -- 수신자
+
+  type TEXT NOT NULL,
+  -- FOLLOW / LIKE / COMMENT / SYSTEM 등
+
+  targetId TEXT,
+  -- 대상 객체 ID (postId / commentId 등)
+
+  isRead INTEGER DEFAULT 0,
+  -- 0 = unread / 1 = read
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_notifications_receiver_created
+ON notifications(receiverChannelCode, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_sender
+ON notifications(senderChannelCode);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (다자 관계)
+-- MULTI CHANNEL 구조 ✔
+-- sender/receiver 역할 분리 ✔
+-- 시스템 알림 대응 (sender NULL 허용) ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/reservations.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\reservations.schema.ts
+// STATUS : PRODUCTION READY (RESERVATION CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : RESERVATIONS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS reservations (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  reservationId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 예약 ID
+
+  customerChannelCode TEXT NOT NULL,
+  -- 예약자 (구매자 역할)
+
+  providerChannelCode TEXT NOT NULL,
+  -- 서비스 제공자
+
+  reservationDate TEXT NOT NULL,
+  -- 예약 날짜 (YYYY-MM-DD)
+
+  reservationTime TEXT,
+  -- 예약 시간 (HH:mm)
+
+  status TEXT DEFAULT 'REQUESTED',
+  -- REQUESTED / CONFIRMED / CANCELLED / COMPLETED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_reservations_customer_created
+ON reservations(customerChannelCode, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_reservations_provider_created
+ON reservations(providerChannelCode, createdAt);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (다자 관계)
+-- MULTI CHANNEL 구조 ✔
+-- 역할 기반 컬럼명 ✔ (customer / provider)
+-- 단일 channelCode 없음 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/feed-seen.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\feed-seen.schema.ts
+// STATUS : PRODUCTION READY (FEED TRACKING TABLE)
+
+/* ================================================== */
+// SECTION 01 : FEED_SEEN TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS feed_seen (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  viewerChannelCode TEXT NOT NULL,
+  -- 피드를 소비한 주체
+
+  postId TEXT NOT NULL,
+  -- 본 포스트
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(viewerChannelCode, postId)
+  -- 중복 조회 방지
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_feed_seen_viewer
+ON feed_seen(viewerChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_feed_seen_post
+ON feed_seen(postId);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (행위 추적)
+-- SINGLE CHANNEL 구조 ✔
+-- postId 관계 ✔
+-- UNIQUE 중복 방지 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/feed-hide-filter.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\feed-hide-filter.schema.ts
+// STATUS : PRODUCTION READY (FEED CONTROL TABLE)
+
+/* ================================================== */
+// SECTION 01 : FEED_HIDE_FILTER TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS feed_hide_filter (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  actorChannelCode TEXT NOT NULL,
+  -- 숨김 설정 주체
+
+  targetPostId TEXT,
+  -- 특정 포스트 숨김
+
+  targetChannelCode TEXT,
+  -- 특정 채널 숨김
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_feed_hide_actor
+ON feed_hide_filter(actorChannelCode);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (행위 주체)
+-- SINGLE CHANNEL 구조 ✔
+-- target 분리 (post / channel) ✔
+-- FK 없음 (경량 필터 테이블) ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/post-engagements.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\post-engagements.schema.ts
+// STATUS : PRODUCTION READY (ENGAGEMENT CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : POST_ENGAGEMENTS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS post_engagements (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  engagementId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 액션 ID
+
+  postId TEXT NOT NULL,
+  -- 대상 포스트
+
+  actorChannelCode TEXT NOT NULL,
+  -- 행위 주체 (좋아요 / 북마크 등)
+
+  type TEXT NOT NULL,
+  -- LIKE / BOOKMARK / SHARE 등
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(postId, actorChannelCode, type)
+  -- 동일 액션 중복 방지
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_post_engagements_post
+ON post_engagements(postId);
+
+CREATE INDEX IF NOT EXISTS idx_post_engagements_actor
+ON post_engagements(actorChannelCode);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (행위 주체)
+-- SINGLE CHANNEL 구조 ✔
+-- postId 관계 ✔
+-- UNIQUE 중복 방지 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/profile-ownerships.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\profile-ownerships.schema.ts
+// STATUS : PRODUCTION READY (PROFILE OWNERSHIP TRANSFER TABLE)
+
+/* ================================================== */
+// SECTION 01 : PROFILE_OWNERSHIPS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS profile_ownerships (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  ownershipId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 소유권 ID
+
+  profileId INTEGER NOT NULL,
+  -- 대상 프로필 (FK)
+
+  ownerChannelCode TEXT NOT NULL,
+  -- 현재 소유자
+
+  targetChannelCode TEXT NOT NULL,
+  -- 이전 소유자 또는 이전 대상
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / TRANSFERRED / REVOKED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+
+  FOREIGN KEY(profileId) REFERENCES profiles(id)
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_profile_ownerships_owner
+ON profile_ownerships(ownerChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_profile_ownerships_target
+ON profile_ownerships(targetChannelCode);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (다자 관계 / 소유권)
+-- MULTI CHANNEL 구조 ✔
+-- profileId 존재 ✔
+-- FK 정상 ✔
+-- 역할 기반 컬럼명 ✔ (owner / target)
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/profile-transactions.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\profile-transactions.schema.ts
+// STATUS : PRODUCTION READY (PROFILE TRADE TABLE)
+
+/* ================================================== */
+// SECTION 01 : PROFILE_TRANSACTIONS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS profile_transactions (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  transactionId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 거래 ID
+
+  profileId INTEGER NOT NULL,
+  -- 거래 대상 프로필
+
+  sellerChannelCode TEXT NOT NULL,
+  -- 판매자
+
+  buyerChannelCode TEXT NOT NULL,
+  -- 구매자
+
+  amount INTEGER NOT NULL,
+  -- 거래 금액
+
+  currency TEXT DEFAULT 'KRW',
+  -- 통화
+
+  status TEXT DEFAULT 'PENDING',
+  -- PENDING / SUCCESS / CANCELLED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+
+  FOREIGN KEY(profileId) REFERENCES profiles(id)
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_profile_transactions_seller
+ON profile_transactions(sellerChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_profile_transactions_buyer
+ON profile_transactions(buyerChannelCode);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (다자 거래)
+-- MULTI CHANNEL 구조 ✔
+-- 역할 기반 컬럼명 ✔ (seller / buyer)
+-- profileId 존재 ✔
+-- FK 정상 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/profile-permissions.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\profile-permissions.schema.ts
+// STATUS : PRODUCTION READY (PROFILE PERMISSION TABLE)
+
+/* ================================================== */
+// SECTION 01 : PROFILE_PERMISSIONS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS profile_permissions (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  permissionId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 권한 ID
+
+  profileId INTEGER NOT NULL,
+  -- 대상 프로필
+
+  ownerChannelCode TEXT NOT NULL,
+  -- 권한 소유자 (관리자)
+
+  targetChannelCode TEXT NOT NULL,
+  -- 권한 부여 대상
+
+  permissionType TEXT NOT NULL,
+  -- ADMIN / EDITOR / VIEWER 등
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / REVOKED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+
+  FOREIGN KEY(profileId) REFERENCES profiles(id)
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_profile_permissions_owner
+ON profile_permissions(ownerChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_profile_permissions_target
+ON profile_permissions(targetChannelCode);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (다자 권한 구조)
+-- MULTI CHANNEL 구조 ✔
+-- 역할 기반 컬럼명 ✔ (owner / target)
+-- profileId 존재 ✔
+-- FK 정상 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/audit-logs.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\audit-logs.schema.ts
+// STATUS : PRODUCTION READY (AUDIT / SYSTEM TRACE TABLE)
+
+/* ================================================== */
+// SECTION 01 : AUDIT_LOGS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  logId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 로그 ID
+
+  actorChannelCode TEXT,
+  -- 행위 주체 (SYSTEM 이벤트는 NULL 허용)
+
+  action TEXT NOT NULL,
+  -- CREATE / UPDATE / DELETE / LOGIN / PAYMENT 등
+
+  targetType TEXT,
+  -- 대상 타입 (post / profile / payment 등)
+
+  targetId TEXT,
+  -- 대상 ID (postId / profileId / paymentId 등)
+
+  metadata TEXT,
+  -- 추가 데이터 (JSON 문자열)
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_actor_created
+ON audit_logs(actorChannelCode, createdAt);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (행위 추적)
+-- SINGLE CHANNEL 구조 (SYSTEM NULL 허용) ✔
+-- target 구조 분리 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/reports.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\reports.schema.ts
+// STATUS : PRODUCTION READY (REPORT / MODERATION TABLE)
+
+/* ================================================== */
+// SECTION 01 : REPORTS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS reports (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  reportId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 신고 ID
+
+  reporterChannelCode TEXT NOT NULL,
+  -- 신고자
+
+  targetChannelCode TEXT,
+  -- 신고 대상 채널 (유저/프로필)
+
+  targetPostId TEXT,
+  -- 신고 대상 포스트
+
+  targetCommentId TEXT,
+  -- 신고 대상 댓글
+
+  reason TEXT NOT NULL,
+  -- 신고 사유
+
+  status TEXT DEFAULT 'PENDING',
+  -- PENDING / REVIEWED / REJECTED / ACTIONED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_reports_reporter_created
+ON reports(reporterChannelCode, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_reports_target_channel
+ON reports(targetChannelCode);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (다자 관계 / 신고자 + 대상)
+-- MULTI CHANNEL 구조 ✔
+-- reporter / target 분리 ✔
+-- 다양한 대상 타입 대응 (post / comment / channel) ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/blocks.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\blocks.schema.ts
+// STATUS : PRODUCTION READY (BLOCK / USER CONTROL TABLE)
+
+/* ================================================== */
+// SECTION 01 : BLOCKS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS blocks (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  blockerChannelCode TEXT NOT NULL,
+  -- 차단 주체
+
+  blockedChannelCode TEXT NOT NULL,
+  -- 차단 대상
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(blockerChannelCode, blockedChannelCode)
+  -- 중복 차단 방지
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_blocks_blocker
+ON blocks(blockerChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_blocked
+ON blocks(blockedChannelCode);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (다자 관계)
+-- MULTI CHANNEL 구조 ✔
+-- 역할 기반 컬럼명 ✔ (blocker / blocked)
+-- UNIQUE 중복 방지 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/messages.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\messages.schema.ts
+// STATUS : PRODUCTION READY (MESSAGING CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : MESSAGES TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS messages (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  messageId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 메시지 ID
+
+  senderChannelCode TEXT NOT NULL,
+  -- 발신자
+
+  receiverChannelCode TEXT NOT NULL,
+  -- 수신자
+
+  content TEXT,
+  -- 메시지 내용
+
+  messageType TEXT DEFAULT 'TEXT',
+  -- TEXT / IMAGE / SYSTEM 등
+
+  status TEXT DEFAULT 'SENT',
+  -- SENT / DELIVERED / READ
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_messages_sender_created
+ON messages(senderChannelCode, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_messages_receiver_created
+ON messages(receiverChannelCode, createdAt);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (다자 메시징 구조)
+-- MULTI CHANNEL 구조 ✔
+-- sender / receiver 역할 분리 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/conversations.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\conversations.schema.ts
+// STATUS : PRODUCTION READY (CONVERSATION CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : CONVERSATIONS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS conversations (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  conversationId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 대화방 ID
+
+  type TEXT DEFAULT 'DIRECT',
+  -- DIRECT / GROUP
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+);
+
+/* ================================================== */
+// SECTION 02 : CONVERSATION_MEMBERS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS conversation_members (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  conversationId TEXT NOT NULL,
+  -- 대상 대화방
+
+  memberChannelCode TEXT NOT NULL,
+  -- 참여 채널
+
+  role TEXT DEFAULT 'MEMBER',
+  -- MEMBER / ADMIN
+
+  joinedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(conversationId, memberChannelCode)
+
+);
+
+/* ================================================== */
+// SECTION 03 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_conversation_members_conversation
+ON conversation_members(conversationId);
+
+CREATE INDEX IF NOT EXISTS idx_conversation_members_member
+ON conversation_members(memberChannelCode);
+
+/* ================================================== */
+// SECTION 04 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- conversations → channelCode 없음 (구조 테이블) ✔
+-- conversation_members → channelCode 필요 ✔
+-- MULTI CHANNEL 구조 ✔
+-- UNIQUE 중복 방지 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/regions.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\regions.schema.ts
+// STATUS : PRODUCTION READY (REGION MASTER TABLE)
+
+/* ================================================== */
+// SECTION 01 : REGIONS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS regions (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  regionId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 지역 ID (코드)
+
+  name TEXT NOT NULL,
+  -- 지역 이름 (예: 광주 북구)
+
+  parentRegionId INTEGER,
+  -- 상위 지역 (계층 구조)
+
+  depth INTEGER,
+  -- 단계 (0=국가, 1=시/도, 2=구/군 등)
+
+  latitude REAL,
+  -- 위도
+
+  longitude REAL,
+  -- 경도
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(parentRegionId) REFERENCES regions(id)
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_regions_parent
+ON regions(parentRegionId);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 없음 ✔ (독립 마스터 데이터)
+-- 계층 구조 ✔
+-- FK 존재 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// SECTION 04 : GLOBAL REGION EXTENSION (ADD)
+/* ================================================== */
+
+ALTER TABLE regions
+ADD COLUMN countryCode TEXT DEFAULT 'KR';
+-- 국가 코드 (ISO 3166-1)
+
+ALTER TABLE regions
+ADD COLUMN regionType TEXT;
+-- COUNTRY / STATE / CITY / DISTRICT / NEIGHBORHOOD
+
+ALTER TABLE regions
+ADD COLUMN timezone TEXT;
+-- Asia/Seoul / America/New_York 등
+
+
+/* ================================================== */
+// SECTION 05 : REGION TYPE VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_regions_type_validation
+BEFORE UPDATE OF regionType ON regions
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.regionType NOT IN
+('COUNTRY','STATE','CITY','DISTRICT','NEIGHBORHOOD')
+
+THEN
+RAISE(ABORT,'invalid region type')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : COUNTRY CODE VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_regions_country_validation
+BEFORE UPDATE OF countryCode ON regions
+BEGIN
+
+SELECT
+CASE
+WHEN LENGTH(NEW.countryCode) != 2
+THEN
+RAISE(ABORT,'invalid country code')
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : GEO CONSISTENCY VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_regions_geo_validation
+BEFORE UPDATE OF latitude, longitude ON regions
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.latitude IS NOT NULL
+AND (NEW.latitude < -90 OR NEW.latitude > 90)
+THEN
+RAISE(ABORT,'invalid latitude')
+END;
+
+SELECT
+CASE
+WHEN NEW.longitude IS NOT NULL
+AND (NEW.longitude < -180 OR NEW.longitude > 180)
+THEN
+RAISE(ABORT,'invalid longitude')
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 08 : GLOBAL SEARCH INDEX (ADD)
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_regions_country
+ON regions(countryCode);
+
+CREATE INDEX IF NOT EXISTS idx_regions_type
+ON regions(regionType);
+
+CREATE INDEX IF NOT EXISTS idx_regions_depth
+ON regions(depth);
+
+
+/* ================================================== */
+// SECTION 09 : DESIGN NOTES (ADD)
+/* ================================================== */
+
+-- 글로벌 서비스 대응
+-- 국가 단위 분리 가능
+-- timezone 기반 서비스 가능
+-- 지역 타입 분류
+-- 위치 데이터 오류 방지
+-- 글로벌 검색 성능 개선
+-- 기존 구조 영향 없음
+-- ADD only 확장 구조
+
+/* ================================================== */
+// END ADD SECTION
+/* ================================================== */
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/users.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\users.schema.ts
+// STATUS : PRODUCTION READY (AUTH / ACCOUNT CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : USERS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS users (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  userId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 유저 ID
+
+  email TEXT NOT NULL UNIQUE,
+  -- 로그인 계정 (PII / 인증 전용)
+
+  passwordHash TEXT NOT NULL,
+  -- 비밀번호 해시
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / SUSPENDED / DELETED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_users_email
+ON users(email);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 없음 ✔ (AUTH DOMAIN)
+-- PII 데이터 위치 적합 ✔
+-- userId 유일 ✔
+-- profile과 분리 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/post-images.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\post-images.schema.ts
+// STATUS : PRODUCTION READY (POST ↔ IMAGE MAPPING TABLE)
+
+/* ================================================== */
+// SECTION 01 : POST_IMAGES TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS post_images (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  postId TEXT NOT NULL,
+  -- 대상 포스트
+
+  imageAssetId TEXT NOT NULL,
+  -- 연결된 이미지
+
+  sortOrder INTEGER DEFAULT 0,
+  -- 이미지 순서
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(postId, imageAssetId),
+  -- 동일 이미지 중복 연결 방지
+
+  FOREIGN KEY(imageAssetId) REFERENCES image_assets(imageAssetId)
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_post_images_post
+ON post_images(postId);
+
+CREATE INDEX IF NOT EXISTS idx_post_images_image
+ON post_images(imageAssetId);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 없음 ✔ (간접 추적 구조)
+-- FK 기반 연결 ✔
+-- postId → posts → channelCode 추적 가능 ✔
+-- imageAssetId → ownerChannelCode 추적 가능 ✔
+-- UNIQUE 중복 방지 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/wallets.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\wallets.schema.ts
+// STATUS : PRODUCTION READY (WALLET CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : WALLETS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS wallets (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  walletId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 지갑 ID
+
+  ownerChannelCode TEXT NOT NULL UNIQUE,
+  -- 지갑 소유 채널 (1 채널 = 1 지갑)
+
+  balance INTEGER DEFAULT 0,
+  -- 현재 잔액
+
+  currency TEXT DEFAULT 'KRW',
+  -- 통화
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / SUSPENDED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_wallets_owner
+ON wallets(ownerChannelCode);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (자산 소유)
+-- SINGLE CHANNEL 구조 ✔
+-- ownerChannelCode UNIQUE ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 최소화 (balance는 캐시 개념 허용) ✔
+/* ================================================== */
+// SECTION 04 : WALLET BALANCE PROTECTION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_wallet_balance_protect
+BEFORE UPDATE OF balance ON wallets
+BEGIN
+
+SELECT RAISE(ABORT,'wallet balance controlled by transactions');
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : WALLET STATUS VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_wallet_status_validation
+BEFORE UPDATE OF status ON wallets
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.status NOT IN
+('ACTIVE','SUSPENDED')
+
+THEN
+RAISE(ABORT,'invalid wallet status')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : CHANNEL REGISTRY VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_wallet_channel_registry_check
+BEFORE INSERT ON wallets
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.ownerChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'wallet channel not registered')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : SINGLE WALLET ENFORCEMENT (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_wallet_single_enforcement
+BEFORE INSERT ON wallets
+BEGIN
+
+SELECT
+CASE
+WHEN EXISTS(
+
+SELECT 1
+FROM wallets
+WHERE ownerChannelCode = NEW.ownerChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'wallet already exists')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 08 : DESIGN NOTES (ADD)
+/* ================================================== */
+
+-- wallet balance 직접 수정 금지
+-- ledger 기반 변경만 허용
+-- 존재 채널만 wallet 생성 가능
+-- 채널당 wallet 1개 보장
+-- 상태값 제한 강화
+-- 기존 구조 변경 없음
+-- ADD only 안정화
+
+/* ================================================== */
+// END ADD SECTION
+/* ================================================== */
+
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/wallet-transactions.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\wallet-transactions.schema.ts
+// STATUS : PRODUCTION READY (WALLET TRANSACTION LEDGER)
+
+/* ================================================== */
+// SECTION 01 : WALLET_TRANSACTIONS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  transactionId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 트랜잭션 ID
+
+  walletId TEXT NOT NULL,
+  -- 대상 지갑
+
+  ownerChannelCode TEXT NOT NULL,
+  -- 지갑 소유 채널 (추적용)
+
+  counterpartyChannelCode TEXT,
+  -- 상대 채널 (송금/수신 상대)
+
+  type TEXT NOT NULL,
+  -- CREDIT / DEBIT
+
+  amount INTEGER NOT NULL,
+  -- 금액 (항상 양수, type으로 방향 판단)
+
+  balanceAfter INTEGER,
+  -- 거래 후 잔액 (스냅샷)
+
+  referenceType TEXT,
+  -- PAYMENT / ORDER / RESERVATION 등
+
+  referenceId TEXT,
+  -- 연결된 객체 ID
+
+  status TEXT DEFAULT 'COMPLETED',
+  -- PENDING / COMPLETED / FAILED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_owner_created
+ON wallet_transactions(ownerChannelCode, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_wallet
+ON wallet_transactions(walletId);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (자산 추적)
+-- SINGLE + OPTIONAL MULTI 구조 ✔ (counterparty)
+-- 역할 기반 컬럼 ✔
+-- walletId 존재 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 최소화 (balanceAfter는 스냅샷 허용) ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/feed-cache.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\feed-cache.schema.ts
+// STATUS : PRODUCTION READY (FEED CACHE TABLE)
+
+/* ================================================== */
+// SECTION 01 : FEED_CACHE TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS feed_cache (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  viewerChannelCode TEXT NOT NULL,
+  -- 피드 대상 사용자 (누가 보는가)
+
+  postId TEXT NOT NULL,
+  -- 노출된 포스트
+
+  regionId INTEGER NOT NULL,
+  -- 지역 기반 피드 필터
+
+  score REAL,
+  -- 랭킹 점수 (AI / 추천)
+
+  rank INTEGER,
+  -- 순서
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(viewerChannelCode, postId)
+  -- 동일 포스트 중복 방지
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_feed_cache_viewer_rank
+ON feed_cache(viewerChannelCode, rank);
+
+CREATE INDEX IF NOT EXISTS idx_feed_cache_region
+ON feed_cache(regionId);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (피드 대상)
+-- SINGLE CHANNEL 구조 ✔
+-- regionId 포함 ✔ (지역 피드 핵심)
+-- UNIQUE 중복 방지 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 허용 (score / rank = 캐시 목적) ✔
+
+/* ================================================== */
+// SECTION 04 : AMOUNT VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_wallet_tx_amount_validation
+BEFORE INSERT ON wallet_transactions
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.amount <= 0
+THEN
+RAISE(ABORT,'amount must be positive')
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : TYPE VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_wallet_tx_type_validation
+BEFORE INSERT ON wallet_transactions
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.type NOT IN ('CREDIT','DEBIT')
+THEN
+RAISE(ABORT,'invalid transaction type')
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : WALLET EXISTENCE CHECK (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_wallet_tx_wallet_check
+BEFORE INSERT ON wallet_transactions
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM wallets
+WHERE walletId = NEW.walletId
+
+)
+
+THEN
+RAISE(ABORT,'wallet not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : CHANNEL REGISTRY VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_wallet_tx_channel_check
+BEFORE INSERT ON wallet_transactions
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.ownerChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'channel not registered')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 08 : BALANCE CONSISTENCY CHECK (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_wallet_tx_balance_check
+BEFORE INSERT ON wallet_transactions
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.balanceAfter < 0
+THEN
+RAISE(ABORT,'negative balance not allowed')
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 09 : COUNTERPARTY VALIDATION (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_wallet_tx_counterparty_check
+BEFORE INSERT ON wallet_transactions
+WHEN NEW.counterpartyChannelCode IS NOT NULL
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.counterpartyChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'counterparty not registered')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 10 : DESIGN NOTES (ADD)
+/* ================================================== */
+
+-- amount 항상 양수
+-- CREDIT/DEBIT 타입 제한
+-- 존재 wallet만 transaction 허용
+-- owner channel 존재 검증
+-- counterparty 검증
+-- 음수 balance 차단
+-- ledger 무결성 강화
+-- 기존 구조 변경 없음
+-- ADD only 안정화
+
+/* ================================================== */
+// END ADD SECTION
+/* ================================================== */
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/feed-cache.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\feed-cache.schema.ts
+// STATUS : PRODUCTION READY (FEED CACHE TABLE)
+
+/* ================================================== */
+// SECTION 01 : FEED_CACHE TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS feed_cache (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  viewerChannelCode TEXT NOT NULL,
+  -- 피드 대상 사용자 (누가 보는가)
+
+  postId TEXT NOT NULL,
+  -- 노출된 포스트
+
+  regionId INTEGER NOT NULL,
+  -- 지역 기반 피드 필터
+
+  score REAL,
+  -- 랭킹 점수 (AI / 추천)
+
+  rank INTEGER,
+  -- 순서
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(viewerChannelCode, postId)
+  -- 동일 포스트 중복 방지
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_feed_cache_viewer_rank
+ON feed_cache(viewerChannelCode, rank);
+
+CREATE INDEX IF NOT EXISTS idx_feed_cache_region
+ON feed_cache(regionId);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 필요성 ✔ (피드 대상)
+-- SINGLE CHANNEL 구조 ✔
+-- regionId 포함 ✔ (지역 피드 핵심)
+-- UNIQUE 중복 방지 ✔
+-- INDEX 최소화 ✔
+-- 파생 데이터 허용 (score / rank = 캐시 목적) ✔
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+
+// FILE : backend/src/init/feed-regions.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\feed-regions.schema.ts
+// STATUS : PRODUCTION READY (MULTI FEED REGION SYSTEM)
+
+/* ================================================== */
+// SECTION 01 : FEED_REGIONS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS feed_regions (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  profileId INTEGER NOT NULL,
+  -- 대상 프로필
+
+  regionId INTEGER NOT NULL,
+  -- 구독(피드) 지역
+
+  weight INTEGER DEFAULT 100,
+  -- 중요도 (우선순위 / 추천 비율)
+
+  isActive INTEGER DEFAULT 1,
+  -- 1 = 활성 / 0 = 비활성
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(profileId, regionId),
+  -- 동일 지역 중복 방지
+
+  FOREIGN KEY(profileId) REFERENCES profiles(id),
+  FOREIGN KEY(regionId) REFERENCES regions(id)
+
+);
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_feed_regions_profile
+ON feed_regions(profileId);
+
+CREATE INDEX IF NOT EXISTS idx_feed_regions_region
+ON feed_regions(regionId);
+
+/* ================================================== */
+// SECTION 03 : VALIDATION CHECK (MANUAL RULE SUMMARY)
+/* ================================================== */
+
+-- channelCode 없음 ✔ (간접 추적: profileId → channelCode)
+-- MULTI REGION 구조 ✔
+-- UNIQUE 중복 방지 ✔
+-- weight 포함 ✔ (추천/비율 제어)
+-- INDEX 최소화 ✔
+-- 파생 데이터 없음 ✔
+
+/* ================================================== */
+// SECTION 04 : DESIGN NOTES (CRITICAL)
+/* ================================================== */
+
+-- ✔ feedRegionId 컬럼 제거 (profiles에서 삭제 필요)
+-- ✔ 다중 지역 피드 지원 구조
+-- ✔ 글로벌 피드 / 해외 피드 완전 대응
+-- ✔ AI 추천 weight 조정 가능
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+
+/* ================================================== */
+// SECTION : TABLE DOMAIN CLASSIFICATION RULE
+/* ================================================== */
+
+TABLE 은 반드시 아래 DOMAIN 으로 분류한다.
+
+CORE DOMAIN
+
+users
+profiles
+regions
+
+CONTENT DOMAIN
+
+posts
+post_comments
+post_images
+post_engagements
+
+MEDIA DOMAIN
+
+image_assets
+
+SOCIAL DOMAIN
+
+follows
+blocks
+notifications
+messages
+conversations
+conversation_members
+
+PROFILE EXTENSION DOMAIN
+
+profile_permissions
+profile_transactions
+profile_ownerships
+profile_heroes
+
+FINANCIAL DOMAIN
+
+wallets
+wallet_transactions
+payments
+orders
+
+FEED DOMAIN
+
+feed_cache
+feed_seen
+feed_hide_filter
+feed_regions
+
+MODERATION DOMAIN
+
+reports
+audit_logs
+
+RESERVATION DOMAIN
+
+reservations
+
+/* ================================================== */
+// HERO TABLE DOMAIN RULE
+/* ================================================== */
+
+profile_heroes 는 PROFILE EXTENSION DOMAIN 에 속한다.
+
+hero 는 profile UI 구성 데이터이며
+content 가 아니고
+media storage 가 아니고
+profile metadata extension 이다.
+
+profile_heroes 추가 기준:
+
+profile UI 구성 요소일 경우
+
+예:
+
+hero banner
+profile banner
+profile promotion card
+profile highlight media
+
+모두 PROFILE EXTENSION TABLE 로 추가한다.
+
+/* ================================================== */
+// END DOMAIN RULE
+/* ================================================== */
+
+/* ================================================== */
+// SECTION 06 : CHANNEL REGISTRY AUTO LINK (ADD)
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS channels_registry (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  channelCode TEXT NOT NULL UNIQUE,
+  -- 시스템 전체 ROOT CHANNEL KEY
+
+  profileId INTEGER NOT NULL UNIQUE,
+  -- 연결된 profile
+
+  channelType TEXT NOT NULL,
+  -- PERSONAL / BUSINESS
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / DISABLED / DELETED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(profileId)
+  REFERENCES profiles(id)
+
+);
+
+CREATE INDEX IF NOT EXISTS idx_channels_registry_code
+ON channels_registry(channelCode);
+
+
+/* ================================================== */
+// SECTION 07 : PROFILE → CHANNEL REGISTRY AUTO INSERT (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_profiles_channel_registry_insert
+AFTER INSERT ON profiles
+BEGIN
+
+INSERT INTO channels_registry(
+channelCode,
+profileId,
+channelType,
+status
+)
+
+VALUES(
+NEW.ownerChannelCode,
+NEW.id,
+NEW.channelType,
+NEW.status
+);
+
+END;
+
+
+/* ================================================== */
+// SECTION 08 : PROFILE STATUS SYNC (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_profiles_channel_registry_status
+AFTER UPDATE OF status ON profiles
+BEGIN
+
+UPDATE channels_registry
+SET status = NEW.status
+WHERE profileId = NEW.id;
+
+END;
+
+
+/* ================================================== */
+// SECTION 09 : PROFILE DELETE PROTECT (ADD)
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_profiles_delete_protect
+BEFORE DELETE ON profiles
+BEGIN
+
+SELECT RAISE(ABORT,'profile delete not allowed');
+
+END;
+
+
+/* ================================================== */
+// SECTION 10 : ADD DESIGN NOTES
+/* ================================================== */
+
+-- channels_registry = channel 존재 검증 anchor table
+-- profile 생성시 자동 등록
+-- profile status 변경시 sync
+-- channel FK 강제 대신 registry로 검증
+-- 기존 구조 변경 없음
+-- ADD only 구조
+
+/* ================================================== */
+// END ADD SECTION
+/* ================================================== */
+
+// FILE : backend/src/init/audit-logs.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\audit-logs.schema.ts
+// STATUS : PRODUCTION READY (AUDIT / SYSTEM TRACE TABLE)
+
+/* ================================================== */
+// SECTION 01 : AUDIT_LOGS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  logId TEXT NOT NULL UNIQUE,
+  -- 외부 공개용 로그 ID
+
+  actorChannelCode TEXT,
+  -- 행위 주체 (SYSTEM 이벤트는 NULL 허용)
+
+  action TEXT NOT NULL,
+  -- CREATE / UPDATE / DELETE / LOGIN / PAYMENT 등
+
+  targetType TEXT,
+  -- 대상 타입 (post / profile / payment 등)
+
+  targetId TEXT,
+  -- 대상 ID (postId / profileId / paymentId 등)
+
+  metadata TEXT,
+  -- 추가 데이터 (JSON 문자열)
+
+  ipAddress TEXT,
+  -- 요청 IP
+
+  userAgent TEXT,
+  -- 클라이언트 정보
+
+  deviceType TEXT,
+  -- WEB / IOS / ANDROID / API
+
+  severity TEXT DEFAULT 'INFO',
+  -- INFO / WARNING / CRITICAL
+
+  sessionId TEXT,
+  -- 세션 추적용
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+);
+
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_actor
+ON audit_logs(actorChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action
+ON audit_logs(action);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_target
+ON audit_logs(targetType, targetId);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_severity
+ON audit_logs(severity);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created
+ON audit_logs(createdAt);
+
+
+/* ================================================== */
+// SECTION 03 : SEVERITY VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_audit_severity_validation
+BEFORE INSERT ON audit_logs
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.severity NOT IN
+('INFO','WARNING','CRITICAL')
+
+THEN
+RAISE(ABORT,'invalid severity')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 04 : DEVICE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_audit_device_validation
+BEFORE INSERT ON audit_logs
+WHEN NEW.deviceType IS NOT NULL
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.deviceType NOT IN
+('WEB','IOS','ANDROID','API')
+
+THEN
+RAISE(ABORT,'invalid device type')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : CHANNEL REGISTRY VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_audit_channel_check
+BEFORE INSERT ON audit_logs
+WHEN NEW.actorChannelCode IS NOT NULL
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.actorChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'audit channel not registered')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : DESIGN NOTES
+/* ================================================== */
+
+-- 운영 감사 로그
+-- 보안 사고 추적
+-- 관리자 행동 추적
+-- API 로그 가능
+-- channel 존재 검증
+-- 보안 severity 관리
+-- device 추적 가능
+-- 기존 구조 영향 없음
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/media-assets.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\media-assets.schema.ts
+// STATUS : PRODUCTION READY (MEDIA CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : MEDIA ASSETS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS media_assets (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  mediaId TEXT NOT NULL UNIQUE,
+  -- 외부 공개 ID (UUID)
+
+  ownerChannelCode TEXT,
+  -- 업로드 채널
+
+  mediaType TEXT NOT NULL,
+  -- IMAGE / VIDEO / FILE
+
+  mediaRole TEXT,
+  -- POST / PROFILE / HERO / CHAT / BUSINESS
+
+  storageType TEXT DEFAULT 'LOCAL',
+  -- LOCAL / S3 / CDN
+
+  filePath TEXT NOT NULL,
+  -- 실제 저장 경로
+
+  fileUrl TEXT,
+  -- CDN URL
+
+  mimeType TEXT,
+  -- image/jpeg 등
+
+  fileSize INTEGER,
+  -- bytes
+
+  width INTEGER,
+  height INTEGER,
+
+  duration INTEGER,
+  -- video only
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / DELETED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+);
+
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_media_owner
+ON media_assets(ownerChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_media_type
+ON media_assets(mediaType);
+
+CREATE INDEX IF NOT EXISTS idx_media_role
+ON media_assets(mediaRole);
+
+CREATE INDEX IF NOT EXISTS idx_media_status
+ON media_assets(status);
+
+
+/* ================================================== */
+// SECTION 03 : MEDIA TYPE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_media_type_validation
+BEFORE INSERT ON media_assets
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.mediaType NOT IN
+('IMAGE','VIDEO','FILE')
+
+THEN
+RAISE(ABORT,'invalid media type')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 04 : MEDIA ROLE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_media_role_validation
+BEFORE INSERT ON media_assets
+WHEN NEW.mediaRole IS NOT NULL
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.mediaRole NOT IN
+('POST','PROFILE','HERO','CHAT','BUSINESS')
+
+THEN
+RAISE(ABORT,'invalid media role')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : CHANNEL VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_media_channel_check
+BEFORE INSERT ON media_assets
+WHEN NEW.ownerChannelCode IS NOT NULL
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.ownerChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'media channel not registered')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : FILE SIZE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_media_size_validation
+BEFORE INSERT ON media_assets
+WHEN NEW.fileSize IS NOT NULL
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.fileSize <= 0
+THEN
+RAISE(ABORT,'invalid file size')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : DESIGN NOTES
+/* ================================================== */
+
+-- SNS 모든 미디어 통합 관리
+-- posts 연결 가능
+-- profile avatar 연결 가능
+-- hero banner 연결 가능
+-- business gallery 연결 가능
+-- chat file 연결 가능
+-- channel 존재 검증
+-- media 타입 제한
+-- 파일 크기 검증
+-- CDN 확장 가능
+-- 기존 구조 영향 없음
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+
+// FILE : backend/src/init/post-media-map.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\post-media-map.schema.ts
+// STATUS : PRODUCTION READY (POST MEDIA MAPPING TABLE)
+
+/* ================================================== */
+// SECTION 01 : POST MEDIA MAP TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS post_media_map (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  mapId TEXT NOT NULL UNIQUE,
+  -- 외부 공개 ID
+
+  postId INTEGER NOT NULL,
+  -- posts FK
+
+  mediaId TEXT NOT NULL,
+  -- media_assets FK
+
+  sortOrder INTEGER DEFAULT 0,
+  -- 이미지 순서
+
+  isThumbnail INTEGER DEFAULT 0,
+  -- 대표 이미지 여부
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(postId)
+  REFERENCES posts(id),
+
+  FOREIGN KEY(mediaId)
+  REFERENCES media_assets(mediaId)
+
+);
+
+
+/* ================================================== */
+// SECTION 02 : UNIQUE PROTECTION
+/* ================================================== */
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_post_media_unique
+ON post_media_map(postId, mediaId);
+
+
+/* ================================================== */
+// SECTION 03 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_post_media_post
+ON post_media_map(postId);
+
+CREATE INDEX IF NOT EXISTS idx_post_media_media
+ON post_media_map(mediaId);
+
+CREATE INDEX IF NOT EXISTS idx_post_media_sort
+ON post_media_map(sortOrder);
+
+
+/* ================================================== */
+// SECTION 04 : MEDIA EXISTENCE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_post_media_media_check
+BEFORE INSERT ON post_media_map
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM media_assets
+WHERE mediaId = NEW.mediaId
+
+)
+
+THEN
+RAISE(ABORT,'media not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : POST EXISTENCE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_post_media_post_check
+BEFORE INSERT ON post_media_map
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM posts
+WHERE id = NEW.postId
+
+)
+
+THEN
+RAISE(ABORT,'post not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : THUMBNAIL SINGLE RULE
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_post_thumbnail_single
+BEFORE INSERT ON post_media_map
+WHEN NEW.isThumbnail = 1
+BEGIN
+
+SELECT
+CASE
+WHEN EXISTS(
+
+SELECT 1
+FROM post_media_map
+WHERE postId = NEW.postId
+AND isThumbnail = 1
+
+)
+
+THEN
+RAISE(ABORT,'thumbnail already exists')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : MEDIA ROLE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_post_media_role_check
+BEFORE INSERT ON post_media_map
+BEGIN
+
+SELECT
+CASE
+WHEN (
+
+SELECT mediaRole
+FROM media_assets
+WHERE mediaId = NEW.mediaId
+
+) != 'POST'
+
+THEN
+RAISE(ABORT,'media role must be POST')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 08 : DESIGN NOTES
+/* ================================================== */
+
+-- post : media = 1:N 구조
+-- post 대표 이미지 관리
+-- media 재사용 가능
+-- media_assets 분리 구조
+-- 썸네일 1개 제한
+-- FK 무결성 유지
+-- 기존 구조 영향 없음
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+
+// FILE : backend/src/init/profile-media-map.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\profile-media-map.schema.ts
+// STATUS : PRODUCTION READY (PROFILE MEDIA MAPPING TABLE)
+
+/* ================================================== */
+// SECTION 01 : PROFILE MEDIA MAP TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS profile_media_map (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  mapId TEXT NOT NULL UNIQUE,
+  -- 외부 공개 ID
+
+  profileId INTEGER NOT NULL,
+  -- profiles FK
+
+  mediaId TEXT NOT NULL,
+  -- media_assets FK
+
+  mediaRole TEXT NOT NULL,
+  -- AVATAR / HERO / GALLERY / BUSINESS
+
+  sortOrder INTEGER DEFAULT 0,
+  -- gallery 순서
+
+  isPrimary INTEGER DEFAULT 0,
+  -- 대표 이미지 여부 (avatar / hero)
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(profileId)
+  REFERENCES profiles(id),
+
+  FOREIGN KEY(mediaId)
+  REFERENCES media_assets(mediaId)
+
+);
+
+
+/* ================================================== */
+// SECTION 02 : UNIQUE PROTECTION
+/* ================================================== */
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_media_unique
+ON profile_media_map(profileId, mediaId);
+
+
+/* ================================================== */
+// SECTION 03 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_profile_media_profile
+ON profile_media_map(profileId);
+
+CREATE INDEX IF NOT EXISTS idx_profile_media_media
+ON profile_media_map(mediaId);
+
+CREATE INDEX IF NOT EXISTS idx_profile_media_role
+ON profile_media_map(mediaRole);
+
+
+/* ================================================== */
+// SECTION 04 : PROFILE EXISTENCE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_profile_media_profile_check
+BEFORE INSERT ON profile_media_map
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM profiles
+WHERE id = NEW.profileId
+
+)
+
+THEN
+RAISE(ABORT,'profile not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : MEDIA EXISTENCE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_profile_media_media_check
+BEFORE INSERT ON profile_media_map
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM media_assets
+WHERE mediaId = NEW.mediaId
+
+)
+
+THEN
+RAISE(ABORT,'media not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : MEDIA ROLE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_profile_media_role_validation
+BEFORE INSERT ON profile_media_map
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.mediaRole NOT IN
+('AVATAR','HERO','GALLERY','BUSINESS')
+
+THEN
+RAISE(ABORT,'invalid profile media role')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : PRIMARY IMAGE SINGLE RULE
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_profile_primary_single
+BEFORE INSERT ON profile_media_map
+WHEN NEW.isPrimary = 1
+BEGIN
+
+SELECT
+CASE
+WHEN EXISTS(
+
+SELECT 1
+FROM profile_media_map
+WHERE profileId = NEW.profileId
+AND mediaRole = NEW.mediaRole
+AND isPrimary = 1
+
+)
+
+THEN
+RAISE(ABORT,'primary media already exists')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 08 : MEDIA ROLE CONSISTENCY
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_profile_media_role_check
+BEFORE INSERT ON profile_media_map
+BEGIN
+
+SELECT
+CASE
+WHEN (
+
+SELECT mediaRole
+FROM media_assets
+WHERE mediaId = NEW.mediaId
+
+) NOT IN ('PROFILE','HERO','BUSINESS')
+
+THEN
+RAISE(ABORT,'media role mismatch')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 09 : DESIGN NOTES
+/* ================================================== */
+
+-- profile : media = 1:N
+-- avatar 관리 가능
+-- hero banner 관리 가능
+-- business gallery 관리 가능
+-- portfolio 확장 가능
+-- primary image 1개 제한
+-- media_assets 분리 구조
+-- 기존 구조 영향 없음
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+
+// FILE : backend/src/init/follows.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\follows.schema.ts
+// STATUS : PRODUCTION READY (SOCIAL GRAPH TABLE)
+
+/* ================================================== */
+// SECTION 01 : FOLLOWS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS follows (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  followId TEXT NOT NULL UNIQUE,
+  -- 외부 공개 ID
+
+  followerChannelCode TEXT NOT NULL,
+  -- 팔로우 하는 채널
+
+  followingChannelCode TEXT NOT NULL,
+  -- 팔로우 당하는 채널
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / BLOCKED / MUTED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(followerChannelCode)
+  REFERENCES channels_registry(channelCode),
+
+  FOREIGN KEY(followingChannelCode)
+  REFERENCES channels_registry(channelCode)
+
+);
+
+
+/* ================================================== */
+// SECTION 02 : UNIQUE RELATION
+/* ================================================== */
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_follows_unique
+ON follows(followerChannelCode, followingChannelCode);
+
+
+/* ================================================== */
+// SECTION 03 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_follows_follower
+ON follows(followerChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_follows_following
+ON follows(followingChannelCode);
+
+
+/* ================================================== */
+// SECTION 04 : SELF FOLLOW PROTECT
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_follows_self_check
+BEFORE INSERT ON follows
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.followerChannelCode = NEW.followingChannelCode
+
+THEN
+RAISE(ABORT,'self follow not allowed')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : CHANNEL EXISTENCE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_follows_channel_check
+BEFORE INSERT ON follows
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.followerChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'follower not found')
+
+END;
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.followingChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'following not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : STATUS VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_follows_status_validation
+BEFORE UPDATE OF status ON follows
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.status NOT IN
+('ACTIVE','BLOCKED','MUTED')
+
+THEN
+RAISE(ABORT,'invalid follow status')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : DESIGN NOTES
+/* ================================================== */
+
+-- SNS social graph 핵심 테이블
+-- channel 기반 관계 구조
+-- self follow 방지
+-- 중복 follow 방지
+-- block/mute 확장 가능
+-- 피드 추천 기반 가능
+-- 알림 연결 가능
+-- 기존 구조 영향 없음
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/blocks.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\blocks.schema.ts
+// STATUS : PRODUCTION READY (SOCIAL SAFETY TABLE)
+
+/* ================================================== */
+// SECTION 01 : BLOCKS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS blocks (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  blockId TEXT NOT NULL UNIQUE,
+  -- 외부 공개 ID
+
+  blockerChannelCode TEXT NOT NULL,
+  -- 차단한 채널
+
+  blockedChannelCode TEXT NOT NULL,
+  -- 차단 당한 채널
+
+  reason TEXT,
+  -- 선택 사유
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / RELEASED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(blockerChannelCode)
+  REFERENCES channels_registry(channelCode),
+
+  FOREIGN KEY(blockedChannelCode)
+  REFERENCES channels_registry(channelCode)
+
+);
+
+
+/* ================================================== */
+// SECTION 02 : UNIQUE RELATION
+/* ================================================== */
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_blocks_unique
+ON blocks(blockerChannelCode, blockedChannelCode);
+
+
+/* ================================================== */
+// SECTION 03 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_blocks_blocker
+ON blocks(blockerChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_blocks_blocked
+ON blocks(blockedChannelCode);
+
+
+/* ================================================== */
+// SECTION 04 : SELF BLOCK PROTECT
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_blocks_self_check
+BEFORE INSERT ON blocks
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.blockerChannelCode = NEW.blockedChannelCode
+
+THEN
+RAISE(ABORT,'self block not allowed')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : CHANNEL VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_blocks_channel_check
+BEFORE INSERT ON blocks
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.blockerChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'blocker not found')
+
+END;
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.blockedChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'blocked not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : STATUS VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_blocks_status_validation
+BEFORE UPDATE OF status ON blocks
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.status NOT IN
+('ACTIVE','RELEASED')
+
+THEN
+RAISE(ABORT,'invalid block status')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : FOLLOW AUTO BLOCK PROTECT
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_blocks_follow_protect
+BEFORE INSERT ON follows
+BEGIN
+
+SELECT
+CASE
+WHEN EXISTS(
+
+SELECT 1
+FROM blocks
+WHERE blockerChannelCode = NEW.followingChannelCode
+AND blockedChannelCode = NEW.followerChannelCode
+AND status = 'ACTIVE'
+
+)
+
+THEN
+RAISE(ABORT,'cannot follow blocked user')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 08 : DESIGN NOTES
+/* ================================================== */
+
+-- SNS 안전 관계 테이블
+-- follow 차단 가능
+-- message 차단 확장 가능
+-- feed 차단 확장 가능
+-- 검색 차단 확장 가능
+-- self block 방지
+-- channel 존재 검증
+-- 관계 중복 방지
+-- 기존 구조 영향 없음
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/notifications.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\notifications.schema.ts
+// STATUS : PRODUCTION READY (NOTIFICATION CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : NOTIFICATIONS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS notifications (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  notificationId TEXT NOT NULL UNIQUE,
+  -- 외부 공개 ID
+
+  receiverChannelCode TEXT NOT NULL,
+  -- 알림 받는 채널
+
+  actorChannelCode TEXT,
+  -- 행동 주체 (follow / comment 등)
+
+  notificationType TEXT NOT NULL,
+  -- FOLLOW / LIKE / COMMENT / PAYMENT / SYSTEM / MESSAGE
+
+  targetType TEXT,
+  -- POST / PROFILE / PAYMENT / MESSAGE
+
+  targetId TEXT,
+  -- 관련 객체 ID
+
+  title TEXT,
+  -- 알림 제목
+
+  message TEXT,
+  -- 알림 내용
+
+  actionUrl TEXT,
+  -- 이동 링크
+
+  isRead INTEGER DEFAULT 0,
+  -- 읽음 여부
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / HIDDEN / DELETED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(receiverChannelCode)
+  REFERENCES channels_registry(channelCode),
+
+  FOREIGN KEY(actorChannelCode)
+  REFERENCES channels_registry(channelCode)
+
+);
+
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_notifications_receiver
+ON notifications(receiverChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_read
+ON notifications(isRead);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_type
+ON notifications(notificationType);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_created
+ON notifications(createdAt);
+
+
+/* ================================================== */
+// SECTION 03 : TYPE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_notifications_type_validation
+BEFORE INSERT ON notifications
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.notificationType NOT IN
+('FOLLOW','LIKE','COMMENT','PAYMENT','SYSTEM','MESSAGE')
+
+THEN
+RAISE(ABORT,'invalid notification type')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 04 : STATUS VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_notifications_status_validation
+BEFORE UPDATE OF status ON notifications
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.status NOT IN
+('ACTIVE','HIDDEN','DELETED')
+
+THEN
+RAISE(ABORT,'invalid notification status')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : CHANNEL VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_notifications_channel_check
+BEFORE INSERT ON notifications
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.receiverChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'receiver channel not found')
+
+END;
+
+SELECT
+CASE
+WHEN NEW.actorChannelCode IS NOT NULL
+AND NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.actorChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'actor channel not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : SELF NOTIFICATION PREVENT
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_notifications_self_prevent
+BEFORE INSERT ON notifications
+WHEN NEW.actorChannelCode IS NOT NULL
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.receiverChannelCode = NEW.actorChannelCode
+
+THEN
+RAISE(ABORT,'self notification not allowed')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : DESIGN NOTES
+/* ================================================== */
+
+-- SNS 알림 핵심 테이블
+-- follow 알림 가능
+-- like 알림 가능
+-- comment 알림 가능
+-- payment 알림 가능
+-- message 알림 가능
+-- channel 존재 검증
+-- 읽음 상태 관리
+-- UX 핵심 테이블
+-- 기존 구조 영향 없음
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+
+// FILE : backend/src/init/comments.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\comments.schema.ts
+// STATUS : PRODUCTION READY (POST INTERACTION TABLE)
+
+/* ================================================== */
+// SECTION 01 : COMMENTS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS comments (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  commentId TEXT NOT NULL UNIQUE,
+  -- 외부 공개 ID
+
+  postId INTEGER NOT NULL,
+  -- posts FK
+
+  authorChannelCode TEXT NOT NULL,
+  -- 작성 채널
+
+  parentCommentId INTEGER,
+  -- 대댓글 구조
+
+  content TEXT NOT NULL,
+  -- 댓글 내용
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / HIDDEN / DELETED
+
+  likeCount INTEGER DEFAULT 0,
+  -- 좋아요 캐시
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+
+  FOREIGN KEY(postId)
+  REFERENCES posts(id),
+
+  FOREIGN KEY(authorChannelCode)
+  REFERENCES channels_registry(channelCode),
+
+  FOREIGN KEY(parentCommentId)
+  REFERENCES comments(id)
+
+);
+
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_comments_post
+ON comments(postId);
+
+CREATE INDEX IF NOT EXISTS idx_comments_author
+ON comments(authorChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_comments_parent
+ON comments(parentCommentId);
+
+CREATE INDEX IF NOT EXISTS idx_comments_status
+ON comments(status);
+
+
+/* ================================================== */
+// SECTION 03 : STATUS VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_comments_status_validation
+BEFORE UPDATE OF status ON comments
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.status NOT IN
+('ACTIVE','HIDDEN','DELETED')
+
+THEN
+RAISE(ABORT,'invalid comment status')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 04 : POST EXISTENCE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_comments_post_check
+BEFORE INSERT ON comments
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM posts
+WHERE id = NEW.postId
+
+)
+
+THEN
+RAISE(ABORT,'post not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : CHANNEL VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_comments_channel_check
+BEFORE INSERT ON comments
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.authorChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'author channel not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : PARENT COMMENT VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_comments_parent_check
+BEFORE INSERT ON comments
+WHEN NEW.parentCommentId IS NOT NULL
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM comments
+WHERE id = NEW.parentCommentId
+
+)
+
+THEN
+RAISE(ABORT,'parent comment not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : SELF REPLY PROTECT
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_comments_self_reply
+BEFORE INSERT ON comments
+WHEN NEW.parentCommentId IS NOT NULL
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.parentCommentId = NEW.id
+
+THEN
+RAISE(ABORT,'invalid self parent')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 08 : DESIGN NOTES
+/* ================================================== */
+
+-- post : comments = 1:N
+-- 댓글 + 대댓글 구조
+-- channel 기반 작성
+-- 댓글 상태 관리
+-- likeCount 캐시 가능
+-- FK 무결성 유지
+-- 기존 구조 영향 없음
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+// FILE : backend/src/init/likes.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\likes.schema.ts
+// STATUS : PRODUCTION READY (INTERACTION CORE TABLE)
+
+/* ================================================== */
+// SECTION 01 : LIKES TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS likes (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  likeId TEXT NOT NULL UNIQUE,
+  -- 외부 공개 ID
+
+  actorChannelCode TEXT NOT NULL,
+  -- 좋아요 누른 채널
+
+  targetType TEXT NOT NULL,
+  -- POST / COMMENT
+
+  targetId TEXT NOT NULL,
+  -- postId / commentId
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(actorChannelCode)
+  REFERENCES channels_registry(channelCode)
+
+);
+
+
+/* ================================================== */
+// SECTION 02 : UNIQUE PROTECTION
+/* ================================================== */
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_likes_unique
+ON likes(actorChannelCode, targetType, targetId);
+
+
+/* ================================================== */
+// SECTION 03 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_likes_actor
+ON likes(actorChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_likes_target
+ON likes(targetType, targetId);
+
+
+/* ================================================== */
+// SECTION 04 : TARGET TYPE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_likes_type_validation
+BEFORE INSERT ON likes
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.targetType NOT IN
+('POST','COMMENT')
+
+THEN
+RAISE(ABORT,'invalid like target')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : CHANNEL VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_likes_channel_check
+BEFORE INSERT ON likes
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.actorChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'actor channel not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 06 : POST EXISTENCE CHECK
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_likes_post_check
+BEFORE INSERT ON likes
+WHEN NEW.targetType = 'POST'
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM posts
+WHERE id = NEW.targetId
+
+)
+
+THEN
+RAISE(ABORT,'post not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 07 : COMMENT EXISTENCE CHECK
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_likes_comment_check
+BEFORE INSERT ON likes
+WHEN NEW.targetType = 'COMMENT'
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM comments
+WHERE id = NEW.targetId
+
+)
+
+THEN
+RAISE(ABORT,'comment not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 08 : DESIGN NOTES
+/* ================================================== */
+
+-- post like 지원
+-- comment like 지원
+-- targetType 확장 가능
+-- channel 기반 interaction
+-- 중복 like 방지
+-- FK 무결성 유지
+-- SNS interaction 핵심
+-- 기존 구조 영향 없음
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+
+// FILE : backend/src/init/conversations.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\conversations.schema.ts
+// STATUS : PRODUCTION READY (CHAT ROOM TABLE)
+
+/* ================================================== */
+// SECTION 01 : CONVERSATIONS TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS conversations (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  conversationId TEXT NOT NULL UNIQUE,
+  -- 외부 공개 ID
+
+  channelA TEXT NOT NULL,
+  -- 참여자 1
+
+  channelB TEXT NOT NULL,
+  -- 참여자 2
+
+  conversationType TEXT DEFAULT 'DM',
+  -- DM / SUPPORT / TRADE
+
+  lastMessageId TEXT,
+  -- 마지막 메시지
+
+  lastMessageAt TEXT,
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / CLOSED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(channelA)
+  REFERENCES channels_registry(channelCode),
+
+  FOREIGN KEY(channelB)
+  REFERENCES channels_registry(channelCode)
+
+);
+
+
+/* ================================================== */
+// SECTION 02 : UNIQUE RELATION
+/* ================================================== */
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_conversations_unique
+ON conversations(channelA, channelB);
+
+
+/* ================================================== */
+// SECTION 03 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_conversations_a
+ON conversations(channelA);
+
+CREATE INDEX IF NOT EXISTS idx_conversations_b
+ON conversations(channelB);
+
+
+/* ================================================== */
+// SECTION 04 : SELF CHAT PROTECT
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_conversations_self_check
+BEFORE INSERT ON conversations
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.channelA = NEW.channelB
+
+THEN
+RAISE(ABORT,'self conversation not allowed')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : CHANNEL VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_conversations_channel_check
+BEFORE INSERT ON conversations
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+SELECT 1 FROM channels_registry WHERE channelCode = NEW.channelA
+)
+THEN RAISE(ABORT,'channelA not found')
+END;
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+SELECT 1 FROM channels_registry WHERE channelCode = NEW.channelB
+)
+THEN RAISE(ABORT,'channelB not found')
+END;
+
+END;
+
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+
+// FILE : backend/src/init/messages.schema.ts
+// ROOT : C:\Users\kjm\social-platform\backend\src\init\messages.schema.ts
+// STATUS : PRODUCTION READY (CHAT MESSAGE TABLE)
+
+/* ================================================== */
+// SECTION 01 : MESSAGES TABLE
+/* ================================================== */
+
+CREATE TABLE IF NOT EXISTS messages (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  messageId TEXT NOT NULL UNIQUE,
+  -- 외부 공개 ID
+
+  conversationId TEXT NOT NULL,
+  -- conversation FK
+
+  senderChannelCode TEXT NOT NULL,
+  -- 보낸 채널
+
+  messageType TEXT DEFAULT 'TEXT',
+  -- TEXT / IMAGE / FILE
+
+  content TEXT,
+  -- 메시지 내용
+
+  mediaId TEXT,
+  -- media_assets 연결
+
+  isRead INTEGER DEFAULT 0,
+
+  status TEXT DEFAULT 'ACTIVE',
+  -- ACTIVE / DELETED
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY(conversationId)
+  REFERENCES conversations(conversationId),
+
+  FOREIGN KEY(senderChannelCode)
+  REFERENCES channels_registry(channelCode),
+
+  FOREIGN KEY(mediaId)
+  REFERENCES media_assets(mediaId)
+
+);
+
+
+/* ================================================== */
+// SECTION 02 : INDEX
+/* ================================================== */
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation
+ON messages(conversationId);
+
+CREATE INDEX IF NOT EXISTS idx_messages_sender
+ON messages(senderChannelCode);
+
+CREATE INDEX IF NOT EXISTS idx_messages_created
+ON messages(createdAt);
+
+
+/* ================================================== */
+// SECTION 03 : TYPE VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_messages_type_validation
+BEFORE INSERT ON messages
+BEGIN
+
+SELECT
+CASE
+WHEN NEW.messageType NOT IN
+('TEXT','IMAGE','FILE')
+
+THEN
+RAISE(ABORT,'invalid message type')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 04 : CONVERSATION CHECK
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_messages_conversation_check
+BEFORE INSERT ON messages
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM conversations
+WHERE conversationId = NEW.conversationId
+
+)
+
+THEN
+RAISE(ABORT,'conversation not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// SECTION 05 : CHANNEL VALIDATION
+/* ================================================== */
+
+CREATE TRIGGER IF NOT EXISTS trg_messages_channel_check
+BEFORE INSERT ON messages
+BEGIN
+
+SELECT
+CASE
+WHEN NOT EXISTS(
+
+SELECT 1
+FROM channels_registry
+WHERE channelCode = NEW.senderChannelCode
+
+)
+
+THEN
+RAISE(ABORT,'sender not found')
+
+END;
+
+END;
+
+
+/* ================================================== */
+// END OF FILE
+/* ================================================== */
+SOFT DELETE RULE
+
+모든 사용자 생성 데이터는 물리 삭제 금지
+
+status 사용:
+
+ACTIVE
+HIDDEN
+DELETED
+BANNED
+
+삭제시:
+
+status 변경만 허용
+FK 유지
+history 유지
+
+hard delete 허용:
+
+audit_logs 제외
+cache tables 제외
+temp tables 제외
+==========================================================
+COUNTER CACHE RULE
+
+COUNT 쿼리 직접 사용 금지
+
+허용:
+
+post.likeCount
+post.commentCount
+profile.followerCount
+
+증가:
+
+trigger 또는 service layer 처리
+
+COUNT(*) 사용:
+
+관리자 only
+
+이유:
+
+feed query 성능 보호
+=======================================================
+ID DESIGN RULE
+
+모든 테이블:
+
+internal id → INTEGER PK
+external id → TEXT UNIQUE (UUID)
+
+외부 API:
+
+internal id 노출 금지
+
+외부 사용:
+
+postId
+commentId
+mediaId
+channelCode
+
+이유:
+
+보안
+migration 안전
+샤딩 대비
+=====================================================
+MEDIA STORAGE RULE
+
+media 직접 URL 금지
+
+반드시:
+
+media_assets 테이블 관리
+
+허용:
+
+mediaId 참조
+
+금지:
+
+raw URL 저장
+
+이유:
+
+CDN 변경 대응
+보안
+삭제 관리
+==============================================
+CHANNEL RELATION RULE
+
+userId 사용 금지:
+
+posts
+comments
+likes
+follows
+messages
+
+반드시:
+
+channelCode 사용
+
+userId 허용:
+
+ownership only
+
+이유:
+
+multi channel 구조 보호
+===================================================
+CHANNEL RELATION RULE
+
+userId 사용 금지:
+
+posts
+comments
+likes
+follows
+messages
+
+반드시:
+
+channelCode 사용
+
+userId 허용:
+
+ownership only
+
+이유:
+
+multi channel 구조 보호
+=======================================================
+/* ================================================== */
+// ADD SECTION : INDEX DESIGN RULE
+/* ================================================== */
+
+INDEX 생성 기준:
+
+FK 컬럼 → index 필수
+
+생성 권장:
+
+channelCode
+postId
+authorChannelCode
+createdAt
+
+금지:
+
+TEXT large column index
+content column index
+
+INDEX 최대:
+
+테이블당 6개 이하
+
+이유:
+
+write 성능 보호
+insert 성능 유지
+===========================================================
+/* ================================================== */
+// ADD SECTION : UNIQUE DESIGN RULE
+/* ================================================== */
+
+UNIQUE 적용 대상:
+
+externalId
+channelCode
+email
+conversationId
+
+금지:
+
+status unique
+timestamp unique
+
+Composite unique 허용:
+
+(actorChannelCode,targetType,targetId)
+
+이유:
+
+중복 interaction 방지
+데이터 integrity 유지
+=====================================================
+/* ================================================== */
+// ADD SECTION : NULL POLICY
+/* ================================================== */
+
+NULL 허용 기준:
+
+optional metadata → 허용
+
+NULL 금지:
+
+FK
+identity column
+status
+type column
+
+TEXT 기본:
+
+NULL 허용
+NOT NULL 강제 금지
+
+이유:
+
+migration 안정성
+schema 변경 대응
+=======================================================
+/* ================================================== */
+// ADD SECTION : STATUS FIELD STANDARD
+/* ================================================== */
+
+STATUS ENUM:
+
+ACTIVE
+INACTIVE
+HIDDEN
+DELETED
+BANNED
+ARCHIVED
+
+금지:
+
+FREE TEXT STATUS
+
+모든 status column:
+
+DEFAULT ACTIVE
+
+이유:
+
+운영 상태 통합
+관리자 필터 통합
+=======================================================
+/* ================================================== */
+// ADD SECTION : AUDIT REQUIRED TABLE
+/* ================================================== */
+
+audit log 필수 대상:
+
+users
+profiles
+payments
+wallets
+ownership
+permissions
+
+audit optional:
+
+posts
+comments
+likes
+
+audit 제외:
+
+cache
+temp
+feed_cache
+
+이유:
+
+금융 데이터 보호
+권한 변경 추적
+운영 추적
+====================================================
+/* ================================================== */
+// ADD SECTION : FEED PERFORMANCE RULE
+/* ================================================== */
+
+FEED QUERY RULE:
+
+COUNT(*) 사용 금지
+
+JOIN 최대:
+
+4 tables 이하
+
+권장:
+
+denormalized counters
+
+createdAt index 필수
+
+pagination:
+
+cursor 방식 사용
+
+금지:
+
+OFFSET pagination large table
+
+이유:
+
+SNS feed 성능 보호
+대용량 대응
+==========================================================
+DB MIGRATION RULE:
+
+ALTER TABLE 사용
+
+DROP TABLE 금지
+
+데이터 존재 테이블:
+
+COLUMN DROP 금지
+
+허용:
+
+ADD COLUMN
+RENAME COLUMN
+
+이유:
+
+production DB 보호
+===================================================
+ID GENERATION:
+
+internal id:
+
+INTEGER PK
+
+external id:
+
+UUID TEXT
+
+외부 API:
+
+INTEGER 노출 금지
+
+이유:
+
+보안
+migration 안전
+========================================================
+/* ================================================== */
+// ADD SECTION : SNS PLATFORM DB ABSOLUTE RULE (FINAL)
+/* STATUS : PRODUCTION SAFETY RULESET */
+/* ROLE : BACKEND ARCHITECTURE SAFETY */
+/* ================================================== */
+
+
+/* ================================================== */
+// ADD 01 : FOREIGN KEY DELETE POLICY
+/* ================================================== */
+
+FK DELETE POLICY:
+
+CORE DATA CASCADE DELETE 금지
+
+금지 대상:
+
+users
+profiles
+posts
+comments
+media_assets
+wallets
+transactions
+ownership
+
+허용:
+
+RESTRICT (기본)
+NO ACTION (권장)
+SET NULL (optional)
+
+CASCADE 허용:
+
+cache tables
+mapping tables
+temporary tables
+
+목적:
+
+데이터 연쇄 삭제 방지
+운영 사고 방지
+히스토리 보호
+
+
+
+/* ================================================== */
+// ADD 02 : INDEX DESIGN STANDARD
+/* ================================================== */
+
+INDEX 생성 규칙:
+
+FK 컬럼 → INDEX 필수
+
+권장 INDEX:
+
+channelCode
+postId
+authorChannelCode
+receiverChannelCode
+createdAt
+
+INDEX 제한:
+
+테이블당 최대 6개
+
+INDEX 금지:
+
+TEXT content
+bio
+description
+message
+
+이유:
+
+INSERT 성능 보호
+쓰기 성능 유지
+
+
+
+/* ================================================== */
+// ADD 03 : UNIQUE CONSTRAINT RULE
+/* ================================================== */
+
+UNIQUE 필수 대상:
+
+channelCode
+email
+externalId
+conversationId
+
+Composite UNIQUE 허용:
+
+(actorChannelCode,targetType,targetId)
+
+금지:
+
+timestamp unique
+status unique
+
+목적:
+
+중복 interaction 방지
+데이터 무결성 유지
+
+
+
+/* ================================================== */
+// ADD 04 : NULL POLICY STANDARD
+/* ================================================== */
+
+NULL 허용:
+
+optional metadata
+description
+bio
+media reference
+
+NULL 금지:
+
+FK
+identity column
+status
+type column
+
+TEXT 기본:
+
+NULL 허용
+
+목적:
+
+migration 안정성
+schema 변경 대응
+
+
+
+/* ================================================== */
+// ADD 05 : STATUS FIELD STANDARD
+/* ================================================== */
+
+STATUS ENUM STANDARD:
+
+ACTIVE
+INACTIVE
+HIDDEN
+DELETED
+BANNED
+ARCHIVED
+
+모든 STATUS:
+
+DEFAULT ACTIVE
+
+금지:
+
+custom status text
+
+목적:
+
+운영 상태 통합
+관리자 필터 통합
+
+
+
+/* ================================================== */
+// ADD 06 : AUDIT REQUIRED TABLE POLICY
+/* ================================================== */
+
+AUDIT LOG REQUIRED:
+
+users
+profiles
+permissions
+ownership
+wallets
+payments
+transactions
+
+AUDIT OPTIONAL:
+
+posts
+comments
+likes
+follows
+
+AUDIT 제외:
+
+cache tables
+feed cache
+search cache
+
+목적:
+
+금융 데이터 추적
+권한 변경 기록
+운영 감사 가능
+
+
+
+/* ================================================== */
+// ADD 07 : FEED PERFORMANCE RULE
+/* ================================================== */
+
+FEED QUERY RULE:
+
+COUNT(*) direct query 금지
+
+권장:
+
+cached counters
+
+예:
+
+post.likeCount
+post.commentCount
+profile.followerCount
+
+JOIN 제한:
+
+최대 4 tables
+
+Pagination:
+
+cursor 방식 사용
+
+금지:
+
+OFFSET pagination large dataset
+
+필수 INDEX:
+
+createdAt
+
+목적:
+
+SNS feed 성능 보호
+
+
+
+/* ================================================== */
+// ADD 08 : ID DESIGN STANDARD
+/* ================================================== */
+
+ID STRUCTURE:
+
+internal id:
+
+INTEGER PRIMARY KEY
+
+external id:
+
+TEXT UUID UNIQUE
+
+외부 API:
+
+INTEGER id 노출 금지
+
+외부 사용:
+
+postId
+commentId
+mediaId
+channelCode
+
+목적:
+
+보안
+migration 안정성
+샤딩 대비
+
+
+
+/* ================================================== */
+// ADD 09 : MEDIA STORAGE POLICY
+/* ================================================== */
+
+MEDIA RULE:
+
+direct URL 저장 금지
+
+반드시:
+
+media_assets reference
+
+허용:
+
+mediaId FK
+
+금지:
+
+raw CDN URL 저장
+
+목적:
+
+CDN 변경 대응
+삭제 관리
+보안 관리
+
+
+
+/* ================================================== */
+// ADD 10 : CHANNEL RELATION ABSOLUTE RULE
+/* ================================================== */
+
+RELATION STANDARD:
+
+userId 사용 금지:
+
+posts
+comments
+likes
+follows
+messages
+notifications
+
+반드시:
+
+channelCode 사용
+
+userId 허용:
+
+ownership only
+
+목적:
+
+multi channel 구조 보호
+identity separation 유지
+
+
+
+/* ================================================== */
+// ADD 11 : TIMESTAMP STANDARD
+/* ================================================== */
+
+TIMESTAMP RULE:
+
+CORE TABLE:
+
+createdAt 필수
+updatedAt optional
+
+CACHE TABLE:
+
+createdAt only
+
+시간 기준:
+
+UTC 저장
+
+금지:
+
+local timezone 저장
+
+
+
+/* ================================================== */
+// ADD 12 : MIGRATION SAFETY RULE
+/* ================================================== */
+
+MIGRATION POLICY:
+
+DROP TABLE 금지 (production)
+
+허용:
+
+ALTER TABLE ADD COLUMN
+
+금지:
+
+COLUMN DROP
+
+권장:
+
+soft deprecation
+
+목적:
+
+production 데이터 보호
+
+
+
+/* ================================================== */
+// ADD 13 : SECURITY DESIGN RULE
+/* ================================================== */
+
+보안 규칙:
+
+password DB 저장 금지
+반드시 hash
+
+token 저장:
+
+hash only
+
+금지:
+
+plaintext token
+
+목적:
+
+계정 보호
+보안 사고 방지
+
+
+
+/* ================================================== */
+// ADD 14 : CACHE TABLE STANDARD
+/* ================================================== */
+
+CACHE TABLE 특징:
+
+FK 금지
+UNIQUE 최소화
+INDEX 최소화
+
+허용:
+
+truncate reset
+
+목적:
+
+성능 유지
+캐시 관리
+
+
+
+/* ================================================== */
+// ADD 15 : SNS CORE DOMAIN LOCK RULE
+/* ================================================== */
+
+SNS CORE TABLE:
+
+users
+profiles
+posts
+comments
+likes
+follows
+media_assets
+messages
+
+이 테이블:
+
+구조 변경시 migration 필수
+
+금지:
+
+임의 컬럼 추가
+
+목적:
+
+core domain 안정성 유지
+
+
+
+/* ================================================== */
+// SNS DB RULE FINAL END
+/* ================================================== */
+/* ================================================== */
+// ADD SECTION : CORE TABLE LOCK POLICY
+/* STATUS : PRODUCTION CRITICAL STRUCTURE */
+/* ROLE : DB STRUCTURE PROTECTION */
+/* ================================================== */
+
+
+/* ================================================== */
+// CORE TABLE DEFINITION
+/* ================================================== */
+
+CORE TABLE 정의:
+
+플랫폼 동작에 직접 영향 주는 테이블
+
+특징:
+
+identity root
+relation root
+financial data
+social graph
+content root
+
+이 테이블 변경시:
+
+서비스 장애 가능
+
+
+
+/* ================================================== */
+// CORE TABLE LIST (LOCK REQUIRED)
+/* ================================================== */
+
+CORE TABLE:
+
+users
+profiles
+channels_registry
+posts
+comments
+likes
+follows
+media_assets
+conversations
+wallets
+transactions
+
+
+
+/* ================================================== */
+// ADD 01 : CORE TABLE ABSOLUTE LOCK RULE
+/* ================================================== */
+
+CORE TABLE 변경 금지:
+
+DROP TABLE 금지
+
+PRIMARY KEY 변경 금지
+
+FOREIGN KEY 변경 금지
+
+COLUMN TYPE 변경 금지
+
+UNIQUE 제거 금지
+
+RELATION 구조 변경 금지
+
+
+허용:
+
+INDEX 추가
+NULLABLE COLUMN ADD
+CACHE COLUMN ADD
+
+조건:
+
+기존 데이터 영향 없어야 함
+
+
+
+/* ================================================== */
+// ADD 02 : USERS TABLE LOCK RULE
+/* ================================================== */
+
+users 보호 규칙:
+
+email UNIQUE 변경 금지
+
+password column 구조 변경 금지
+
+id PK 변경 금지
+
+auth 관련 column 삭제 금지
+
+목적:
+
+인증 안정성 유지
+
+
+
+/* ================================================== */
+// ADD 03 : PROFILES TABLE LOCK RULE
+/* ================================================== */
+
+profiles 보호:
+
+ownerChannelCode 변경 금지
+
+userId FK 변경 금지
+
+channelType 구조 변경 금지
+
+profile identity 구조 변경 금지
+
+목적:
+
+channel ownership 보호
+
+
+
+/* ================================================== */
+// ADD 04 : CHANNEL REGISTRY LOCK RULE
+/* ================================================== */
+
+channels_registry 보호:
+
+channelCode 변경 금지
+
+channelCode UNIQUE 제거 금지
+
+identity 구조 변경 금지
+
+목적:
+
+플랫폼 identity root 보호
+
+
+
+/* ================================================== */
+// ADD 05 : POSTS TABLE LOCK RULE
+/* ================================================== */
+
+posts 보호:
+
+authorChannelCode FK 변경 금지
+
+postId 변경 금지
+
+content relation 변경 금지
+
+목적:
+
+content integrity 보호
+
+
+
+/* ================================================== */
+// ADD 06 : COMMENTS TABLE LOCK RULE
+/* ================================================== */
+
+comments 보호:
+
+postId FK 변경 금지
+
+parentCommentId 구조 변경 금지
+
+authorChannelCode 변경 금지
+
+thread 구조 변경 금지
+
+목적:
+
+interaction integrity 보호
+
+
+
+/* ================================================== */
+// ADD 07 : LIKES TABLE LOCK RULE
+/* ================================================== */
+
+likes 보호:
+
+unique(actorChannelCode,targetType,targetId) 변경 금지
+
+targetType 구조 변경 금지
+
+like relation 변경 금지
+
+목적:
+
+engagement integrity 보호
+
+
+
+/* ================================================== */
+// ADD 08 : FOLLOWS TABLE LOCK RULE
+/* ================================================== */
+
+follows 보호:
+
+followerChannelCode 변경 금지
+
+followingChannelCode 변경 금지
+
+unique relation 제거 금지
+
+목적:
+
+social graph 보호
+
+
+
+/* ================================================== */
+// ADD 09 : MEDIA ASSETS LOCK RULE
+/* ================================================== */
+
+media_assets 보호:
+
+mediaId 변경 금지
+
+storagePath 구조 변경 금지
+
+mediaType 변경 금지
+
+목적:
+
+media reference 보호
+
+
+
+/* ================================================== */
+// ADD 10 : CONVERSATIONS LOCK RULE
+/* ================================================== */
+
+conversations 보호:
+
+conversationId 변경 금지
+
+participant relation 변경 금지
+
+channel FK 변경 금지
+
+목적:
+
+chat history 보호
+
+
+
+/* ================================================== */
+// ADD 11 : FINANCIAL TABLE LOCK RULE
+/* ================================================== */
+
+wallets / transactions 보호:
+
+amount column 변경 금지
+
+transactionId 변경 금지
+
+wallet FK 변경 금지
+
+balance 구조 변경 금지
+
+목적:
+
+financial integrity 보호
+
+
+
+/* ================================================== */
+// ADD 12 : CORE TABLE CHANGE PROCESS RULE
+/* ================================================== */
+
+CORE TABLE 변경 절차:
+
+1 영향 분석 필수
+2 migration script 작성
+3 rollback script 작성
+4 production direct 변경 금지
+
+허용:
+
+staging 검증 후 적용
+
+
+
+/* ================================================== */
+// ADD 13 : CORE TABLE SAFETY STANDARD
+/* ================================================== */
+
+CORE TABLE 특징:
+
+삭제 금지
+
+데이터 보존 필수
+
+history 유지
+
+audit 권장
+
+이유:
+
+서비스 안정성 확보
+
+
+
+/* ================================================== */
+// CORE TABLE LOCK POLICY END
+/* ================================================== */
+
+/* ================================================== */
+// ADD SECTION : DB FINAL PRE-DEVELOPMENT CHECKLIST
+/* STATUS : PRODUCTION PREPARATION */
+/* ROLE : INCIDENT PREVENTION */
+/* ================================================== */
+
+
+/* ================================================== */
+// CHECK 01 : IDENTITY CONSISTENCY CHECK
+/* ================================================== */
+
+확인 항목:
+
+모든 활동 테이블이 userId 사용 안하고
+channelCode 사용 확인
+
+검증 대상:
+
+posts
+comments
+likes
+follows
+messages
+notifications
+
+허용:
+
+ownership
+auth
+permissions
+
+목적:
+
+multi channel 구조 보호
+
+
+
+/* ================================================== */
+// CHECK 02 : FOREIGN KEY SAFETY CHECK
+/* ================================================== */
+
+확인 항목:
+
+모든 FK에 index 존재 확인
+
+검증:
+
+postId
+channelCode
+authorChannelCode
+conversationId
+
+FK 없는 relation 금지
+
+목적:
+
+JOIN 성능 확보
+orphan data 방지
+
+
+
+/* ================================================== */
+// CHECK 03 : UNIQUE CONSTRAINT CHECK
+/* ================================================== */
+
+확인 항목:
+
+중복 발생 가능 테이블:
+
+likes
+follows
+ownership
+
+unique 존재 확인:
+
+(actorChannelCode,targetType,targetId)
+
+(follower,following)
+
+목적:
+
+중복 데이터 방지
+
+
+
+/* ================================================== */
+// CHECK 04 : TIMESTAMP STANDARD CHECK
+/* ================================================== */
+
+확인 항목:
+
+모든 CORE TABLE:
+
+createdAt 존재 확인
+
+권장:
+
+updatedAt 존재
+
+시간 저장:
+
+UTC only
+
+금지:
+
+local time 저장
+
+목적:
+
+정렬 안정성
+feed consistency
+
+
+
+/* ================================================== */
+// CHECK 05 : STATUS COLUMN CHECK
+/* ================================================== */
+
+확인 항목:
+
+status 없는 CORE TABLE 없는지 확인
+
+권장:
+
+posts
+comments
+profiles
+media
+
+status standard:
+
+ACTIVE
+HIDDEN
+DELETED
+
+목적:
+
+soft delete 가능 구조 확보
+
+
+
+/* ================================================== */
+// CHECK 06 : COUNTER CACHE CHECK
+/* ================================================== */
+
+확인 항목:
+
+COUNT(*) 직접 사용 예정 테이블 확인
+
+필요 cache:
+
+post.likeCount
+post.commentCount
+profile.followerCount
+
+없으면:
+
+추가 고려
+
+목적:
+
+feed 성능 확보
+
+
+
+/* ================================================== */
+// CHECK 07 : MEDIA REFERENCE CHECK
+/* ================================================== */
+
+확인 항목:
+
+media 직접 URL 저장 여부 확인
+
+허용:
+
+mediaId reference
+
+금지:
+
+raw URL 저장
+
+검증 대상:
+
+posts
+profiles
+messages
+
+목적:
+
+media migration 가능 구조 확보
+
+
+
+/* ================================================== */
+// CHECK 08 : FEED QUERY SAFETY CHECK
+/* ================================================== */
+
+확인 항목:
+
+feed query에 필요한 index 존재:
+
+createdAt
+authorChannelCode
+postId
+
+정렬 index:
+
+createdAt DESC
+
+목적:
+
+feed latency 방지
+
+
+
+/* ================================================== */
+// CHECK 09 : PAGINATION SAFETY CHECK
+/* ================================================== */
+
+확인 항목:
+
+OFFSET pagination 예정 여부
+
+권장:
+
+cursor pagination
+
+기준:
+
+createdAt
+id
+
+목적:
+
+대용량 성능 보호
+
+
+
+/* ================================================== */
+// CHECK 10 : ORPHAN DATA RISK CHECK
+/* ================================================== */
+
+확인 항목:
+
+삭제시 orphan 발생 여부
+
+예:
+
+post 삭제 → comment 유지?
+
+policy 필요:
+
+RESTRICT or SOFT DELETE
+
+목적:
+
+데이터 integrity 보호
+
+
+
+/* ================================================== */
+// CHECK 11 : AUDIT COVERAGE CHECK
+/* ================================================== */
+
+확인 항목:
+
+audit 필요한 테이블:
+
+users
+payments
+wallets
+ownership
+
+audit 없는지 확인
+
+목적:
+
+운영 추적 가능
+
+
+
+/* ================================================== */
+// CHECK 12 : MIGRATION SAFETY CHECK
+/* ================================================== */
+
+확인 항목:
+
+DROP TABLE 사용 여부
+
+production:
+
+DROP 금지
+
+허용:
+
+ALTER ADD COLUMN
+
+목적:
+
+데이터 손실 방지
+
+
+
+/* ================================================== */
+// CHECK 13 : SECURITY COLUMN CHECK
+/* ================================================== */
+
+확인 항목:
+
+password plaintext 저장 여부
+
+token plaintext 저장 여부
+
+필수:
+
+hash only
+
+목적:
+
+보안 사고 방지
+
+
+
+/* ================================================== */
+// CHECK 14 : INDEX OVERUSE CHECK
+/* ================================================== */
+
+확인 항목:
+
+index 8개 이상 테이블 존재 여부
+
+권장:
+
+6 이하
+
+목적:
+
+write 성능 보호
+
+
+
+/* ================================================== */
+// CHECK 15 : CORE TABLE STRUCTURE CHECK
+/* ================================================== */
+
+확인 대상:
+
+users
+profiles
+posts
+comments
+likes
+follows
+media_assets
+conversations
+wallets
+
+구조 변경 여부 확인
+
+목적:
+
+플랫폼 안정성 유지
+
+
+
+/* ================================================== */
+// FINAL PRE-DEVELOPMENT CHECK COMPLETE CONDITION
+/* ================================================== */
+
+모든 CHECK 통과시:
+
+개발 시작 안전 상태
+
+조건:
+
+identity consistency OK
+FK integrity OK
+index OK
+status OK
+media OK
+security OK
+
+결론:
+
+DB 구조로 인한 장애 가능성 낮음
+
+
+
+/* ================================================== */
+// FINAL DB CHECKLIST END
+/* ================================================== */
+
+/* ================================================== */
+// ADD SECTION : SNS PLATFORM DEVELOPMENT ROADMAP
+/* STATUS : POST-DB IMPLEMENTATION ORDER */
+/* ROLE : BACKEND DEVELOPMENT EXECUTION GUIDE */
+/* ================================================== */
+
+
+/* ================================================== */
+// PHASE 01 : IDENTITY LAYER (FIRST IMPLEMENTATION)
+/* ================================================== */
+
+목적:
+
+플랫폼 identity 안정화
+
+구현 순서:
+
+1 AUTH SERVICE
+2 CHANNEL SERVICE
+3 PERMISSION SERVICE
+
+
+/* ================================================== */
+// STEP 01 : AUTH SERVICE
+/* ================================================== */
+
+구현:
+
+user register
+user login
+password hash
+JWT token
+
+필수 기능:
+
+POST /auth/register
+POST /auth/login
+POST /auth/logout
+
+완료 조건:
+
+JWT 발급 가능
+인증 middleware 동작
+
+
+
+/* ================================================== */
+// STEP 02 : CHANNEL SERVICE
+/* ================================================== */
+
+구현:
+
+channel 생성
+channel 조회
+channel 선택
+
+핵심:
+
+user ≠ activity identity
+
+API:
+
+POST /channels
+GET /channels/my
+POST /channels/switch
+
+완료 조건:
+
+user → channel 선택 가능
+
+
+
+/* ================================================== */
+// STEP 03 : PERMISSION SERVICE
+/* ================================================== */
+
+구현:
+
+ownership
+channel role
+admin 권한
+
+API:
+
+GET /channels/:id/permissions
+POST /channels/:id/members
+
+완료 조건:
+
+권한 체크 가능
+
+
+
+/* ================================================== */
+// PHASE 02 : CONTENT CORE
+/* ================================================== */
+
+목적:
+
+SNS content foundation 구축
+
+순서:
+
+media
+posts
+post media mapping
+
+
+
+/* ================================================== */
+// STEP 04 : MEDIA SERVICE
+/* ================================================== */
+
+구현:
+
+image upload
+video upload
+media_assets 연결
+
+API:
+
+POST /media/upload
+GET /media/:id
+
+완료 조건:
+
+media reference 가능
+
+
+
+/* ================================================== */
+// STEP 05 : POSTS SERVICE
+/* ================================================== */
+
+구현:
+
+create post
+edit post
+delete post
+view post
+
+API:
+
+POST /posts
+GET /posts/:id
+DELETE /posts/:id
+
+완료 조건:
+
+posts CRUD 정상
+
+주의:
+
+feed 구현 금지 (이 단계)
+
+
+
+/* ================================================== */
+// STEP 06 : POST MEDIA MAP
+/* ================================================== */
+
+구현:
+
+post + media 연결
+
+완료 조건:
+
+post multi image 가능
+
+
+
+/* ================================================== */
+// PHASE 03 : INTERACTION CORE
+/* ================================================== */
+
+목적:
+
+SNS interaction 활성화
+
+순서:
+
+comments
+likes
+follows
+
+
+
+/* ================================================== */
+// STEP 07 : COMMENTS SERVICE
+/* ================================================== */
+
+구현:
+
+comment create
+reply comment
+delete comment
+
+API:
+
+POST /comments
+GET /posts/:id/comments
+
+완료 조건:
+
+thread 구조 정상
+
+
+
+/* ================================================== */
+// STEP 08 : LIKES SERVICE
+/* ================================================== */
+
+구현:
+
+like
+unlike
+like count
+
+API:
+
+POST /likes
+DELETE /likes
+
+완료 조건:
+
+duplicate like 없음
+
+
+
+/* ================================================== */
+// STEP 09 : FOLLOWS SERVICE
+/* ================================================== */
+
+구현:
+
+follow
+unfollow
+followers 조회
+
+API:
+
+POST /follows
+DELETE /follows
+GET /profiles/:id/followers
+
+완료 조건:
+
+social graph 정상
+
+
+
+/* ================================================== */
+// PHASE 04 : FEED SYSTEM
+/* ================================================== */
+
+목적:
+
+SNS feed 구현
+
+주의:
+
+complex ranking 금지
+
+
+
+/* ================================================== */
+// STEP 10 : BASIC FEED
+/* ================================================== */
+
+구현:
+
+following posts feed
+
+정렬:
+
+createdAt DESC
+
+API:
+
+GET /feed
+
+완료 조건:
+
+기본 feed 동작
+
+
+
+/* ================================================== */
+// STEP 11 : REGION FEED
+/* ================================================== */
+
+구현:
+
+activity region feed
+feed region filter
+
+API:
+
+GET /feed/region
+
+완료 조건:
+
+지역 feed 가능
+
+
+
+/* ================================================== */
+// STEP 12 : COUNTER CACHE
+/* ================================================== */
+
+구현:
+
+likeCount update
+commentCount update
+
+목적:
+
+COUNT query 제거
+
+
+
+/* ================================================== */
+// PHASE 05 : NOTIFICATION SYSTEM
+/* ================================================== */
+
+목적:
+
+UX 강화
+
+
+
+/* ================================================== */
+// STEP 13 : NOTIFICATION SERVICE
+/* ================================================== */
+
+trigger:
+
+follow
+like
+comment
+
+API:
+
+GET /notifications
+POST /notifications/read
+
+완료 조건:
+
+notification 동작
+
+
+
+/* ================================================== */
+// PHASE 06 : MESSAGING SYSTEM
+/* ================================================== */
+
+목적:
+
+user retention 확보
+
+
+
+/* ================================================== */
+// STEP 14 : CONVERSATIONS SERVICE
+/* ================================================== */
+
+구현:
+
+DM conversation 생성
+
+완료 조건:
+
+conversation 생성 가능
+
+
+
+/* ================================================== */
+// STEP 15 : MESSAGE SERVICE
+/* ================================================== */
+
+구현:
+
+send message
+read message
+
+API:
+
+POST /messages
+GET /conversations/:id
+
+완료 조건:
+
+DM 가능
+
+
+
+/* ================================================== */
+// PHASE 07 : SAFETY SYSTEM
+/* ================================================== */
+
+목적:
+
+운영 안전성 확보
+
+
+
+/* ================================================== */
+// STEP 16 : BLOCK SYSTEM
+/* ================================================== */
+
+구현:
+
+block user
+unblock user
+
+API:
+
+POST /blocks
+DELETE /blocks
+
+완료 조건:
+
+interaction 차단 가능
+
+
+
+/* ================================================== */
+// STEP 17 : REPORT SYSTEM
+/* ================================================== */
+
+구현:
+
+report post
+report profile
+
+완료 조건:
+
+moderation 가능
+
+
+
+/* ================================================== */
+// PHASE 08 : PERFORMANCE OPTIMIZATION
+/* ================================================== */
+
+목적:
+
+scale 대비
+
+
+
+/* ================================================== */
+// STEP 18 : FEED OPTIMIZATION
+/* ================================================== */
+
+구현:
+
+query tuning
+index tuning
+
+목적:
+
+feed latency 감소
+
+
+
+/* ================================================== */
+// STEP 19 : CACHE SYSTEM
+/* ================================================== */
+
+구현:
+
+feed cache
+profile cache
+
+목적:
+
+read 성능 증가
+
+
+
+/* ================================================== */
+// STEP 20 : SEARCH SYSTEM
+/* ================================================== */
+
+구현:
+
+post search
+profile search
+
+목적:
+
+검색 기능 제공
+
+
+
+/* ================================================== */
+// DEVELOPMENT ORDER SUMMARY
+/* ================================================== */
+
+개발 순서:
+
+1 auth
+2 channel
+3 permission
+
+4 media
+5 posts
+
+6 comments
+7 likes
+8 follows
+
+9 feed
+
+10 notifications
+
+11 messaging
+
+12 safety
+
+13 performance
+
+
+
+/* ================================================== */
+// DEVELOPMENT WARNING
+/* ================================================== */
+
+금지:
+
+feed 먼저 구현
+ranking 먼저 구현
+search 먼저 구현
+
+이유:
+
+재개발 위험
+
+
+
+/* ================================================== */
+// FINAL DEVELOPMENT START CONDITION
+/* ================================================== */
+
+DB 완료
+Identity 구현 완료
+Posts CRUD 완료
+
+위 조건 충족시:
+
+개발 진행 안전 상태
+
+
+
+/* ================================================== */
+// SNS DEVELOPMENT ROADMAP END
+/* ================================================== */
+
+FILE : docs/db-additional-recommended-tables.txt
+ROOT : C:\Users\kjm\social-platform\docs\db-additional-recommended-tables.txt
+STATUS : ADD ONLY SAFE EXTENSION TABLES
+RULE : 기존 CORE 구조 변경 금지 / ADD ONLY 방식
+ROLE : PRODUCTION STABILITY + FUTURE EXPANSION
+==================================================
+
+
+
+// SECTION 01 : CHANNEL REGISTRY (IDENTITY ROOT)
+
+TABLE : channels
+
+ROLE :
+모든 channel identity root
+profile 과 분리된 identity 관리
+
+필수 이유 :
+
+profile delete ≠ channel delete
+ownership 변경 대응
+채널 상태 관리
+
+
+COLUMNS :
+
+channelCode TEXT PRIMARY KEY
+
+channelType TEXT NOT NULL
+CHECK(channelType IN('PERSONAL','BUSINESS'))
+
+status TEXT NOT NULL DEFAULT 'ACTIVE'
+CHECK(status IN(
+'ACTIVE',
+'SUSPENDED',
+'BANNED',
+'DELETED'
+))
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+deletedAt TEXT
+
+
+
+INDEX :
+
+INDEX idx_channels_status(status)
+
+
+
+// SECTION 02 : BLOCK SYSTEM (SNS SAFETY CORE)
+
+TABLE : blocks
+
+ROLE :
+SNS 차단 시스템
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY AUTOINCREMENT
+
+blockerChannelCode TEXT NOT NULL
+
+blockedChannelCode TEXT NOT NULL
+
+reason TEXT
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+UNIQUE(blockerChannelCode,blockedChannelCode)
+
+
+
+INDEX :
+
+INDEX idx_blocks_blocker(blockerChannelCode)
+
+INDEX idx_blocks_blocked(blockedChannelCode)
+
+
+
+// SECTION 03 : REPORT SYSTEM (MODERATION CORE)
+
+TABLE : reports
+
+ROLE :
+신고 시스템
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY AUTOINCREMENT
+
+reportId TEXT UNIQUE
+
+reporterChannelCode TEXT NOT NULL
+
+targetChannelCode TEXT
+
+targetPostId TEXT
+
+targetCommentId TEXT
+
+reason TEXT
+
+status TEXT DEFAULT 'OPEN'
+CHECK(status IN(
+'OPEN',
+'REVIEWING',
+'RESOLVED',
+'REJECTED'
+))
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+updatedAt TEXT
+
+
+
+INDEX :
+
+INDEX idx_reports_reporter(reporterChannelCode)
+
+INDEX idx_reports_status(status)
+
+
+
+// SECTION 04 : DIRECT MESSAGE (DM CORE)
+
+TABLE : messages
+
+ROLE :
+채팅 시스템
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY AUTOINCREMENT
+
+messageId TEXT UNIQUE
+
+senderChannelCode TEXT NOT NULL
+
+receiverChannelCode TEXT NOT NULL
+
+content TEXT
+
+messageType TEXT DEFAULT 'TEXT'
+
+CHECK(messageType IN(
+'TEXT',
+'IMAGE',
+'SYSTEM'
+))
+
+status TEXT DEFAULT 'SENT'
+
+CHECK(status IN(
+'SENT',
+'DELIVERED',
+'READ',
+'DELETED'
+))
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+updatedAt TEXT
+
+
+
+INDEX :
+
+INDEX idx_messages_sender(senderChannelCode)
+
+INDEX idx_messages_receiver(receiverChannelCode)
+
+INDEX idx_messages_created(createdAt)
+
+
+
+// SECTION 05 : WALLET (PAYMENT CORE SUPPORT)
+
+TABLE : wallets
+
+ROLE :
+결제 잔액 관리
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY AUTOINCREMENT
+
+walletId TEXT UNIQUE
+
+channelCode TEXT NOT NULL
+
+balance INTEGER DEFAULT 0
+
+currency TEXT DEFAULT 'KRW'
+
+status TEXT DEFAULT 'ACTIVE'
+
+CHECK(status IN(
+'ACTIVE',
+'LOCKED',
+'CLOSED'
+))
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+updatedAt TEXT
+
+
+
+INDEX :
+
+INDEX idx_wallet_channel(channelCode)
+
+
+
+// SECTION 06 : AUDIT LOG (SECURITY CORE)
+
+TABLE : audit_logs
+
+ROLE :
+법적 대응 로그
+보안 추적 로그
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY AUTOINCREMENT
+
+actorChannelCode TEXT
+
+actorUserId INTEGER
+
+action TEXT
+
+targetType TEXT
+
+targetId TEXT
+
+ipAddress TEXT
+
+userAgent TEXT
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+
+
+INDEX :
+
+INDEX idx_audit_actor(actorChannelCode)
+
+INDEX idx_audit_action(action)
+
+INDEX idx_audit_created(createdAt)
+
+
+
+// SECTION 07 : PROFILE PERMISSION (TEAM CHANNEL FUTURE)
+
+TABLE : profile_permissions
+
+ROLE :
+채널 공동관리
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY AUTOINCREMENT
+
+ownerChannelCode TEXT NOT NULL
+
+targetChannelCode TEXT NOT NULL
+
+role TEXT NOT NULL
+
+CHECK(role IN(
+'OWNER',
+'ADMIN',
+'MANAGER',
+'EDITOR',
+'STAFF'
+))
+
+status TEXT DEFAULT 'ACTIVE'
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+
+
+INDEX :
+
+INDEX idx_permissions_owner(ownerChannelCode)
+
+INDEX idx_permissions_target(targetChannelCode)
+
+
+
+// SECTION 08 : CHANNEL VERIFICATION
+
+TABLE : channel_verifications
+
+ROLE :
+채널 인증
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY AUTOINCREMENT
+
+channelCode TEXT NOT NULL
+
+verificationType TEXT
+
+CHECK(verificationType IN(
+'PERSON',
+'BUSINESS',
+'BRAND'
+))
+
+verifiedAt TEXT
+
+status TEXT DEFAULT 'PENDING'
+
+CHECK(status IN(
+'PENDING',
+'APPROVED',
+'REJECTED'
+))
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+
+
+INDEX :
+
+INDEX idx_channel_verification(channelCode)
+
+
+
+// SECTION 09 : CHANNEL METRICS (PERFORMANCE)
+
+TABLE : channel_metrics
+
+ROLE :
+채널 통계 캐시
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY AUTOINCREMENT
+
+channelCode TEXT UNIQUE
+
+followersCount INTEGER DEFAULT 0
+
+postsCount INTEGER DEFAULT 0
+
+engagementScore INTEGER DEFAULT 0
+
+updatedAt TEXT
+
+
+
+INDEX :
+
+INDEX idx_channel_metrics(channelCode)
+
+
+
+// SECTION 10 : SEARCH INDEX (DISCOVERY CORE)
+
+TABLE : search_index
+
+ROLE :
+검색 최적화 테이블
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY AUTOINCREMENT
+
+channelCode TEXT
+
+postId TEXT
+
+keywords TEXT
+
+regionId INTEGER
+
+category TEXT
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+
+
+INDEX :
+
+INDEX idx_search_channel(channelCode)
+
+INDEX idx_search_post(postId)
+
+INDEX idx_search_region(regionId)
+
+
+
+// SECTION 11 : RATE LIMIT (ABUSE PREVENTION)
+
+TABLE : rate_limits
+
+ROLE :
+API abuse 방지
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY AUTOINCREMENT
+
+channelCode TEXT
+
+action TEXT
+
+requestCount INTEGER
+
+windowStart TEXT
+
+windowEnd TEXT
+
+
+
+INDEX :
+
+INDEX idx_rate_channel(channelCode)
+
+INDEX idx_rate_action(action)
+
+
+
+// SECTION 12 : COMMON COLUMN RECOMMEND RULE
+
+권장 추가 컬럼 (모든 테이블 공통)
+
+status TEXT
+createdAt TEXT
+updatedAt TEXT
+deletedAt TEXT (optional)
+
+
+
+RULE :
+
+soft delete 가능 구조 유지
+
+
+
+// SECTION 13 : ABSOLUTE ADD RULE
+
+RULE :
+
+CORE TABLE 변경 금지
+
+허용 :
+
+ADD TABLE
+ADD INDEX
+ADD TRIGGER
+
+금지 :
+
+CORE COLUMN 변경
+PRIMARY KEY 변경
+channelCode 구조 변경
+
+
+
+==================================================
+END OF FILE
+==================================================
+
+FILE : docs/db-required-add-columns.txt
+ROOT : C:\Users\kjm\social-platform\docs\db-required-add-columns.txt
+STATUS : SAFE ADD COLUMN LIST
+RULE : ALTER TABLE ADD COLUMN ONLY
+ROLE : PRODUCTION STABILITY + DEBUG SAFETY
+==================================================
+
+
+
+// SECTION 01 : PROFILES ADD COLUMN
+
+목적 :
+운영 안정성 + 검색 + 상태관리
+
+ADD :
+
+status TEXT DEFAULT 'ACTIVE'
+
+CHECK(status IN(
+'ACTIVE',
+'DISABLED',
+'DELETED'
+))
+
+updatedAt TEXT
+
+deletedAt TEXT
+
+lastLoginAt TEXT
+
+profileVisibility TEXT DEFAULT 'PUBLIC'
+
+CHECK(profileVisibility IN(
+'PUBLIC',
+'PRIVATE'
+))
+
+
+
+// SECTION 02 : POSTS ADD COLUMN
+
+목적 :
+피드 안정성 + 운영 제어
+
+ADD :
+
+updatedAt TEXT
+
+deletedAt TEXT
+
+likeCount INTEGER DEFAULT 0
+
+commentCount INTEGER DEFAULT 0
+
+viewCount INTEGER DEFAULT 0
+
+shareCount INTEGER DEFAULT 0
+
+reportCount INTEGER DEFAULT 0
+
+isEdited INTEGER DEFAULT 0
+
+editCount INTEGER DEFAULT 0
+
+
+
+// SECTION 03 : POST_COMMENTS ADD COLUMN
+
+목적 :
+댓글 관리 안정화
+
+ADD :
+
+deletedAt TEXT
+
+likeCount INTEGER DEFAULT 0
+
+replyCount INTEGER DEFAULT 0
+
+reportCount INTEGER DEFAULT 0
+
+isEdited INTEGER DEFAULT 0
+
+
+
+// SECTION 04 : IMAGE_ASSETS ADD COLUMN
+
+목적 :
+파일 관리 안정화
+
+ADD :
+
+updatedAt TEXT
+
+deletedAt TEXT
+
+width INTEGER
+
+height INTEGER
+
+hash TEXT
+
+isPrimary INTEGER DEFAULT 0
+
+
+
+// SECTION 05 : PAYMENTS ADD COLUMN
+
+목적 :
+금융 안정성
+
+ADD :
+
+externalPaymentId TEXT
+
+paymentMethod TEXT
+
+CHECK(paymentMethod IN(
+'CARD',
+'BANK',
+'WALLET',
+'POINT'
+))
+
+paidAt TEXT
+
+failedAt TEXT
+
+cancelledAt TEXT
+
+refundAmount INTEGER DEFAULT 0
+
+feeAmount INTEGER DEFAULT 0
+
+
+
+// SECTION 06 : ORDERS ADD COLUMN
+
+목적 :
+주문 lifecycle 관리
+
+ADD :
+
+paidAt TEXT
+
+cancelledAt TEXT
+
+completedAt TEXT
+
+paymentId TEXT
+
+orderType TEXT
+
+CHECK(orderType IN(
+'DIGITAL',
+'PHYSICAL',
+'SERVICE'
+))
+
+
+
+// SECTION 07 : FOLLOWS ADD COLUMN
+
+목적 :
+관계 관리
+
+ADD :
+
+status TEXT DEFAULT 'ACTIVE'
+
+CHECK(status IN(
+'ACTIVE',
+'MUTED',
+'BLOCKED'
+))
+
+notifyEnabled INTEGER DEFAULT 1
+
+
+
+// SECTION 08 : NOTIFICATIONS ADD COLUMN
+
+목적 :
+알림 UX 개선
+
+ADD :
+
+readAt TEXT
+
+targetChannelCode TEXT
+
+priority TEXT DEFAULT 'NORMAL'
+
+CHECK(priority IN(
+'LOW',
+'NORMAL',
+'HIGH'
+))
+
+expiresAt TEXT
+
+
+
+// SECTION 09 : RESERVATIONS ADD COLUMN
+
+목적 :
+예약 lifecycle 관리
+
+ADD :
+
+cancelledAt TEXT
+
+completedAt TEXT
+
+notes TEXT
+
+price INTEGER
+
+paymentStatus TEXT
+
+CHECK(paymentStatus IN(
+'PENDING',
+'PAID',
+'REFUNDED'
+))
+
+
+
+// SECTION 10 : POST_ENGAGEMENTS ADD COLUMN
+
+목적 :
+SNS action 확장
+
+ADD :
+
+value INTEGER DEFAULT 1
+
+status TEXT DEFAULT 'ACTIVE'
+
+deletedAt TEXT
+
+
+
+// SECTION 11 : PROFILE_OWNERSHIPS ADD COLUMN
+
+목적 :
+ownership audit 강화
+
+ADD :
+
+transferReason TEXT
+
+approvedBy INTEGER
+
+ipAddress TEXT
+
+deviceInfo TEXT
+
+
+
+// SECTION 12 : PROFILE_TRANSACTIONS ADD COLUMN
+
+목적 :
+거래 안정성
+
+ADD :
+
+paymentId TEXT
+
+transactionType TEXT
+
+CHECK(transactionType IN(
+'SALE',
+'TRANSFER'
+))
+
+completedAt TEXT
+
+cancelledAt TEXT
+
+
+
+// SECTION 13 : FEED_SEEN ADD COLUMN
+
+목적 :
+추천 알고리즘 개선
+
+ADD :
+
+viewDuration INTEGER
+
+deviceType TEXT
+
+CHECK(deviceType IN(
+'WEB',
+'MOBILE',
+'APP'
+))
+
+
+
+// SECTION 14 : FEED_HIDE_FILTER ADD COLUMN
+
+목적 :
+UX 개선
+
+ADD :
+
+reason TEXT
+
+expiresAt TEXT
+
+
+
+// SECTION 15 : COMMON ADD RULE
+
+모든 테이블 권장:
+
+updatedAt TEXT
+
+deletedAt TEXT
+
+
+
+이유 :
+
+운영 필수
+debug 필수
+soft delete 필수
+
+
+
+// SECTION 16 : ABSOLUTE ADD SAFETY RULE
+
+허용 :
+
+ALTER TABLE ADD COLUMN
+
+허용 :
+
+INDEX ADD
+
+허용 :
+
+TRIGGER ADD
+
+
+금지 :
+
+DROP COLUMN
+
+금지 :
+
+PRIMARY KEY 변경
+
+금지 :
+
+channelCode 변경
+
+금지 :
+
+FK 구조 변경
+
+
+
+// SECTION 17 : PRODUCTION SAFETY ADD RULE
+
+추가시 순서 :
+
+STEP 1
+ADD COLUMN nullable
+
+STEP 2
+DEFAULT 설정
+
+STEP 3
+INDEX 추가
+
+STEP 4
+TRIGGER 추가
+
+STEP 5
+서비스 코드 반영
+
+
+
+절대 금지 :
+
+ADD NOT NULL column without default
+
+
+
+==================================================
+END OF FILE
+==================================================
+
+FILE : docs/db-required-add-columns.txt
+ROOT : C:\Users\kjm\social-platform\docs\db-required-add-columns.txt
+STATUS : SAFE ADD COLUMN LIST
+RULE : ALTER TABLE ADD COLUMN ONLY
+ROLE : PRODUCTION STABILITY + DEBUG SAFETY
+==================================================
+
+
+
+// SECTION 01 : PROFILES ADD COLUMN
+
+목적 :
+운영 안정성 + 검색 + 상태관리
+
+ADD :
+
+status TEXT DEFAULT 'ACTIVE'
+
+CHECK(status IN(
+'ACTIVE',
+'DISABLED',
+'DELETED'
+))
+
+updatedAt TEXT
+
+deletedAt TEXT
+
+lastLoginAt TEXT
+
+profileVisibility TEXT DEFAULT 'PUBLIC'
+
+CHECK(profileVisibility IN(
+'PUBLIC',
+'PRIVATE'
+))
+
+
+
+// SECTION 02 : POSTS ADD COLUMN
+
+목적 :
+피드 안정성 + 운영 제어
+
+ADD :
+
+updatedAt TEXT
+
+deletedAt TEXT
+
+likeCount INTEGER DEFAULT 0
+
+commentCount INTEGER DEFAULT 0
+
+viewCount INTEGER DEFAULT 0
+
+shareCount INTEGER DEFAULT 0
+
+reportCount INTEGER DEFAULT 0
+
+isEdited INTEGER DEFAULT 0
+
+editCount INTEGER DEFAULT 0
+
+
+
+// SECTION 03 : POST_COMMENTS ADD COLUMN
+
+목적 :
+댓글 관리 안정화
+
+ADD :
+
+deletedAt TEXT
+
+likeCount INTEGER DEFAULT 0
+
+replyCount INTEGER DEFAULT 0
+
+reportCount INTEGER DEFAULT 0
+
+isEdited INTEGER DEFAULT 0
+
+
+
+// SECTION 04 : IMAGE_ASSETS ADD COLUMN
+
+목적 :
+파일 관리 안정화
+
+ADD :
+
+updatedAt TEXT
+
+deletedAt TEXT
+
+width INTEGER
+
+height INTEGER
+
+hash TEXT
+
+isPrimary INTEGER DEFAULT 0
+
+
+
+// SECTION 05 : PAYMENTS ADD COLUMN
+
+목적 :
+금융 안정성
+
+ADD :
+
+externalPaymentId TEXT
+
+paymentMethod TEXT
+
+CHECK(paymentMethod IN(
+'CARD',
+'BANK',
+'WALLET',
+'POINT'
+))
+
+paidAt TEXT
+
+failedAt TEXT
+
+cancelledAt TEXT
+
+refundAmount INTEGER DEFAULT 0
+
+feeAmount INTEGER DEFAULT 0
+
+
+
+// SECTION 06 : ORDERS ADD COLUMN
+
+목적 :
+주문 lifecycle 관리
+
+ADD :
+
+paidAt TEXT
+
+cancelledAt TEXT
+
+completedAt TEXT
+
+paymentId TEXT
+
+orderType TEXT
+
+CHECK(orderType IN(
+'DIGITAL',
+'PHYSICAL',
+'SERVICE'
+))
+
+
+
+// SECTION 07 : FOLLOWS ADD COLUMN
+
+목적 :
+관계 관리
+
+ADD :
+
+status TEXT DEFAULT 'ACTIVE'
+
+CHECK(status IN(
+'ACTIVE',
+'MUTED',
+'BLOCKED'
+))
+
+notifyEnabled INTEGER DEFAULT 1
+
+
+
+// SECTION 08 : NOTIFICATIONS ADD COLUMN
+
+목적 :
+알림 UX 개선
+
+ADD :
+
+readAt TEXT
+
+targetChannelCode TEXT
+
+priority TEXT DEFAULT 'NORMAL'
+
+CHECK(priority IN(
+'LOW',
+'NORMAL',
+'HIGH'
+))
+
+expiresAt TEXT
+
+
+
+// SECTION 09 : RESERVATIONS ADD COLUMN
+
+목적 :
+예약 lifecycle 관리
+
+ADD :
+
+cancelledAt TEXT
+
+completedAt TEXT
+
+notes TEXT
+
+price INTEGER
+
+paymentStatus TEXT
+
+CHECK(paymentStatus IN(
+'PENDING',
+'PAID',
+'REFUNDED'
+))
+
+
+
+// SECTION 10 : POST_ENGAGEMENTS ADD COLUMN
+
+목적 :
+SNS action 확장
+
+ADD :
+
+value INTEGER DEFAULT 1
+
+status TEXT DEFAULT 'ACTIVE'
+
+deletedAt TEXT
+
+
+
+// SECTION 11 : PROFILE_OWNERSHIPS ADD COLUMN
+
+목적 :
+ownership audit 강화
+
+ADD :
+
+transferReason TEXT
+
+approvedBy INTEGER
+
+ipAddress TEXT
+
+deviceInfo TEXT
+
+
+
+// SECTION 12 : PROFILE_TRANSACTIONS ADD COLUMN
+
+목적 :
+거래 안정성
+
+ADD :
+
+paymentId TEXT
+
+transactionType TEXT
+
+CHECK(transactionType IN(
+'SALE',
+'TRANSFER'
+))
+
+completedAt TEXT
+
+cancelledAt TEXT
+
+
+
+// SECTION 13 : FEED_SEEN ADD COLUMN
+
+목적 :
+추천 알고리즘 개선
+
+ADD :
+
+viewDuration INTEGER
+
+deviceType TEXT
+
+CHECK(deviceType IN(
+'WEB',
+'MOBILE',
+'APP'
+))
+
+
+
+// SECTION 14 : FEED_HIDE_FILTER ADD COLUMN
+
+목적 :
+UX 개선
+
+ADD :
+
+reason TEXT
+
+expiresAt TEXT
+
+
+
+// SECTION 15 : COMMON ADD RULE
+
+모든 테이블 권장:
+
+updatedAt TEXT
+
+deletedAt TEXT
+
+
+
+이유 :
+
+운영 필수
+debug 필수
+soft delete 필수
+
+
+
+// SECTION 16 : ABSOLUTE ADD SAFETY RULE
+
+허용 :
+
+ALTER TABLE ADD COLUMN
+
+허용 :
+
+INDEX ADD
+
+허용 :
+
+TRIGGER ADD
+
+
+금지 :
+
+DROP COLUMN
+
+금지 :
+
+PRIMARY KEY 변경
+
+금지 :
+
+channelCode 변경
+
+금지 :
+
+FK 구조 변경
+
+
+
+// SECTION 17 : PRODUCTION SAFETY ADD RULE
+
+추가시 순서 :
+
+STEP 1
+ADD COLUMN nullable
+
+STEP 2
+DEFAULT 설정
+
+STEP 3
+INDEX 추가
+
+STEP 4
+TRIGGER 추가
+
+STEP 5
+서비스 코드 반영
+
+
+
+절대 금지 :
+
+ADD NOT NULL column without default
+
+
+
+==================================================
+END OF FILE
+==================================================
+
+FILE : docs/db-core-table-protection-list.txt
+ROOT : C:\Users\kjm\social-platform\docs\db-core-table-protection-list.txt
+STATUS : CORE TABLE LOCK RULE
+RULE : CORE TABLE STRUCTURE CHANGE FORBIDDEN
+ROLE : SYSTEM STABILITY PROTECTION
+==================================================
+
+
+
+// SECTION 01 : ABSOLUTE CORE TABLE LIST
+
+CORE TABLE (절대 구조 변경 금지)
+
+1 profiles
+2 channels (registry)
+3 profile_ownerships
+4 posts
+5 image_assets
+6 follows
+7 payments
+8 orders
+9 post_comments
+10 notifications
+
+
+
+// SECTION 02 : CORE TABLE 정의 기준
+
+CORE TABLE 조건 :
+
+identity 관련
+ownership 관련
+financial 관련
+content root
+social graph root
+
+이 테이블 변경시 :
+
+전체 서비스 영향 발생
+
+
+
+// SECTION 03 : PROFILES (IDENTITY META)
+
+ROLE :
+
+channel metadata root
+
+변경시 영향 :
+
+posts
+images
+ownership
+permissions
+search
+feed
+
+금지 :
+
+ownerChannelCode 변경
+userId 제거
+channelType 변경
+
+금지 :
+
+PK 변경
+
+허용 :
+
+ADD COLUMN only
+
+
+
+// SECTION 04 : CHANNELS (IDENTITY ROOT)
+
+ROLE :
+
+platform identity root
+
+가장 위험 테이블
+
+변경시 영향 :
+
+ALL TABLES
+
+금지 :
+
+channelCode format 변경
+
+금지 :
+
+PRIMARY KEY 변경
+
+금지 :
+
+channel length 변경
+
+금지 :
+
+reuse 허용
+
+허용 :
+
+status column add
+
+허용 :
+
+verification column add
+
+
+
+// SECTION 05 : PROFILE_OWNERSHIPS
+
+ROLE :
+
+ownership history
+
+법적 데이터
+
+금지 :
+
+삭제
+
+금지 :
+
+ownership overwrite
+
+금지 :
+
+history 제거
+
+허용 :
+
+ADD audit column
+
+
+
+// SECTION 06 : POSTS
+
+ROLE :
+
+content root
+
+영향 :
+
+feed
+search
+engagement
+notifications
+
+금지 :
+
+postId format 변경
+
+금지 :
+
+authorChannelCode 변경
+
+금지 :
+
+regionId nullable 변경
+
+허용 :
+
+metrics column add
+
+허용 :
+
+visibility add
+
+
+
+// SECTION 07 : IMAGE_ASSETS
+
+ROLE :
+
+media root
+
+영향 :
+
+posts
+profiles
+gallery
+business
+
+금지 :
+
+filePath 구조 변경
+
+금지 :
+
+ownerChannelCode 제거
+
+허용 :
+
+metadata column add
+
+
+
+// SECTION 08 : FOLLOWS
+
+ROLE :
+
+social graph root
+
+영향 :
+
+feed ranking
+recommendation
+notifications
+
+금지 :
+
+UNIQUE 제거
+
+금지 :
+
+channelCode 제거
+
+허용 :
+
+status add
+
+
+
+// SECTION 09 : PAYMENTS
+
+ROLE :
+
+financial root
+
+영향 :
+
+orders
+wallet
+audit
+
+금지 :
+
+amount type 변경
+
+금지 :
+
+currency 제거
+
+금지 :
+
+status enum 제거
+
+허용 :
+
+fee column add
+
+허용 :
+
+external id add
+
+
+
+// SECTION 10 : ORDERS
+
+ROLE :
+
+transaction root
+
+영향 :
+
+payments
+reservation
+commerce
+
+금지 :
+
+orderId 변경
+
+금지 :
+
+buyerChannelCode 제거
+
+금지 :
+
+sellerChannelCode 제거
+
+허용 :
+
+orderType add
+
+
+
+// SECTION 11 : POST_COMMENTS
+
+ROLE :
+
+interaction root
+
+영향 :
+
+notifications
+engagement
+moderation
+
+금지 :
+
+postId 제거
+
+금지 :
+
+authorChannelCode 제거
+
+허용 :
+
+metrics column add
+
+
+
+// SECTION 12 : NOTIFICATIONS
+
+ROLE :
+
+user feedback system
+
+영향 :
+
+UX
+
+금지 :
+
+receiverChannelCode 제거
+
+금지 :
+
+notificationId 변경
+
+허용 :
+
+priority column add
+
+
+
+// SECTION 13 : CORE TABLE 변경 허용 범위
+
+허용 :
+
+ADD COLUMN
+
+허용 :
+
+ADD INDEX
+
+허용 :
+
+ADD TRIGGER
+
+허용 :
+
+ADD TABLE
+
+
+금지 :
+
+DROP COLUMN
+
+금지 :
+
+ALTER PK
+
+금지 :
+
+ALTER FK
+
+금지 :
+
+RENAME COLUMN
+
+금지 :
+
+TYPE CHANGE
+
+
+
+// SECTION 14 : CORE TABLE 변경 절대 금지 RULE
+
+변경 필요시 :
+
+NEW TABLE 생성
+
+DATA MIGRATION
+
+OLD TABLE ARCHIVE
+
+
+절대 금지 :
+
+direct modify
+
+
+
+// SECTION 15 : CORE TABLE SAFETY PROCESS
+
+변경 필요시 절차 :
+
+STEP 1
+shadow table 생성
+
+STEP 2
+data copy
+
+STEP 3
+service test
+
+STEP 4
+switch
+
+STEP 5
+archive
+
+
+
+// SECTION 16 : CORE TABLE PRIORITY ORDER
+
+중요도 순서 :
+
+LEVEL 1 (건드리면 서비스 죽음)
+
+channels
+profiles
+profile_ownerships
+
+
+LEVEL 2 (핵심 데이터)
+
+posts
+payments
+orders
+
+
+LEVEL 3 (SNS core)
+
+follows
+post_comments
+notifications
+
+
+LEVEL 4 (asset)
+
+image_assets
+
+
+
+// SECTION 17 : FINAL RULE
+
+CORE TABLE = ADD ONLY
+
+절대 :
+
+구조 수정 금지
+
+절대 :
+
+삭제 금지
+
+절대 :
+
+PK 변경 금지
+
+
+
+==================================================
+END OF FILE
+==================================================
+
+FILE : docs/db-final-validation-checklist.txt
+ROOT : C:\Users\kjm\social-platform\docs\db-final-validation-checklist.txt
+STATUS : FINAL DB VALIDATION CHECKLIST
+ROLE : DEVELOPMENT START SAFETY CHECK
+PRIORITY : ABSOLUTE REQUIRED
+==================================================
+
+
+
+// SECTION 01 : IDENTITY CHECK (가장 중요)
+
+확인 :
+
+channels table 존재
+
+확인 :
+
+profiles.ownerChannelCode UNIQUE
+
+확인 :
+
+channelCode length = 12
+
+확인 :
+
+channelCode uppercase only
+
+확인 :
+
+channelCode reuse 금지 구조
+
+확인 :
+
+channel soft delete 구조
+
+확인 :
+
+profile delete ≠ channel delete
+
+확인 :
+
+ownership history 존재
+
+profile_ownerships 존재
+
+확인 :
+
+user max channel = 2 제한 존재
+
+
+
+// SECTION 02 : RELATION CHECK
+
+확인 :
+
+posts.profileId FK 존재
+
+확인 :
+
+posts.regionId FK 존재
+
+확인 :
+
+image_assets.profileId FK 존재
+
+확인 :
+
+profile_ownerships.profileId FK 존재
+
+확인 :
+
+post_comments.profileId FK 존재
+
+확인 :
+
+region FK 구조 정상
+
+확인 :
+
+nullable FK 없는지 확인
+
+확인 :
+
+orphan record 가능성 제거
+
+
+
+// SECTION 03 : CHANNELCODE RULE CHECK
+
+확인 :
+
+모든 actor column naming correct
+
+authorChannelCode
+
+ownerChannelCode
+
+buyerChannelCode
+
+sellerChannelCode
+
+actorChannelCode
+
+receiverChannelCode
+
+확인 :
+
+단일 channelCode column 없음
+
+확인 :
+
+multi relation role naming correct
+
+확인 :
+
+channelCode index 존재
+
+확인 :
+
+channelCode TEXT 타입
+
+확인 :
+
+varchar 사용 안함
+
+확인 :
+
+userId로 행위 처리 안함
+
+
+
+// SECTION 04 : INDEX CHECK
+
+확인 :
+
+모든 FK index 존재
+
+확인 :
+
+feed query index 존재
+
+posts(regionId,createdAt)
+
+확인 :
+
+posts(authorChannelCode)
+
+확인 :
+
+follows(followerChannelCode)
+
+확인 :
+
+notifications(receiverChannelCode)
+
+확인 :
+
+payments(payerChannelCode)
+
+확인 :
+
+orders(buyerChannelCode)
+
+확인 :
+
+image_assets(ownerChannelCode)
+
+
+
+// SECTION 05 : STATUS CHECK
+
+확인 :
+
+모든 CORE table status column 존재
+
+확인 :
+
+ACTIVE enum 존재
+
+확인 :
+
+DELETED enum 존재
+
+확인 :
+
+soft delete 가능 구조
+
+확인 :
+
+hard delete 없음
+
+확인 :
+
+deletedAt optional 존재
+
+
+
+// SECTION 06 : TIMESTAMP CHECK
+
+확인 :
+
+createdAt 존재
+
+확인 :
+
+updatedAt 존재
+
+확인 :
+
+timezone 통일
+
+TEXT or TIMESTAMP 혼용 금지
+
+추천 :
+
+CURRENT_TIMESTAMP 통일
+
+
+
+// SECTION 07 : DATA SAFETY CHECK
+
+확인 :
+
+payments amount >0 validation
+
+확인 :
+
+post latitude range validation
+
+확인 :
+
+longitude validation
+
+확인 :
+
+status enum validation
+
+확인 :
+
+channel existence validation
+
+확인 :
+
+duplicate prevention UNIQUE 존재
+
+
+
+// SECTION 08 : TRIGGER CHECK
+
+확인 :
+
+channel immutable trigger
+
+확인 :
+
+region immutable trigger
+
+확인 :
+
+status validation trigger
+
+확인 :
+
+geo validation trigger
+
+확인 :
+
+channel existence trigger
+
+확인 :
+
+payment validation trigger
+
+
+
+// SECTION 09 : INIT SAFETY CHECK
+
+확인 :
+
+CREATE TABLE IF NOT EXISTS 사용
+
+확인 :
+
+CREATE INDEX IF NOT EXISTS 사용
+
+확인 :
+
+CREATE TRIGGER IF NOT EXISTS 사용
+
+확인 :
+
+ALTER TABLE safe order
+
+확인 :
+
+ADD COLUMN nullable first
+
+확인 :
+
+default 설정 후 NOT NULL
+
+확인 :
+
+init script idempotent
+
+
+
+// SECTION 10 : SERVICE MATCH CHECK
+
+확인 :
+
+모든 service query 존재 column
+
+확인 :
+
+service column mismatch 없음
+
+확인 :
+
+service enum match
+
+확인 :
+
+service FK match
+
+확인 :
+
+service insert column match
+
+확인 :
+
+service update column match
+
+
+
+// SECTION 11 : MIGRATION SAFETY
+
+확인 :
+
+schema version 관리
+
+추천 :
+
+schema_version table
+
+확인 :
+
+migration script 존재
+
+확인 :
+
+rollback 가능 구조
+
+확인 :
+
+production migration safe
+
+
+
+// SECTION 12 : PERFORMANCE CHECK
+
+확인 :
+
+N+1 query 위험 없음
+
+확인 :
+
+feed query index 존재
+
+확인 :
+
+ORDER BY index 존재
+
+확인 :
+
+JOIN index 존재
+
+확인 :
+
+large TEXT index 없음
+
+
+
+// SECTION 13 : FUTURE SAFE CHECK
+
+확인 :
+
+channel permissions 확장 가능
+
+확인 :
+
+verification 확장 가능
+
+확인 :
+
+metrics 확장 가능
+
+확인 :
+
+search 확장 가능
+
+확인 :
+
+AI 추천 확장 가능
+
+
+
+// SECTION 14 : SECURITY CHECK
+
+확인 :
+
+userId direct access 없음
+
+확인 :
+
+ownership validation 존재
+
+확인 :
+
+channel ownership check
+
+확인 :
+
+audit log 가능
+
+확인 :
+
+financial audit 가능
+
+
+
+// SECTION 15 : FAILURE PREVENTION CHECK
+
+확인 :
+
+no column error 없음
+
+확인 :
+
+FK mismatch 없음
+
+확인 :
+
+missing index 없음
+
+확인 :
+
+duplicate schema 없음
+
+확인 :
+
+dev/prod schema 동일
+
+확인 :
+
+SQLite / PostgreSQL 호환
+
+
+
+// SECTION 16 : ABSOLUTE FAIL CONDITIONS
+
+이 항목 있으면 개발 중단 :
+
+missing channels table
+
+missing ownership
+
+channel mutable
+
+userId actor usage
+
+FK missing core relation
+
+hard delete structure
+
+payments validation 없음
+
+
+
+// SECTION 17 : FINAL GO CONDITION
+
+개발 시작 가능 조건 :
+
+identity model stable
+
+channelCode rule stable
+
+core tables stable
+
+init script stable
+
+service match stable
+
+
+
+모두 만족시 :
+
+DEVELOPMENT GO
+
+
+
+==================================================
+END OF FILE
+==================================================
+
+FILE : docs/backend-development-roadmap-from-db.txt
+ROOT : C:\Users\kjm\social-platform\docs\backend-development-roadmap-from-db.txt
+STATUS : BACKEND DEVELOPMENT ORDER
+ROLE : DEVELOPMENT SEQUENCE GUIDE
+PRIORITY : AFTER DB DESIGN
+==================================================
+
+
+
+// SECTION 01 : ABSOLUTE DEVELOPMENT ORDER
+
+개발 순서 :
+
+STEP 1
+IDENTITY DOMAIN
+
+STEP 2
+CHANNEL DOMAIN
+
+STEP 3
+PROFILE DOMAIN
+
+STEP 4
+MEDIA DOMAIN
+
+STEP 5
+CONTENT DOMAIN
+
+STEP 6
+SOCIAL DOMAIN
+
+STEP 7
+FEED DOMAIN
+
+STEP 8
+NOTIFICATION DOMAIN
+
+STEP 9
+PAYMENT DOMAIN
+
+STEP 10
+SEARCH DOMAIN
+
+STEP 11
+ADMIN DOMAIN
+
+STEP 12
+AI DOMAIN
+
+
+
+이 순서 이유 :
+
+dependency 순서
+
+
+
+// SECTION 02 : STEP 1 IDENTITY DOMAIN
+
+먼저 개발 :
+
+users service
+
+필수 기능 :
+
+회원가입
+로그인
+password hash
+JWT 발급
+email 인증
+
+필요 API :
+
+POST /auth/register
+POST /auth/login
+POST /auth/logout
+
+
+
+이 단계 완료 조건 :
+
+user 생성 가능
+JWT 발급 가능
+
+
+
+// SECTION 03 : STEP 2 CHANNEL DOMAIN
+
+다음 개발 :
+
+channel generator
+
+필수 :
+
+ChannelCodeGeneratorService
+
+기능 :
+
+channel 생성
+ownership 생성
+max 2 channel 제한
+
+API :
+
+POST /channels/create
+
+완료 조건 :
+
+user → channel 생성 가능
+
+
+
+// SECTION 04 : STEP 3 PROFILE DOMAIN
+
+개발 :
+
+profiles service
+
+기능 :
+
+profile 생성
+profile update
+region 설정
+channel metadata 관리
+
+API :
+
+GET /profiles/:channelCode
+
+PATCH /profiles
+
+완료 조건 :
+
+channel → profile 연결
+
+
+
+// SECTION 05 : STEP 4 MEDIA DOMAIN
+
+개발 :
+
+image upload
+
+기능 :
+
+file upload
+image_assets 저장
+avatar 관리
+
+API :
+
+POST /media/upload
+
+POST /profiles/avatar
+
+완료 조건 :
+
+profile image upload 가능
+
+
+
+// SECTION 06 : STEP 5 CONTENT DOMAIN
+
+개발 :
+
+posts
+
+기능 :
+
+post create
+post edit
+post delete
+post visibility
+
+API :
+
+POST /posts
+
+GET /posts/:postId
+
+PATCH /posts
+
+DELETE /posts
+
+
+
+완료 조건 :
+
+post 생성 가능
+
+
+
+// SECTION 07 : STEP 6 SOCIAL DOMAIN
+
+개발 :
+
+follows
+blocks
+
+기능 :
+
+follow
+unfollow
+block
+unblock
+
+API :
+
+POST /follows
+
+DELETE /follows
+
+POST /blocks
+
+
+
+완료 조건 :
+
+social graph 생성 가능
+
+
+
+// SECTION 08 : STEP 7 FEED DOMAIN
+
+개발 :
+
+feed service
+
+기능 :
+
+region feed
+following feed
+distance feed
+
+API :
+
+GET /feed
+
+GET /feed/following
+
+GET /feed/region
+
+
+
+완료 조건 :
+
+feed 조회 가능
+
+
+
+// SECTION 09 : STEP 8 NOTIFICATION DOMAIN
+
+개발 :
+
+notifications
+
+기능 :
+
+follow 알림
+comment 알림
+like 알림
+
+API :
+
+GET /notifications
+
+PATCH /notifications/read
+
+
+
+완료 조건 :
+
+event → notification 생성
+
+
+
+// SECTION 10 : STEP 9 PAYMENT DOMAIN
+
+개발 :
+
+orders
+payments
+wallet
+
+기능 :
+
+order create
+payment create
+wallet update
+
+API :
+
+POST /orders
+
+POST /payments
+
+
+
+완료 조건 :
+
+transaction flow 동작
+
+
+
+// SECTION 11 : STEP 10 SEARCH DOMAIN
+
+개발 :
+
+search index
+
+기능 :
+
+profile search
+post search
+region search
+
+API :
+
+GET /search
+
+
+
+완료 조건 :
+
+검색 가능
+
+
+
+// SECTION 12 : STEP 11 ADMIN DOMAIN
+
+개발 :
+
+reports moderation
+
+기능 :
+
+report review
+user ban
+channel suspend
+
+API :
+
+GET /admin/reports
+
+PATCH /admin/users
+
+
+
+완료 조건 :
+
+운영 가능
+
+
+
+// SECTION 13 : STEP 12 AI DOMAIN
+
+마지막 개발 :
+
+AI feed ranking
+
+이유 :
+
+데이터 필요
+
+기능 :
+
+recommendation
+ranking
+interest model
+
+
+
+// SECTION 14 : ABSOLUTE DEVELOPMENT RULE
+
+금지 :
+
+frontend 먼저 개발
+
+금지 :
+
+API 없이 UI 개발
+
+금지 :
+
+DB 없는 service 개발
+
+금지 :
+
+feed 먼저 개발
+
+
+
+RULE :
+
+DB → SERVICE → API → FRONT
+
+
+
+// SECTION 15 : MODULE DEVELOPMENT ORDER
+
+추천 NestJS 구조 :
+
+modules/
+
+auth
+channels
+profiles
+media
+posts
+social
+feed
+notifications
+payments
+search
+admin
+
+
+
+// SECTION 16 : FAILURE PREVENTION RULE
+
+개발 순서 틀리면 :
+
+post 먼저 개발
+
+→ channel 없음
+
+→ ownership 없음
+
+→ permission 없음
+
+→ 다시 수정
+
+
+
+반드시 :
+
+identity first
+
+
+
+// SECTION 17 : PARALLEL DEVELOPMENT 가능 영역
+
+동시 개발 가능 :
+
+media + profile
+
+notifications + social
+
+search + feed
+
+admin + reports
+
+
+
+금지 :
+
+identity parallel
+
+
+
+// SECTION 18 : DEVELOPMENT COMPLETION CHECK
+
+완료 기준 :
+
+user create 가능
+
+channel create 가능
+
+profile create 가능
+
+post create 가능
+
+follow 가능
+
+feed 조회 가능
+
+notification 생성 가능
+
+payment 가능
+
+
+
+모두 가능시 :
+
+backend core complete
+
+
+
+// SECTION 19 : FINAL RESULT STRUCTURE
+
+완료시 구조 :
+
+DB layer 완료
+
+Service layer 완료
+
+API layer 완료
+
+Auth layer 완료
+
+Feed layer 완료
+
+
+
+이 상태 :
+
+frontend 개발 가능
+
+
+
+// SECTION 20 : FINAL RULE
+
+개발 순서 :
+
+IDENTITY FIRST
+
+CONTENT LATER
+
+AI LAST
+
+
+
+==================================================
+END OF FILE
+==================================================
+
+
+
+
+
+
+
+

@@ -1,0 +1,16 @@
+프론트/app/api 읙 역할규정
+DB(벡엔드) -> 프론트 라우트(API) -> 프론트 (웹)
+frontend/app/api/admin/users/route.ts
+역할 : backend proxy / CORS 해결 / token attach
+
+frontend/app/api/auth/login/route.ts / frontend → backend 인증 proxy
+역할 : 로그인 처리 (token/session 생성)
+
+frontend/app/api/auth/logout/route.ts
+역할 : 로그인 종료 (token/session 제거)
+
+frontend/app/api/user/me/route.ts
+역할 : 현재 로그인 사용자 조회 (session verify)
+
+frontend/app/api/admin/dev-login/route.ts
+역할 : 관리자 강제 로그인 (dev auth bypass)

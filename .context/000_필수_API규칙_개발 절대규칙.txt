@@ -1,0 +1,42 @@
+// ==================================================
+// SECTION 01 : LOGIN INFO API
+// ==================================================
+export const LOGIN_INFO_API_FILE = 'authApi.ts'
+export const LOGIN_INFO_API_PATH = 'frontend/lib/authApi.ts'
+// 용도: 로그인 유저 컨텍스트 확인 (userId, profileType, channelCode, displayName)
+
+// ==================================================
+// SECTION 02 : PROFILE DETAIL / READ API
+// ==================================================
+export const PROFILE_DETAIL_API_FILE = 'profile-summary-api.ts'
+export const PROFILE_DETAIL_API_PATH = 'frontend/lib/profile-summary-api.ts'
+// 용도: profiles 테이블 및 관련 모든 컬럼 조회
+// 포함: profiles, profile_avatars, profile_hero_images, profile_gallery_images 등
+// 읽기 전용, 로그인 컨텍스트(authApi.getMe())와 결합
+
+// ==================================================
+// SECTION 03 : PROFILE WRITE / MODIFY API
+// ==================================================
+export const PROFILE_WRITE_API_FILE = 'updateBusinessContact() / updateBusinessProfileCore()'
+// 용도: profile 관련 정보 입력/수정/삭제
+// 조건: 단일 귀속 검증 (profileId + channelCode)
+// 특징: 조회 API와 분리, 로그인 컨텍스트 확인 필수
+
+// ==================================================
+// SECTION 04 : CALL FLOW
+// ==================================================
+/*
+1. authApi.ts → getMe()           // 로그인 정보 조회
+2. profile-summary-api.ts → getProfileByChannelCode() // 프로필 전체 컬럼 조회
+3. 필요 시 PROFILE_WRITE_API 호출 (입력/수정/삭제)
+*/
+
+// ==================================================
+// SECTION 05 : SINGLE OWNERSHIP RULE
+// ==================================================
+/*
+Front / Service / DB 전 구간 channelCode + profileId 단일 귀속 적용
+하드코딩 / 추정 금지
+media 포함 모든 영역 동일 적용
+로그인 컨텍스트 없이는 profile 조회 금지
+*/

@@ -1,0 +1,523 @@
+/* ==================================================
+
+BACKEND TRANSACTION FLOW SPECIFICATION
+
+POST / IMAGE / ENGAGEMENT FLOW
+
+SNAPSHOT_BACKEND_TRANSACTION_FLOW_v1
+
+================================================== */
+
+
+/* ==================================================
+
+TRANSACTION PRINCIPLE
+
+================================================== */
+
+
+ALL CONTENT CREATION MUST FOLLOW:
+
+POST
+
+↓
+
+IMAGE MAPPING
+
+↓
+
+ENGAGEMENT INIT
+
+↓
+
+FEED READY
+
+
+
+RULE:
+
+Content must exist before media mapping.
+
+Media mapping must exist before engagement aggregation.
+
+Engagement must exist before feed query.
+
+
+
+/* ==================================================
+
+POST CREATION TRANSACTION FLOW
+
+================================================== */
+
+
+STEP 01
+
+Controller receives request
+
+↓
+
+validate request body
+
+↓
+
+call post.service.create()
+
+
+
+
+STEP 02
+
+POST VALIDATION
+
+
+post.service
+
+↓
+
+validate profile ownership
+
+↓
+
+validate regionId
+
+↓
+
+validate categoryId
+
+↓
+
+prepare post entity
+
+
+
+
+STEP 03
+
+POST INSERT
+
+
+post.service
+
+↓
+
+INSERT posts
+
+↓
+
+RETURN postId
+
+
+
+
+STEP 04
+
+ENGAGEMENT INIT
+
+
+engagement.service
+
+↓
+
+INSERT post_engagements
+
+(postId)
+
+↓
+
+initialize:
+
+likeCount = 0
+
+commentCount = 0
+
+viewCount = 0
+
+saveCount = 0
+
+
+
+
+STEP 05
+
+IMAGE PROCESS (OPTIONAL)
+
+
+IF images exist:
+
+
+Controller
+
+↓
+
+image.service.upload()
+
+↓
+
+store image_assets
+
+↓
+
+RETURN imageAssetId
+
+
+
+STEP 06
+
+POST IMAGE MAPPING
+
+
+postImage.service
+
+↓
+
+INSERT post_images
+
+(postId + imageAssetId)
+
+↓
+
+set sortOrder
+
+
+
+
+STEP 07
+
+TRANSACTION COMPLETE
+
+
+RETURN success
+
+
+
+/* ==================================================
+
+SAFE CREATE ORDER
+
+================================================== */
+
+
+SAFE ORDER:
+
+1 create post
+
+2 create engagement row
+
+3 upload images
+
+4 map images
+
+
+
+FORBIDDEN ORDER:
+
+upload image first ❌
+
+map image before post ❌
+
+create engagement before post ❌
+
+
+
+
+/* ==================================================
+
+IMAGE UPLOAD FLOW
+
+================================================== */
+
+
+Controller
+
+↓
+
+image.service
+
+↓
+
+upload to object storage
+
+↓
+
+store metadata:
+
+image_assets
+
+↓
+
+return id
+
+
+
+RULE:
+
+Image asset must exist before mapping.
+
+
+
+/* ==================================================
+
+ENGAGEMENT INIT FLOW
+
+================================================== */
+
+
+post.service
+
+↓
+
+engagement.service.init(postId)
+
+↓
+
+INSERT post_engagements
+
+
+
+RULE:
+
+Every post must have engagement row.
+
+No NULL engagement allowed.
+
+
+
+/* ==================================================
+
+FEED VISIBILITY FLOW
+
+================================================== */
+
+
+Post created
+
+↓
+
+Engagement exists
+
+↓
+
+Image mapping exists
+
+↓
+
+Feed eligible
+
+
+
+Feed.service:
+
+SELECT only.
+
+
+
+/* ==================================================
+
+TRANSACTION FAILURE RULE
+
+================================================== */
+
+
+IF post creation fails:
+
+STOP
+
+
+
+IF engagement creation fails:
+
+ROLLBACK post
+
+
+
+IF image upload fails:
+
+post still valid
+
+image optional
+
+
+
+IF mapping fails:
+
+image remains orphan
+
+must cleanup
+
+
+
+/* ==================================================
+
+RECOMMENDED TRANSACTION MODEL
+
+================================================== */
+
+
+BEGIN TRANSACTION
+
+create post
+
+create engagement
+
+COMMIT
+
+
+
+image upload outside transaction
+
+
+
+mapping inside small transaction
+
+
+
+/**************************************************/
+
+
+RULE:
+
+Post must never depend on image success.
+
+Image optional.
+
+Engagement mandatory.
+
+
+
+/* ==================================================
+
+REAL SAFE IMPLEMENTATION FLOW
+
+================================================== */
+
+
+POST CREATE:
+
+
+BEGIN
+
+create post
+
+create engagement
+
+COMMIT
+
+
+
+IF images exist:
+
+upload images
+
+map images
+
+
+
+END
+
+
+
+
+/* ==================================================
+
+ERROR PATTERNS
+
+================================================== */
+
+
+Image uploaded before post ❌
+
+Mapping without post ❌
+
+Feed before engagement ❌
+
+Engagement without post ❌
+
+Feed creating engagement ❌
+
+
+
+/* ==================================================
+
+TRANSACTION OWNERSHIP
+
+================================================== */
+
+
+POST DOMAIN:
+
+owns post lifecycle
+
+
+
+PHOTO DOMAIN:
+
+owns image lifecycle
+
+
+
+ENGAGEMENT DOMAIN:
+
+owns metrics lifecycle
+
+
+
+FEED DOMAIN:
+
+owns nothing
+
+
+
+/* ==================================================
+
+FINAL FLOW GRAPH
+
+================================================== */
+
+
+Controller
+
+↓
+
+post.service
+
+↓
+
+engagement.service
+
+↓
+
+image.service
+
+↓
+
+postImage.service
+
+↓
+
+feed.service (read only)
+
+
+
+/* ==================================================
+
+ABSOLUTE RULE
+
+================================================== */
+
+
+Post must exist before everything.
+
+Engagement must exist before feed.
+
+Image optional.
+
+Feed always last.
+
+
+
+/* ==================================================
+
+END OF TRANSACTION FLOW
+
+================================================== */

@@ -1,0 +1,622 @@
+FILE : /docs/db/GLOBAL_REGION_DB_SNAPSHOT_UPGRADE_v2.txt
+
+/* ==================================================
+GLOBAL REGION DATABASE SNAPSHOT (UPGRADE VERSION)
+GLOBAL PLATFORM REGION STRUCTURE
+Version : v2.0
+STATUS : PRODUCTION READY STRUCTURE
+BASED ON : EXISTING REGION SNAPSHOT + GLOBAL EXTENSION
+================================================== */
+
+
+/* ==================================================
+SECTION 01 : DESIGN GOAL
+================================================== */
+
+목표:
+
+기존 Region 구조 유지하면서
+글로벌 플랫폼 대응 구조로 확장.
+
+지원:
+
+KR
+US
+JP
+EU
+SG
+AU
+CA
+
+원칙:
+
+DB 구조 변경 없이 국가 확장.
+
+Region Tree 구조 유지.
+
+Feed Region Index 가능.
+
+Marketplace Region 가능.
+
+Map 확장 가능.
+
+Reservation Region 가능.
+
+Delivery Region 확장 가능.
+
+즉:
+
+Region = Platform Core Index
+
+
+/* ==================================================
+SECTION 02 : GLOBAL REGION HIERARCHY MODEL
+================================================== */
+
+GLOBAL TREE STRUCTURE:
+
+COUNTRY (0)
+
+ADMIN_AREA (1)
+State / Province
+
+SUB_ADMIN_AREA (2)
+County
+
+LOCALITY (3)
+City
+
+SUB_LOCALITY (4)
+District
+
+NEIGHBORHOOD (5)
+Local area
+
+BLOCK (optional)
+
+PARCEL (optional)
+
+
+EXAMPLE KR:
+
+KR
+→ 전라남도
+→ 화순군
+→ 화순읍
+→ 삼태리
+
+
+EXAMPLE US:
+
+US
+→ California
+→ Los Angeles County
+→ Los Angeles
+
+
+EXAMPLE JP:
+
+JP
+→ Tokyo
+→ Shinjuku
+→ Nishishinjuku
+
+
+RULE:
+
+Depth 제한 없음.
+
+Parent 기반 Tree only.
+
+
+/* ==================================================
+SECTION 03 : REGIONS TABLE FINAL STRUCTURE
+================================================== */
+
+TABLE:
+
+regions
+
+COLUMN STRUCTURE:
+
+id INTEGER PRIMARY KEY
+
+code TEXT UNIQUE
+
+countryCode TEXT
+
+name TEXT
+
+fullName TEXT
+
+regionType TEXT
+
+level INTEGER
+
+parentId INTEGER
+
+path TEXT
+
+latitude REAL
+
+longitude REAL
+
+isoCode TEXT
+
+timezone TEXT
+
+childCount INTEGER
+
+sortOrder INTEGER
+
+isActive INTEGER
+
+createdAt TEXT
+
+
+/* ==================================================
+SECTION 04 : COLUMN ROLE
+================================================== */
+
+id:
+
+PK.
+
+code:
+
+행정코드.
+
+Example:
+
+KR-46-46820
+US-CA-LA
+JP-13-104
+
+
+countryCode:
+
+국가 코드.
+
+KR
+US
+JP
+
+
+name:
+
+단일 이름.
+
+Example:
+
+Seoul
+Tokyo
+California
+
+
+fullName:
+
+검색용 전체 이름.
+
+Example:
+
+Seoul Gangnam Yeoksam
+
+
+regionType:
+
+의미 담당.
+
+COUNTRY
+
+ADMIN_AREA
+
+SUB_ADMIN_AREA
+
+LOCALITY
+
+SUB_LOCALITY
+
+NEIGHBORHOOD
+
+BLOCK
+
+PARCEL
+
+
+level:
+
+depth only.
+
+정렬용.
+
+Example:
+
+COUNTRY = 0
+ADMIN_AREA = 1
+LOCALITY = 3
+
+
+parentId:
+
+부모 region.
+
+
+path:
+
+Tree path.
+
+Example:
+
+KR
+KR/서울
+KR/서울/강남
+KR/서울/강남/역삼
+
+
+RULE:
+
+Feed 검색:
+
+LIKE path.
+
+Tree join 불필요.
+
+
+latitude longitude:
+
+지도 좌표.
+
+Feed 거리 계산.
+
+Nearby 검색.
+
+
+isoCode:
+
+ISO-3166 대응.
+
+Example:
+
+KR-11
+US-CA
+JP-13
+
+
+timezone:
+
+예약 시스템용.
+
+Example:
+
+Asia/Seoul
+Asia/Tokyo
+America/Los_Angeles
+
+
+childCount:
+
+하위 region 개수.
+
+UI 표시용.
+
+
+sortOrder:
+
+관리자 정렬.
+
+
+isActive:
+
+비활성 region 관리.
+
+
+createdAt:
+
+생성일.
+
+
+
+/* ==================================================
+SECTION 05 : REMOVED STRUCTURE
+================================================== */
+
+제거 권장:
+
+city
+gu
+dong
+
+이유:
+
+KR 전용 구조.
+
+글로벌 확장 불가.
+
+대체:
+
+regionType + hierarchy.
+
+
+/* ==================================================
+SECTION 06 : REQUIRED INDEX
+================================================== */
+
+INDEX:
+
+idx_regions_parent
+
+idx_regions_level_parent
+
+idx_regions_code
+
+idx_regions_path
+
+idx_regions_country
+
+idx_regions_geo
+
+idx_regions_unique
+
+
+IMPORTANT:
+
+path index.
+
+regionId index.
+
+Feed 성능 영향.
+
+
+/* ==================================================
+SECTION 07 : ADDRESS TABLE GLOBAL STRUCTURE
+================================================== */
+
+TABLE:
+
+address_details
+
+COLUMN STRUCTURE:
+
+id INTEGER
+
+regionId INTEGER
+
+streetName TEXT
+
+buildingNumber TEXT
+
+subBuilding TEXT
+
+unitNumber TEXT
+
+postalCode TEXT
+
+fullAddress TEXT
+
+latitude REAL
+
+longitude REAL
+
+createdAt TEXT
+
+
+RULE:
+
+NULL 허용.
+
+국가별 선택 사용.
+
+Example KR:
+
+buildingNumber 164
+unitNumber 101동203호
+
+
+Example US:
+
+streetName Sunset Blvd
+buildingNumber 1234
+unitNumber Apt12
+
+
+Example JP:
+
+streetName Nishishinjuku
+buildingNumber 2-8-1
+unitNumber 101
+
+
+/* ==================================================
+SECTION 08 : DATA CONNECTION RULE
+================================================== */
+
+PROFILE:
+
+profiles.regionId
+
+profiles.addressDetailId
+
+
+POST:
+
+posts.regionId
+
+
+BUSINESS:
+
+business_info.profileId
+
+
+RESERVATION:
+
+reservations.regionId
+
+
+RULE:
+
+Region reference only.
+
+주소 문자열 저장 금지.
+
+Address = normalized only.
+
+
+/* ==================================================
+SECTION 09 : REGION FEED INDEX RULE
+================================================== */
+
+Feed Region Query:
+
+Example:
+
+서울 피드 조회:
+
+SELECT posts
+WHERE regionId IN (
+child regions
+)
+
+
+또는:
+
+path LIKE.
+
+
+Example:
+
+KR/서울%
+
+서울 전체 피드.
+
+
+RULE:
+
+Region Tree 기반 Feed.
+
+
+/* ==================================================
+SECTION 10 : GLOBAL EXTENSION RULE
+================================================== */
+
+새 국가 추가:
+
+STEP 1
+
+COUNTRY insert.
+
+
+STEP 2
+
+Region tree insert.
+
+
+STEP 3
+
+끝.
+
+
+Schema 변경 없음.
+
+
+Example:
+
+SG 추가
+
+Insert COUNTRY.
+
+Insert ADMIN.
+
+Insert LOCAL.
+
+
+완료.
+
+
+/* ==================================================
+SECTION 11 : PLATFORM CONNECTION STRUCTURE
+================================================== */
+
+GLOBAL STRUCTURE:
+
+regions
+
+↓
+
+address_details
+
+↓
+
+profiles
+
+↓
+
+posts
+
+↓
+
+business
+
+↓
+
+reservation
+
+↓
+
+delivery
+
+
+Region = Logical location.
+
+Address = Physical location.
+
+
+/* ==================================================
+SECTION 12 : PRODUCTION EXTENSION (OPTIONAL)
+================================================== */
+
+Optional:
+
+population INTEGER
+
+areaSize REAL
+
+geoHash TEXT
+
+centerPoint TEXT
+
+
+초기 필요 없음.
+
+
+/* ==================================================
+SECTION 13 : FINAL STATUS
+================================================== */
+
+STRUCTURE:
+
+Global Platform Region Architecture.
+
+
+COMPATIBILITY:
+
+SNS
+
+Maps
+
+Local Business
+
+Marketplace
+
+Delivery
+
+Reservation
+
+
+STATUS:
+
+Production Ready.
+
+
+/* ==================================================
+END OF GLOBAL REGION SNAPSHOT
+================================================== */

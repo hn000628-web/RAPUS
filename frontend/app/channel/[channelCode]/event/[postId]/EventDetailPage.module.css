@@ -1,0 +1,587 @@
+/* FILE : frontend/app/channel/[channelCode]/event/[postId]/EventDetailPage.module.css */
+/* ROOT : C:\Users\kjm\social-platform\frontend\app\channel\[channelCode]\event\[postId]\EventDetailPage.module.css */
+/* STATUS : CREATE MODE */
+/* ROLE : PUBLIC EVENT DETAIL PAGE STYLE */
+/* CHANGE SUMMARY :
+- 이벤트 상세 페이지 CSS Module 신규 생성
+- PC / Tablet / Mobile 반응형 구조 분리
+- PC : 좌측 미디어 / 우측 이벤트 정보 2칼럼
+- Tablet : 1칼럼 전환
+- Mobile : 1칼럼 + 이미지 16:9 + 문의 버튼 full width
+- 이벤트 기간 from ~ to UI 강조
+- API / DB / Service 영향 없음
+*/
+
+/* SECTION 01 : PAGE */
+
+.page {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #111827;
+  font-family:
+    Arial,
+    Helvetica,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 72px;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #eef0f4;
+  background: #ffffff;
+}
+
+.logo {
+  color: #000000;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #111827;
+  font-size: 14px;
+}
+
+.locationDot {
+  color: #ec407a;
+  font-size: 14px;
+}
+
+.locationText {
+  font-weight: 700;
+}
+
+.loginButton {
+  height: 34px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* SECTION 02 : LAYOUT */
+
+.shell {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 34px 24px 80px;
+  box-sizing: border-box;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(380px, 0.82fr);
+  gap: 34px;
+  align-items: start;
+}
+
+.mediaColumn {
+  min-width: 0;
+}
+
+.infoColumn {
+  min-width: 0;
+  padding-top: 6px;
+}
+
+/* SECTION 03 : MEDIA */
+
+.mediaFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f3f4f6;
+}
+
+.mainImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.mediaNavButton {
+  position: absolute;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.72);
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 32px;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.mediaNavButtonLeft {
+  left: 16px;
+}
+
+.mediaNavButtonRight {
+  right: 16px;
+}
+
+.mediaCount {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.82);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.thumbnailRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.thumbnailButton {
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: #f3f4f6;
+  cursor: pointer;
+}
+
+.thumbnailButtonActive {
+  border-color: #111827;
+}
+
+.thumbnailImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* SECTION 04 : EVENT CONTENT */
+
+.eventCard {
+  padding-top: 0;
+}
+
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.statusBadge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #ecfdf3;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.categoryText {
+  margin: 0 0 8px;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.eventTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.05em;
+}
+
+.summaryText {
+  margin: 16px 0 0;
+  color: #374151;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.65;
+}
+
+.divider {
+  height: 1px;
+  margin: 28px 0;
+  background: #edf0f5;
+}
+
+/* SECTION 05 : PERIOD */
+
+.periodSection {
+  margin-top: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.periodBox {
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 1fr 36px 1fr;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fafafa;
+}
+
+.periodItem {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.periodLabel {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.periodValue {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.periodDivider {
+  color: #9ca3af;
+  font-size: 22px;
+  font-weight: 900;
+  text-align: center;
+}
+
+/* SECTION 06 : DETAIL */
+
+.detailSection {
+  margin-top: 24px;
+}
+
+.contentText {
+  margin: 0;
+  color: #4b5563;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.75;
+}
+
+.metaSection {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metaBox {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.metaLabel {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.metaValue {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.noticeBox {
+  margin-top: 24px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+/* SECTION 07 : ACTIONS */
+
+.bottomActions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.inquiryButton {
+  height: 54px;
+  border: none;
+  border-radius: 12px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* SECTION 08 : DEBUG */
+
+.debugBox {
+  margin-top: 18px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #edf0f5;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* SECTION 09 : TABLET */
+
+@media (max-width: 1023px) {
+  .shell {
+    max-width: 760px;
+    padding: 24px 18px 72px;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+
+  .infoColumn {
+    padding-top: 0;
+  }
+
+  .mediaFrame {
+    aspect-ratio: 16 / 10;
+    border-radius: 14px;
+  }
+
+  .eventTitle {
+    font-size: 32px;
+  }
+}
+
+/* SECTION 10 : MOBILE */
+
+@media (max-width: 767px) {
+  .header {
+    height: 60px;
+    padding: 0 16px;
+  }
+
+  .logo {
+    font-size: 16px;
+  }
+
+  .headerRight {
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .loginButton {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+
+  .shell {
+    max-width: none;
+    padding: 0 0 48px;
+  }
+
+  .layout {
+    gap: 0;
+  }
+
+  .mediaColumn {
+    width: 100%;
+  }
+
+  .mediaFrame {
+    aspect-ratio: 16 / 9;
+    border: none;
+    border-radius: 0;
+  }
+
+  .mediaNavButton {
+    width: 36px;
+    height: 36px;
+    font-size: 28px;
+    line-height: 28px;
+  }
+
+  .mediaNavButtonLeft {
+    left: 12px;
+  }
+
+  .mediaNavButtonRight {
+    right: 12px;
+  }
+
+  .mediaCount {
+    right: 12px;
+    bottom: 12px;
+    font-size: 12px;
+  }
+
+  .thumbnailRow {
+    gap: 8px;
+    margin: 10px 14px 0;
+  }
+
+  .thumbnailButton {
+    border-radius: 9px;
+  }
+
+  .infoColumn {
+    padding: 22px 18px 0;
+  }
+
+  .badgeRow {
+    margin-bottom: 12px;
+  }
+
+  .badge,
+  .statusBadge {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .categoryText {
+    font-size: 13px;
+  }
+
+  .eventTitle {
+    font-size: 30px;
+  }
+
+  .summaryText {
+    font-size: 15px;
+  }
+
+  .divider {
+    margin: 24px 0;
+  }
+
+  .periodBox {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .periodDivider {
+    display: none;
+  }
+
+  .metaSection {
+    grid-template-columns: 1fr;
+  }
+
+  .inquiryButton {
+    height: 52px;
+  }
+
+  .debugBox {
+    display: none;
+  }
+}
+
+/* SECTION 11 : SMALL MOBILE */
+
+@media (max-width: 420px) {
+  .headerRight {
+    gap: 6px;
+  }
+
+  .locationText {
+    max-width: 54px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .thumbnailRow {
+    gap: 6px;
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+
+  .infoColumn {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .eventTitle {
+    font-size: 28px;
+  }
+}
+
+/* SECTION 12 : VALIDATION */
+
+/*
+VALIDATION:
+- 단일 CSS 파일 통코드 출력
+- EventDetailPage.module.css 신규 생성
+- PC 2컬럼 구조 적용
+- Tablet 1컬럼 구조 적용
+- Mobile 1컬럼 구조 적용
+- Mobile hero image 16:9 적용
+- Mobile thumbnail 3칸 유지
+- 이벤트 기간 from ~ to UI 적용
+- 문의하기 버튼 full width 구성
+- API / DB / Service 영향 없음
+*/

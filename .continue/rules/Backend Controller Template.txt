@@ -1,0 +1,288 @@
+/* ==================================================
+
+CONTROLLER TEMPLATE
+
+STANDARD API CONTROLLER STRUCTURE
+
+================================================== */
+
+import { Request, Response } from 'express'
+
+import { ExampleService }
+from '../services/example.service'
+
+const service =
+new ExampleService()
+
+export class ExampleController{
+
+
+/* ==================================================
+
+CREATE
+
+POST /example
+
+ROLE :
+Create entity
+
+================================================== */
+
+async create(
+req:Request,
+res:Response
+){
+
+try{
+
+const data =
+req.body
+
+/* =====================
+SERVICE CALL
+===================== */
+
+const result =
+await service.create(data)
+
+/* =====================
+RESPONSE
+===================== */
+
+if(!result.success){
+
+return res.status(400)
+.json(result)
+
+}
+
+return res.status(200)
+.json(result)
+
+}catch(error){
+
+return res.status(500)
+.json({
+
+success:false,
+
+error:'Server error'
+
+})
+
+}
+
+}
+
+
+
+/* ==================================================
+
+GET BY ID
+
+GET /example/:id
+
+================================================== */
+
+async getById(
+req:Request,
+res:Response
+){
+
+try{
+
+const id =
+Number(req.params.id)
+
+if(!id){
+
+return res.status(400)
+.json({
+
+success:false,
+error:'Invalid id'
+
+})
+
+}
+
+const result =
+await service.getById(id)
+
+if(!result.success){
+
+return res.status(404)
+.json(result)
+
+}
+
+return res.status(200)
+.json(result)
+
+}catch(error){
+
+return res.status(500)
+.json({
+
+success:false,
+
+error:'Server error'
+
+})
+
+}
+
+}
+
+
+
+/* ==================================================
+
+LIST
+
+GET /example
+
+================================================== */
+
+async list(
+req:Request,
+res:Response
+){
+
+try{
+
+const page =
+Number(req.query.page)||1
+
+const limit =
+Number(req.query.limit)||20
+
+const result =
+await service.list(
+page,
+limit
+)
+
+return res.status(200)
+.json(result)
+
+}catch(error){
+
+return res.status(500)
+.json({
+
+success:false,
+
+error:'Server error'
+
+})
+
+}
+
+}
+
+
+
+/* ==================================================
+
+UPDATE
+
+PUT /example/:id
+
+================================================== */
+
+async update(
+req:Request,
+res:Response
+){
+
+try{
+
+const id =
+Number(req.params.id)
+
+const data =
+req.body
+
+const result =
+await service.update(
+id,
+data
+)
+
+if(!result.success){
+
+return res.status(400)
+.json(result)
+
+}
+
+return res.status(200)
+.json(result)
+
+}catch(error){
+
+return res.status(500)
+.json({
+
+success:false,
+
+error:'Server error'
+
+})
+
+}
+
+}
+
+
+
+/* ==================================================
+
+DELETE (SOFT)
+
+DELETE /example/:id
+
+================================================== */
+
+async delete(
+req:Request,
+res:Response
+){
+
+try{
+
+const id =
+Number(req.params.id)
+
+const result =
+await service.delete(id)
+
+if(!result.success){
+
+return res.status(400)
+.json(result)
+
+}
+
+return res.status(200)
+.json(result)
+
+}catch(error){
+
+return res.status(500)
+.json({
+
+success:false,
+
+error:'Server error'
+
+})
+
+}
+
+}
+
+
+
+}

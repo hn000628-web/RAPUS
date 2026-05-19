@@ -1,0 +1,708 @@
+/* ==================================================
+
+BACKEND FOLDER STRUCTURE STANDARD
+
+SNAPSHOT_BACKEND_FOLDER_STRUCTURE_v1
+
+================================================== */
+
+SNAPSHOT META
+
+DOMAIN:
+Backend Architecture
+
+DOMAIN OWNER:
+Backend System
+
+SOURCE OF TRUTH:
+Domain Service Layer
+
+PRIMARY ACCESS:
+All backend domains
+
+RISK LEVEL:
+HIGH
+
+ARCHITECTURE LEVEL:
+CORE
+
+STATUS:
+FIXED
+
+PRIORITY:
+HIGH
+
+APPLIES TO:
+Backend Implementation
+Backend Structure
+Backend Scaling
+
+
+
+/* ==================================================
+
+CHANGE IMPACT
+
+================================================== */
+
+DB:
+
+No direct impact
+
+
+
+SERVICE:
+
+All domain services affected
+
+
+
+CONTROLLER:
+
+All controllers affected
+
+
+
+FRONTEND:
+
+Indirect impact (API structure)
+
+
+
+/* ==================================================
+
+CATEGORY
+
+================================================== */
+
+CATEGORY:
+
+BACKEND ARCHITECTURE SNAPSHOT
+
+TYPE:
+
+STRUCTURE STANDARD
+
+
+
+/* ==================================================
+
+ROOT STRUCTURE
+
+================================================== */
+
+backend/
+
+  config/
+
+  core/
+
+  domains/
+
+  shared/
+
+  routes/
+
+  app.ts
+
+  server.ts
+
+
+
+/* ==================================================
+
+CONFIG LAYER
+
+================================================== */
+
+backend/config/
+
+  database.ts
+
+  env.ts
+
+
+
+ROLE:
+
+Environment config
+
+Database connection
+
+
+
+RULE:
+
+Config must not contain domain logic.
+
+
+
+/* ==================================================
+
+CORE LAYER
+
+================================================== */
+
+backend/core/
+
+  error.ts
+
+  logger.ts
+
+  response.ts
+
+
+
+ROLE:
+
+System utilities
+
+
+
+RULE:
+
+Core must not depend on domains.
+
+
+
+/* ==================================================
+
+DOMAIN LAYER
+
+================================================== */
+
+backend/domains/
+
+
+
+DOMAIN LIST:
+
+region
+
+profile
+
+post
+
+photo
+
+feed
+
+
+
+RULE:
+
+Each domain must be isolated.
+
+
+
+/* ==================================================
+
+REGION DOMAIN
+
+================================================== */
+
+backend/domains/region/
+
+  region.service.ts
+
+  region.controller.ts
+
+  region.routes.ts
+
+  region.types.ts
+
+
+
+DOMAIN ROLE:
+
+Region management
+
+Region validation
+
+Region lookup
+
+
+
+DEPENDENCY:
+
+None
+
+
+
+LEVEL:
+
+FOUNDATION
+
+
+
+/* ==================================================
+
+PROFILE DOMAIN
+
+================================================== */
+
+backend/domains/profile/
+
+  profile.service.ts
+
+  profile.controller.ts
+
+  profile.routes.ts
+
+  profile.types.ts
+
+  profileSession.service.ts
+
+  profileBlock.service.ts
+
+
+
+DOMAIN ROLE:
+
+Identity management
+
+Profile lifecycle
+
+
+
+DEPENDENCY:
+
+region domain
+
+
+
+LEVEL:
+
+IDENTITY
+
+
+
+/* ==================================================
+
+POST DOMAIN
+
+================================================== */
+
+backend/domains/post/
+
+  post.service.ts
+
+  post.controller.ts
+
+  post.routes.ts
+
+  post.types.ts
+
+  engagement.service.ts
+
+
+
+DOMAIN ROLE:
+
+Content lifecycle
+
+Engagement lifecycle
+
+
+
+DEPENDENCY:
+
+profile domain
+
+region domain
+
+
+
+LEVEL:
+
+CONTENT
+
+
+
+/* ==================================================
+
+PHOTO DOMAIN
+
+================================================== */
+
+backend/domains/photo/
+
+  image.service.ts
+
+  photo.service.ts
+
+  postImage.service.ts
+
+  profileHero.service.ts
+
+  photo.controller.ts
+
+
+
+DOMAIN ROLE:
+
+Media lifecycle
+
+Image storage
+
+Image mapping
+
+
+
+DEPENDENCY:
+
+post domain
+
+profile domain
+
+
+
+LEVEL:
+
+MEDIA
+
+
+
+/* ==================================================
+
+FEED DOMAIN
+
+================================================== */
+
+backend/domains/feed/
+
+  feed.service.ts
+
+  feed.controller.ts
+
+  feed.routes.ts
+
+
+
+DOMAIN ROLE:
+
+Feed aggregation
+
+
+
+DEPENDENCY:
+
+post
+
+profile
+
+photo
+
+engagement
+
+
+
+LEVEL:
+
+AGGREGATION
+
+
+
+RULE:
+
+Feed must be READ ONLY.
+
+
+
+/* ==================================================
+
+SHARED LAYER
+
+================================================== */
+
+backend/shared/
+
+  validation.ts
+
+  pagination.ts
+
+  ownership.ts
+
+
+
+ROLE:
+
+Reusable utilities
+
+
+
+RULE:
+
+No domain ownership logic.
+
+
+
+/* ==================================================
+
+ROUTE LAYER
+
+================================================== */
+
+backend/routes/
+
+  index.ts
+
+
+
+ROLE:
+
+Route aggregation
+
+
+
+RULE:
+
+All domain routes registered here.
+
+
+
+/* ==================================================
+
+APPLICATION ENTRY
+
+================================================== */
+
+backend/
+
+  app.ts
+
+  server.ts
+
+
+
+ROLE:
+
+app.ts:
+
+Express configuration
+
+
+
+server.ts:
+
+Server bootstrap
+
+
+
+/* ==================================================
+
+SERVICE STRUCTURE RULE
+
+================================================== */
+
+Each domain must contain:
+
+
+
+domain.service.ts
+
+domain.controller.ts
+
+domain.routes.ts
+
+domain.types.ts
+
+
+
+RULE:
+
+Structure must remain identical.
+
+
+
+/* ==================================================
+
+SERVICE LOCATION RULE
+
+================================================== */
+
+VALID:
+
+domains/post/post.service.ts
+
+
+
+INVALID:
+
+services/post.service.ts
+
+
+
+RULE:
+
+Service must stay inside domain.
+
+
+
+/* ==================================================
+
+CONTROLLER LOCATION RULE
+
+================================================== */
+
+VALID:
+
+domains/profile/profile.controller.ts
+
+
+
+INVALID:
+
+controllers/profile.controller.ts
+
+
+
+RULE:
+
+Controller must stay with domain.
+
+
+
+/* ==================================================
+
+DEPENDENCY DIRECTION
+
+================================================== */
+
+Foundation
+
+↓
+
+Identity
+
+↓
+
+Media
+
+↓
+
+Content
+
+↓
+
+Aggregation
+
+
+
+Example:
+
+region
+
+↓
+
+profile
+
+↓
+
+post
+
+↓
+
+feed
+
+
+
+RULE:
+
+Dependency must not reverse.
+
+
+
+/* ==================================================
+
+ABSOLUTE STRUCTURE RULES
+
+================================================== */
+
+Service outside domain ❌
+
+Controller outside domain ❌
+
+Domain logic inside shared ❌
+
+Domain logic inside core ❌
+
+
+
+RULE:
+
+Domain driven structure mandatory.
+
+
+
+/* ==================================================
+
+SCALING RULE
+
+================================================== */
+
+New domain must follow:
+
+
+
+domains/newDomain/
+
+  newDomain.service.ts
+
+  newDomain.controller.ts
+
+  newDomain.routes.ts
+
+  newDomain.types.ts
+
+
+
+RULE:
+
+Structure deviation forbidden.
+
+
+
+/* ==================================================
+
+FINAL ARCHITECTURE PRINCIPLE
+
+================================================== */
+
+Domain owns logic
+
+Service owns business logic
+
+Controller owns API
+
+Feed owns aggregation
+
+Shared owns utilities
+
+Core owns system
+
+
+
+RULE:
+
+Structure must remain stable.
+
+
+
+/* ==================================================
+
+VERSION HISTORY
+
+================================================== */
+
+v1:
+
+Initial backend folder structure snapshot
+
+
+
+/* ==================================================
+
+END OF SNAPSHOT
+
+================================================== */

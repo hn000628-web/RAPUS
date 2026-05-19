@@ -1,0 +1,531 @@
+/* FILE : frontend/app/(after-login)/profile/general/PublicGeneralPage.module.css */
+/* ROOT : frontend/app/(after-login)/profile/general/PublicGeneralPage.module.css */
+/* STATUS : MODIFY MODE */
+/* ROLE : GENERAL PROFILE MANAGEMENT PAGE STYLE */
+/* CHANGE SUMMARY :
+- 대표 히어로 이미지 높이를 축소하여 하단 프로필 헤더 / 액션 버튼 잘림 문제 수정
+- PC 기준 heroImage aspect-ratio를 16 / 11에서 16 / 9로 축소
+- PC 기준 max-height를 456px에서 360px로 축소
+- 태블릿 기준 heroImage aspect-ratio를 16 / 9에서 16 / 7.5로 축소
+- 모바일 기준 heroImage aspect-ratio를 16 / 9에서 16 / 7로 축소
+- 왼쪽 영역 히어로 / 프로필 헤더 / 액션 버튼 구조 유지
+- page.tsx 구조 변경 없음
+- QR코드 포함 4버튼을 PC / 태블릿 / 모바일 모두 2열 구조로 유지
+- 모바일에서 마지막 버튼이 전체 폭으로 늘어나는 actionButton:last-child 규칙 제거 유지
+- 프로필 관리 액션 버튼 hover 블루 버튼형 유지
+- 전화 / 길찾기 / 지도보기 제거 전제 스타일 유지
+- API / DB / Service 영향 없음
+*/
+
+/* SECTION 01 : PAGE */
+
+.page {
+  min-height: calc(100vh - 80px);
+  background: #ffffff;
+  overflow-x: hidden;
+}
+
+.shell {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 24px 48px;
+}
+
+.loadingBox {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* SECTION 02 : DETAIL GRID */
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 0.78fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.mediaColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.infoColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 0;
+}
+
+/* SECTION 03 : HERO IMAGE */
+
+.heroImage {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 360px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #f3f4f6;
+  border: 1px solid #eef0f3;
+}
+
+.heroImageFile {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+}
+
+.heroPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(
+      135deg,
+      #f8fafc 0%,
+      #eef2f7 100%
+    );
+  color: #9ca3af;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* SECTION 04 : PROFILE INFO */
+
+.mediaProfileBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profileHead {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profileTopLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.avatarFrame {
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  overflow: hidden;
+  border: 1px solid #eef0f3;
+  border-radius: 16px;
+  background: #f3f4f6;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.avatarPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(
+      135deg,
+      #f8fafc 0%,
+      #eef2f7 100%
+    );
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.profileTextBlock {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 1px;
+}
+
+.profileMeta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.profileName {
+  margin: 0;
+  color: #111827;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.28;
+  letter-spacing: -0.4px;
+  word-break: keep-all;
+}
+
+.profileTypeLabel {
+  flex-shrink: 0;
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.profileSubLine {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.regionText {
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.friendText {
+  color: #111827;
+  font-weight: 800;
+}
+
+.postText {
+  color: #6b7280;
+  font-weight: 700;
+}
+
+/* SECTION 05 : ACTIONS */
+
+.actionGroup {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 8px;
+  row-gap: 6px;
+}
+
+.actionButton {
+  width: 100%;
+  height: 40px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.actionButton:hover {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+.actionButton:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.18);
+}
+
+/* SECTION 06 : MENU BAR */
+
+.menuBar {
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid #f1f3f5;
+  border-bottom: 1px solid #f1f3f5;
+  background: #ffffff;
+}
+
+.menuButton {
+  height: 54px;
+  min-width: 112px;
+  flex: 1;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.menuButton:hover {
+  color: #111827;
+}
+
+.activeMenuButton {
+  color: #111827;
+  border-bottom-color: #111827;
+}
+
+/* SECTION 07 : CONTENT PANEL */
+
+.contentPanel {
+  min-height: 320px;
+  padding: 18px 0 0;
+  background: #ffffff;
+}
+
+/* SECTION 08 : TABLET */
+
+@media (max-width: 1023px) {
+  .shell {
+    max-width: 760px;
+    padding: 18px 16px 48px;
+  }
+
+  .detailGrid {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .mediaColumn {
+    gap: 14px;
+  }
+
+  .infoColumn {
+    padding-top: 0;
+    gap: 12px;
+  }
+
+  .heroImage {
+    max-height: none;
+    border-radius: 0;
+    aspect-ratio: 16 / 7.5;
+  }
+
+  .profileName {
+    font-size: 24px;
+  }
+
+  .menuBar {
+    margin-top: 4px;
+  }
+}
+
+/* SECTION 09 : MOBILE */
+
+@media (max-width: 767px) {
+  .page {
+    min-height: calc(100vh - 64px);
+  }
+
+  .shell {
+    max-width: none;
+    padding: 0 0 40px;
+  }
+
+  .detailGrid {
+    gap: 0;
+  }
+
+  .mediaColumn {
+    order: 1;
+    gap: 14px;
+  }
+
+  .infoColumn {
+    order: 2;
+    padding: 14px 18px 0;
+    gap: 12px;
+  }
+
+  .heroImage {
+    width: 100%;
+    aspect-ratio: 16 / 7;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .heroPlaceholder {
+    font-size: 14px;
+  }
+
+  .mediaProfileBlock {
+    padding: 0 18px;
+  }
+
+  .profileTopLine {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    text-align: left;
+  }
+
+  .avatarFrame {
+    width: 56px;
+    height: 56px;
+    flex: 0 0 56px;
+    border-radius: 14px;
+  }
+
+  .avatarPlaceholder {
+    font-size: 11px;
+  }
+
+  .profileTextBlock {
+    width: auto;
+    max-width: calc(100% - 68px);
+    align-items: flex-start;
+    gap: 6px;
+    padding-top: 0;
+  }
+
+  .profileMeta {
+    width: 100%;
+    display: flex;
+    justify-content: flex-start;
+    align-items: baseline;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .profileName {
+    width: auto;
+    max-width: none;
+    flex-shrink: 0;
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.3;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+
+  .profileTypeLabel {
+    flex-shrink: 0;
+    font-size: 14px;
+  }
+
+  .profileSubLine {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+    text-align: left;
+  }
+
+  .actionGroup {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 8px;
+    row-gap: 6px;
+  }
+
+  .actionButton {
+    height: 40px;
+    font-size: 13px;
+  }
+
+  .menuBar {
+    margin-top: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 0 8px;
+    scrollbar-width: none;
+  }
+
+  .menuBar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .menuButton {
+    min-width: 92px;
+    height: 50px;
+    padding: 0 12px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .contentPanel {
+    padding: 16px 14px 0;
+  }
+}
+
+/* SECTION 10 : SMALL MOBILE */
+
+@media (max-width: 420px) {
+  .infoColumn {
+    padding-left: 14px;
+    padding-right: 14px;
+    gap: 10px;
+  }
+
+  .mediaProfileBlock {
+    padding: 0 14px;
+  }
+
+  .profileTopLine {
+    gap: 10px;
+  }
+
+  .avatarFrame {
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
+    border-radius: 13px;
+  }
+
+  .profileTextBlock {
+    max-width: calc(100% - 62px);
+  }
+
+  .profileName {
+    max-width: none;
+    font-size: 20px;
+  }
+
+  .profileTypeLabel {
+    font-size: 13px;
+  }
+
+  .actionGroup {
+    column-gap: 6px;
+    row-gap: 5px;
+  }
+
+  .actionButton {
+    font-size: 12px;
+  }
+
+  .menuBar {
+    margin-top: 0;
+  }
+}

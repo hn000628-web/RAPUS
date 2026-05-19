@@ -1,0 +1,118 @@
+//////////////////////////////////////////////////
+// SNAPSHOT : BUSINESS SUMMARY PAGE
+// FILE : frontend/app/(after-login)/profile/business/settings/summary/page.tsx
+// ROLE : BUSINESS PROFILE MAIN INTRO (BIO REPLACEMENT)
+// STATUS : FIXED DOMAIN RULE (IMMUTABLE)
+//////////////////////////////////////////////////
+
+==================================================
+SECTION 01 : PURPOSE
+==================================================
+- 비즈니스 프로필의 "대표 소개"를 담당
+- 기존 bio 역할을 summary로 완전 대체
+- BUSINESS 프로필 설명의 단일 소스 (Single Source of Truth)
+- UI/검색/카드/상세 모든 영역에서 사용
+
+==================================================
+SECTION 02 : DATA RULE
+==================================================
+FIELD : summary
+
+TYPE : TEXT
+
+LENGTH POLICY :
+- 최소 : 0 (nullable 허용)
+- 최대 : 300자 (HARD LIMIT)
+- 권장 : 200 ~ 300자
+
+FORMAT :
+- 자유 텍스트
+- 줄바꿈 허용
+- 이모지/특수문자 허용
+
+==================================================
+SECTION 03 : DOMAIN POLICY
+==================================================
+[ BUSINESS ]
+- summary = 대표 소개 (BIO 역할)
+- bio = 사용 금지 (deprecated 또는 무시)
+
+[ GENERAL ]
+- summary = 한줄 요약
+- bio = 상세 소개
+
+==================================================
+SECTION 04 : UI POLICY
+==================================================
+
+[ LIST / CARD ]
+- summary 사용
+- 2 ~ 3줄 clamp
+- overflow hidden 처리
+
+[ DETAIL PAGE ]
+- summary 전체 출력
+- 줄바꿈 유지 (white-space: pre-line)
+
+[ INPUT PAGE ]
+- textarea 사용
+- 실시간 글자수 표시
+- 300자 초과 입력 차단
+
+==================================================
+SECTION 05 : API POLICY
+==================================================
+ENDPOINT :
+
+PATCH /profile/summary
+
+REQUEST BODY :
+
+{
+  summary: string | null
+}
+
+==================================================
+SECTION 06 : VALIDATION RULE
+==================================================
+- summary length <= 300
+- 초과 시 요청 거부
+
+LOGIC :
+
+if (summary && summary.length > 300) {
+  throw ERROR : SUMMARY_MAX_LENGTH_EXCEEDED
+}
+
+==================================================
+SECTION 07 : FALLBACK RULE
+==================================================
+- summary가 null 또는 empty일 경우
+
+DEFAULT :
+
+"소개가 등록되지 않았습니다"
+
+==================================================
+SECTION 08 : STRICT RULE (ABSOLUTE)
+==================================================
+❌ summary에 구조 데이터 입력 금지
+   (주소 / 전화번호 / 영업시간 등)
+
+❌ summary를 JSON/객체 형태로 사용 금지
+
+❌ INFO 데이터와 혼합 금지
+
+✔ summary = 순수 텍스트 설명 ONLY
+
+==================================================
+SECTION 09 : ARCHITECTURE RULE
+==================================================
+- summary는 BUSINESS 소개의 단일 필드
+- INFO는 별도 영역 유지 (구조 데이터 전용)
+- 검색/추천/카드 UI는 summary 기준으로 동작
+
+==================================================
+FINAL DEFINITION
+==================================================
+BUSINESS SUMMARY = "비즈니스의 대표 소개 (BIO 완전 대체)"

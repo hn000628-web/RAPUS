@@ -1,0 +1,669 @@
+/* ==================================================
+
+BACKEND CHANGE SAFETY RULES
+
+DATABASE MODIFICATION SAFETY CONTRACT
+
+SNAPSHOT_DB_CHANGE_SAFETY_RULE_v1
+
+================================================== */
+
+
+/* ==================================================
+
+RULE 01
+
+DB IS SOURCE OF TRUTH
+
+================================================== */
+
+
+Database schema is the single source of truth.
+
+Backend must adapt to DB.
+
+DB must not adapt to service logic.
+
+
+
+FORBIDDEN:
+
+Service driven DB structure.
+
+
+
+RULE:
+
+Change DB carefully.
+
+Change services after.
+
+
+
+/* ==================================================
+
+RULE 02
+
+NO DIRECT COLUMN DELETE RULE
+
+================================================== */
+
+
+Never delete column directly.
+
+
+
+SAFE ORDER:
+
+1 mark unused
+
+2 remove service usage
+
+3 remove column later
+
+
+
+FORBIDDEN:
+
+DROP COLUMN immediately.
+
+
+
+RISK:
+
+Production break.
+
+
+
+/* ==================================================
+
+RULE 03
+
+NO TABLE DELETE RULE
+
+================================================== */
+
+
+Core tables must never be removed.
+
+
+
+Example:
+
+users
+
+profiles
+
+posts
+
+regions
+
+post_engagements
+
+
+
+SAFE METHOD:
+
+Deprecate only.
+
+
+
+FORBIDDEN:
+
+DROP TABLE.
+
+
+
+/* ==================================================
+
+RULE 04
+
+FK CHANGE SAFETY RULE
+
+================================================== */
+
+
+Foreign keys must not change without review.
+
+
+
+CHECK:
+
+service dependency
+
+feed dependency
+
+mapping dependency
+
+
+
+FORBIDDEN:
+
+Changing FK blindly.
+
+
+
+RISK:
+
+Broken joins.
+
+
+
+/* ==================================================
+
+RULE 05
+
+COLUMN RENAME SAFETY RULE
+
+================================================== */
+
+
+Never rename column directly.
+
+
+
+SAFE METHOD:
+
+1 add new column
+
+2 migrate data
+
+3 update services
+
+4 remove old column
+
+
+
+FORBIDDEN:
+
+RENAME COLUMN directly.
+
+
+
+RISK:
+
+Service crash.
+
+
+
+/* ==================================================
+
+RULE 06
+
+ENUM CHANGE RULE
+
+================================================== */
+
+
+ENUM must only expand.
+
+Never remove value.
+
+
+
+SAFE:
+
+ADD new value
+
+
+
+FORBIDDEN:
+
+REMOVE existing value
+
+
+
+RISK:
+
+Invalid legacy data.
+
+
+
+/* ==================================================
+
+RULE 07
+
+DEFAULT VALUE RULE
+
+================================================== */
+
+
+New column must have:
+
+DEFAULT value
+
+OR NULL allowed.
+
+
+
+FORBIDDEN:
+
+Adding NOT NULL without default.
+
+
+
+RISK:
+
+Insert failure.
+
+
+
+/* ==================================================
+
+RULE 08
+
+DATA MIGRATION RULE
+
+================================================== */
+
+
+Schema change requiring data change must:
+
+migrate existing rows.
+
+
+
+Example:
+
+new column requires value
+
+must update old rows.
+
+
+
+FORBIDDEN:
+
+Leaving NULL invalid data.
+
+
+
+/* ==================================================
+
+RULE 09
+
+SERVICE IMPACT RULE
+
+================================================== */
+
+
+Every DB change must check:
+
+post.service
+
+profile.service
+
+image.service
+
+feed.service
+
+
+
+RULE:
+
+Service impact must be reviewed.
+
+
+
+/* ==================================================
+
+RULE 10
+
+FEED IMPACT RULE
+
+================================================== */
+
+
+Any change to:
+
+posts
+profiles
+images
+engagement
+
+must test feed query.
+
+
+
+RULE:
+
+Feed must never break.
+
+
+
+/* ==================================================
+
+RULE 11
+
+SNAPSHOT BEFORE CHANGE RULE
+
+================================================== */
+
+
+Before DB change:
+
+create schema snapshot.
+
+
+
+Example:
+
+init-db_snapshot_v16
+
+
+
+RULE:
+
+Always preserve previous structure.
+
+
+
+/* ==================================================
+
+RULE 12
+
+BACKWARD COMPATIBILITY RULE
+
+================================================== */
+
+
+DB must remain compatible during change.
+
+
+
+SAFE:
+
+add new field
+
+keep old field
+
+
+
+FORBIDDEN:
+
+Breaking old queries immediately.
+
+
+
+RULE:
+
+Support transition period.
+
+
+
+/* ==================================================
+
+RULE 13
+
+TEST BEFORE APPLY RULE
+
+================================================== */
+
+
+Test DB change against:
+
+post creation
+
+profile creation
+
+image upload
+
+feed load
+
+
+
+RULE:
+
+Core flows must pass.
+
+
+
+/* ==================================================
+
+RULE 14
+
+NO DOMAIN OWNERSHIP CHANGE RULE
+
+================================================== */
+
+
+Table ownership must not change.
+
+
+
+Example:
+
+posts must remain Post domain.
+
+
+
+FORBIDDEN:
+
+Moving ownership.
+
+
+
+RISK:
+
+Domain collapse.
+
+
+
+/* ==================================================
+
+RULE 15
+
+SOFT DELETE CHANGE RULE
+
+================================================== */
+
+
+Prefer status column.
+
+Avoid structural delete.
+
+
+
+SAFE:
+
+status flag.
+
+
+
+FORBIDDEN:
+
+Structural removal.
+
+
+
+/* ==================================================
+
+RULE 16
+
+INDEX SAFETY RULE
+
+================================================== */
+
+
+Index removal must check:
+
+feed query
+
+post query
+
+profile query
+
+
+
+FORBIDDEN:
+
+Removing performance index blindly.
+
+
+
+RISK:
+
+Query slowdown.
+
+
+
+/* ==================================================
+
+RULE 17
+
+TRANSACTION IMPACT RULE
+
+================================================== */
+
+
+Check transaction flow impact:
+
+post create
+
+engagement create
+
+image mapping
+
+
+
+RULE:
+
+Transaction must remain valid.
+
+
+
+/* ==================================================
+
+RULE 18
+
+DATA LOSS ZERO RULE
+
+================================================== */
+
+
+DB change must never cause data loss.
+
+
+
+FORBIDDEN:
+
+DROP without migration.
+
+
+
+RULE:
+
+Preserve data always.
+
+
+
+/* ==================================================
+
+RULE 19
+
+CHANGE ORDER RULE
+
+================================================== */
+
+
+Safe change order:
+
+
+DB change
+
+↓
+
+Service update
+
+↓
+
+Controller update
+
+↓
+
+Frontend update
+
+
+
+Never reverse.
+
+
+
+/* ==================================================
+
+RULE 20
+
+REVERSIBILITY RULE
+
+================================================== */
+
+
+Every DB change must be reversible.
+
+
+
+Example:
+
+rollback script possible.
+
+
+
+RULE:
+
+No irreversible change.
+
+
+
+/* ==================================================
+
+SAFE DB CHANGE CHECKLIST
+
+================================================== */
+
+
+Before change verify:
+
+
+snapshot created
+
+service impact checked
+
+feed impact checked
+
+migration defined
+
+rollback possible
+
+
+
+All must pass.
+
+
+
+/* ==================================================
+
+FINAL DB CHANGE PRINCIPLE
+
+================================================== */
+
+
+DB changes must be:
+
+Safe
+
+Incremental
+
+Reversible
+
+Compatible
+
+
+
+Never destructive.
+
+
+
+/* ==================================================
+
+END OF DB CHANGE SAFETY RULE
+
+================================================== */

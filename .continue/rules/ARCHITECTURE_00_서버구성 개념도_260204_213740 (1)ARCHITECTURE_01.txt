@@ -1,0 +1,72 @@
+[ USER / CLIENT ]
+ (Web / Mobile Browser)
+          |
+          v
+────────────────────────────────
+[ CDN (Global Edge Network) ]
+────────────────────────────────
+- 정적 리소스 캐시
+  · HTML
+  · JS / CSS
+  · Image / Thumbnail
+- (선택) 캐시 가능한 GET API
+- 지역별 POP (JP / SG / US)
+          |
+          | (Cache Miss / Dynamic)
+          v
+────────────────────────────────
+[ FRONTEND SERVER ]
+(Next.js / Web Server)
+────────────────────────────────
+- SSR / CSR 렌더링
+- HTML 생성
+- API Gateway 역할 ❌
+- 트래픽 직접 처리 ❌
+          |
+          | API Request
+          v
+────────────────────────────────
+[ BACKEND API SERVER ]
+(NestJS / Application Server)
+────────────────────────────────
+- Auth / Session
+- Feed 정렬 로직
+- 광고 로직
+- 사용자 상태 관리
+- Stateless (수평 확장 전제)
+          |
+          | Read / Write
+          v
+────────────────────────────────
+[ DATABASE ] : 
+Development DB : SQLite (파일형 DB)
+- 목적 : 로컬 개발 속도 확보
+- 범위 : 인증 / 피드 / 광고 / CRUD 검증
+
+Production DB : PostgreSQL 16
+- 서버형 RDB 구조 유지
+- 수평 확장 전제 유지
+- 기존 아키텍처 변경 없음
+────────────────────────────────
+- User
+- Feed Metadata
+- Ad Status
+- Region / Tag Index
+- 단일 리전 (초기)
+          ^
+          |
+────────────────────────────────
+[ OBJECT STORAGE ]
+(S3 계열)
+────────────────────────────────
+- Image 원본
+- Video (향후)
+- CDN Origin 역할
+- API 서버는 URL만 관리
+────────────────────────────────
+
+※ IMAGE DELIVERY FLOW
+User → CDN → (Cache Hit) → User
+             (Cache Miss)
+               ↓
+           Object Storage

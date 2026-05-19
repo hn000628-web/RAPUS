@@ -1,0 +1,212 @@
+﻿.page {
+  min-height: 100vh;
+  background: #f3f4f6;
+}
+
+.topbarWrap {
+  height: 76px;
+}
+
+.topbarInner {
+  height: 100%;
+}
+
+.content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.titleArea {
+  margin-bottom: 16px;
+}
+
+.pageTitle {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.pageDescription {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 280px 1fr 360px;
+  gap: 16px;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.cardTitle {
+  margin: 0 0 12px;
+  font-size: 20px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.staffList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.staffButton {
+  text-align: left;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.staffButton:hover {
+  border-color: #9ca3af;
+}
+
+.staffButton:focus-visible {
+  outline: 0;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28);
+}
+
+.staffButtonSelected {
+  border-color: #111827;
+  background: #f8fafc;
+}
+
+.staffButtonSelected:focus-visible {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.28);
+}
+
+.staffButton strong {
+  font-size: 16px;
+  color: #111827;
+}
+
+.staffButton span,
+.staffButton em {
+  font-size: 13px;
+  color: #4b5563;
+  font-style: normal;
+}
+
+.infoRows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+.infoRow span {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.infoRow strong {
+  font-size: 14px;
+  color: #111827;
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.taskItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #111827;
+}
+
+.customArea {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 12px;
+}
+
+.customTitle {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.customInputRow {
+  display: flex;
+  gap: 8px;
+}
+
+.customInput {
+  flex: 1;
+  height: 38px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+.addButton {
+  height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 10px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tagRow {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

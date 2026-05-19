@@ -1,0 +1,653 @@
+/* ==================================================
+
+BACKEND DATA CONSISTENCY RULES
+
+DATABASE INTEGRITY SPECIFICATION
+
+SNAPSHOT_DB_CONSISTENCY_RULE_v1
+
+================================================== */
+
+
+/* ==================================================
+
+CORE PRINCIPLE
+
+================================================== */
+
+
+Database must never contain invalid ownership state.
+
+Every core entity must have valid parent.
+
+No critical table row may exist without owner.
+
+
+
+/* ==================================================
+
+CORE ENTITY LIST
+
+(CRITICAL TABLES)
+
+================================================== */
+
+
+users
+
+profiles
+
+posts
+
+post_engagements
+
+regions
+
+
+
+RULE:
+
+These tables must always remain consistent.
+
+
+
+/* ==================================================
+
+PROFILE CONSISTENCY RULE
+
+================================================== */
+
+
+RULE 01
+
+Profile must have user.
+
+
+
+INVALID:
+
+profiles.userId NULL
+
+
+
+INVALID:
+
+profiles.userId not exists in users
+
+
+
+VALID:
+
+profiles.userId → users.id
+
+
+
+RULE:
+
+Profile without user = DB corruption.
+
+
+
+/* ==================================================
+
+POST CONSISTENCY RULE
+
+================================================== */
+
+
+RULE 02
+
+Post must have profile.
+
+
+
+INVALID:
+
+posts.profileId NULL
+
+
+
+INVALID:
+
+posts.profileId not exists
+
+
+
+VALID:
+
+posts.profileId → profiles.id
+
+
+
+RULE:
+
+Post without profile = invalid content.
+
+
+
+/* ==================================================
+
+REGION CONSISTENCY RULE
+
+================================================== */
+
+
+RULE 03
+
+Post must have valid region.
+
+
+
+INVALID:
+
+posts.regionId NULL
+
+
+
+INVALID:
+
+posts.regionId not exists
+
+
+
+VALID:
+
+posts.regionId → regions.id
+
+
+
+RULE:
+
+Post without region breaks feed filter.
+
+
+
+/* ==================================================
+
+ENGAGEMENT CONSISTENCY RULE
+
+================================================== */
+
+
+RULE 04
+
+Every post must have engagement.
+
+
+
+INVALID:
+
+post exists without post_engagements row.
+
+
+
+VALID:
+
+post_engagements.postId → posts.id
+
+
+
+RULE:
+
+Post without engagement = inconsistent feed state.
+
+
+
+/* ==================================================
+
+IMAGE CONSISTENCY RULE
+
+================================================== */
+
+
+RULE 05
+
+Mapped image must exist.
+
+
+
+INVALID:
+
+post_images.imageAssetId missing
+
+
+
+INVALID:
+
+post_images.postId missing
+
+
+
+VALID:
+
+post_images.postId → posts.id
+
+post_images.imageAssetId → image_assets.id
+
+
+
+RULE:
+
+Mapping without target = broken relation.
+
+
+
+/* ==================================================
+
+IMAGE OPTIONAL RULE
+
+================================================== */
+
+
+RULE 06
+
+Post may exist without image.
+
+
+
+VALID:
+
+post without post_images
+
+
+
+RULE:
+
+Image optional.
+
+Content mandatory.
+
+
+
+/* ==================================================
+
+USER CONSISTENCY RULE
+
+================================================== */
+
+
+RULE 07
+
+User email must be unique.
+
+
+
+INVALID:
+
+duplicate email
+
+
+
+RULE:
+
+Account identity must be unique.
+
+
+
+/* ==================================================
+
+ENGAGEMENT COUNT RULE
+
+================================================== */
+
+
+RULE 08
+
+Engagement counts must be >= 0
+
+
+
+INVALID:
+
+negative counts
+
+
+
+INVALID:
+
+NULL counts
+
+
+
+VALID:
+
+default 0
+
+
+
+RULE:
+
+Counts must always exist.
+
+
+
+/* ==================================================
+
+REGION TREE RULE
+
+================================================== */
+
+
+RULE 09
+
+Region hierarchy must not break.
+
+
+
+INVALID:
+
+region parent not exists
+
+
+
+RULE:
+
+Region tree must remain valid.
+
+
+
+/* ==================================================
+
+DELETE SAFETY RULE
+
+================================================== */
+
+
+RULE 10
+
+Cannot delete parent if child exists.
+
+
+
+INVALID:
+
+delete profile with posts
+
+
+
+INVALID:
+
+delete post with engagement
+
+
+
+RULE:
+
+FK integrity must be preserved.
+
+
+
+/* ==================================================
+
+SOFT DELETE RULE
+
+================================================== */
+
+
+RULE 11
+
+Content should use status instead of delete.
+
+
+
+Example:
+
+posts.status = INACTIVE
+
+
+
+RULE:
+
+Hard delete discouraged.
+
+
+
+/* ==================================================
+
+FEED CONSISTENCY RULE
+
+================================================== */
+
+
+RULE 12
+
+Feed must only show valid content.
+
+
+
+VALID CONDITIONS:
+
+post exists
+
+profile exists
+
+engagement exists
+
+
+
+INVALID CONDITIONS:
+
+missing profile
+
+missing engagement
+
+
+
+RULE:
+
+Feed must exclude broken data.
+
+
+
+/* ==================================================
+
+ORPHAN DATA RULE
+
+================================================== */
+
+
+RULE 13
+
+Orphan data must be temporary only.
+
+
+
+Allowed:
+
+image without mapping (temporary)
+
+
+
+Forbidden:
+
+post without engagement
+
+
+
+RULE:
+
+Critical orphan forbidden.
+
+
+
+/* ==================================================
+
+TIMESTAMP RULE
+
+================================================== */
+
+
+RULE 14
+
+createdAt must exist.
+
+
+
+INVALID:
+
+NULL createdAt
+
+
+
+RULE:
+
+All core rows must have timestamp.
+
+
+
+/* ==================================================
+
+DATA OWNERSHIP RULE
+
+================================================== */
+
+
+RULE 15
+
+Each table has owner domain.
+
+
+
+Ownership:
+
+
+REGION → regions
+
+PROFILE → users,profiles
+
+POST → posts,post_engagements
+
+PHOTO → images
+
+FEED → none
+
+
+
+RULE:
+
+Domain must not modify foreign data.
+
+
+
+/* ==================================================
+
+ABSOLUTE INVALID STATES
+
+================================================== */
+
+
+Post without profile
+
+Post without region
+
+Post without engagement
+
+Profile without user
+
+Mapping without image
+
+Mapping without post
+
+
+
+RULE:
+
+These states must never exist.
+
+
+
+/* ==================================================
+
+VALID PLATFORM STATE
+
+================================================== */
+
+
+VALID POST STATE:
+
+
+profile exists
+
+region exists
+
+engagement exists
+
+(optional image)
+
+
+
+VALID PROFILE STATE:
+
+
+user exists
+
+
+
+VALID IMAGE STATE:
+
+
+may be temporary orphan
+
+
+
+RULE:
+
+Core must be valid.
+
+Optional may recover.
+
+
+
+/* ==================================================
+
+DB VALIDATION CHECKLIST
+
+================================================== */
+
+
+CHECK:
+
+posts.profileId exists
+
+posts.regionId exists
+
+post_engagements.postId exists
+
+profiles.userId exists
+
+post_images.postId exists
+
+
+
+RULE:
+
+These checks must always pass.
+
+
+
+/* ==================================================
+
+FINAL CONSISTENCY PRINCIPLE
+
+================================================== */
+
+
+No content without owner.
+
+No engagement without content.
+
+No profile without user.
+
+No region reference without region.
+
+
+
+Database must always be structurally valid.
+
+
+
+/* ==================================================
+
+END OF CONSISTENCY RULES
+
+================================================== */

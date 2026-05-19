@@ -1,0 +1,4732 @@
+//FILE: src/init/init-db.ts
+
+import db from '../config/database'
+import * as bcrypt from 'bcrypt'
+
+export async function initDatabase(){
+
+/* ==================================================
+SECTION 00 SQLITE
+PRODUCTION SAFE DROP ORDER (FK SAFE)
+ENV SAFE VERSION (DEV ONLY RESET)
+================================================== */
+
+/* ==================================================
+ENV CHECK
+DEV 환경에서만 DROP 허용
+================================================== */
+
+const isDev =
+process.env.NODE_ENV !== 'production'
+
+if(isDev){
+
+console.log('DEV MODE → DB RESET 실행')
+
+/* ==================================================
+PRE-DROP SETTINGS
+================================================== */
+
+db.exec(`
+PRAGMA foreign_keys = OFF;
+`)
+
+/* ==================================================
+DROP TABLES (DEV ONLY)
+================================================== */
+
+db.exec(`
+
+/* PAY / MARKETPLACE / OPERATIONS */
+
+DROP TABLE IF EXISTS status_codes;
+DROP TABLE IF EXISTS promotion_usage;
+DROP TABLE IF EXISTS booking_reservations;
+DROP TABLE IF EXISTS service_availability;
+DROP TABLE IF EXISTS review_ratings;
+DROP TABLE IF EXISTS promotions;
+DROP TABLE IF EXISTS tax_records;
+DROP TABLE IF EXISTS payment_fees;
+DROP TABLE IF EXISTS payout_accounts;
+DROP TABLE IF EXISTS escrow_transactions;
+DROP TABLE IF EXISTS disputes;
+DROP TABLE IF EXISTS payment_events;
+DROP TABLE IF EXISTS payment_attempts;
+DROP TABLE IF EXISTS notification_settings;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS system_config;
+DROP TABLE IF EXISTS feature_flags;
+DROP TABLE IF EXISTS order_items;
+DROP TABLE IF EXISTS business_services;
+DROP TABLE IF EXISTS invoices;
+DROP TABLE IF EXISTS subscriptions;
+DROP TABLE IF EXISTS payment_methods;
+DROP TABLE IF EXISTS refunds;
+DROP TABLE IF EXISTS payments;
+DROP TABLE IF EXISTS wallet_transactions;
+DROP TABLE IF EXISTS wallets;
+DROP TABLE IF EXISTS orders;
+
+/* AI / FEED */
+
+DROP TABLE IF EXISTS profile_activity_score;
+DROP TABLE IF EXISTS content_quality_score;
+DROP TABLE IF EXISTS post_trend_score;
+DROP TABLE IF EXISTS feed_rank_cache;
+DROP TABLE IF EXISTS feed_hide_filter;
+DROP TABLE IF EXISTS profile_reputation;
+DROP TABLE IF EXISTS feed_preferences;
+DROP TABLE IF EXISTS profile_interest_tags;
+DROP TABLE IF EXISTS feed_seen_history;
+DROP TABLE IF EXISTS post_impressions;
+
+/* SEARCH */
+
+DROP TABLE IF EXISTS search_index;
+DROP TABLE IF EXISTS job_queue;
+DROP TABLE IF EXISTS cache_keys;
+DROP TABLE IF EXISTS activity_logs;
+DROP TABLE IF EXISTS profile_relationships;
+
+/* BASE */
+
+DROP TABLE IF EXISTS analytics_events;
+DROP TABLE IF EXISTS system_logs;
+DROP TABLE IF EXISTS business_info;
+DROP TABLE IF EXISTS reports;
+DROP TABLE IF EXISTS notifications;
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS conversations;
+DROP TABLE IF EXISTS post_comments;
+DROP TABLE IF EXISTS post_engagements;
+DROP TABLE IF EXISTS profile_blocks;
+DROP TABLE IF EXISTS profile_hero_slides;
+DROP TABLE IF EXISTS photos;
+DROP TABLE IF EXISTS post_images;
+DROP TABLE IF EXISTS image_assets;
+DROP TABLE IF EXISTS posts;
+DROP TABLE IF EXISTS profile_sessions;
+DROP TABLE IF EXISTS profiles;
+DROP TABLE IF EXISTS address_details;
+DROP TABLE IF EXISTS industry_subtypes;
+DROP TABLE IF EXISTS industries;
+DROP TABLE IF EXISTS categories;
+
+/* REGION */
+
+DROP TABLE IF EXISTS region_hierarchy_cache;
+DROP TABLE IF EXISTS region_metadata;
+DROP TABLE IF EXISTS region_aliases;
+DROP TABLE IF EXISTS regions;
+
+/* USER */
+
+DROP TABLE IF EXISTS users;
+
+`)
+
+}else{
+
+console.log('PRODUCTION MODE → DB RESET SKIPPED')
+
+}
+
+/* ==================================================
+POST SETTINGS (ALWAYS)
+================================================== */
+
+db.exec(`
+PRAGMA foreign_keys = ON;
+`)
+
+db.exec(`
+PRAGMA journal_mode = WAL;
+`)
+
+db.exec(`
+PRAGMA synchronous = NORMAL;
+`)
+
+db.exec(`
+PRAGMA busy_timeout = 5000;
+`)
+
+/* ==================================================
+SECTION 01 REGIONS
+GLOBAL REGION TREE STRUCTURE (PRODUCTION FINAL)
+LEVEL 0~5 SUPPORT + GLOBAL SAFE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS regions(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+/* GLOBAL CODE */
+
+code TEXT UNIQUE NOT NULL,
+
+countryCode TEXT NOT NULL,
+
+/* NAME */
+
+name TEXT NOT NULL,
+
+fullName TEXT NOT NULL,
+
+/* HIERARCHY */
+
+regionType TEXT NOT NULL
+CHECK(regionType IN(
+
+'COUNTRY',
+'ADMIN_AREA',
+'SUB_ADMIN_AREA',
+'LOCALITY',
+'SUB_LOCALITY',
+'NEIGHBORHOOD',
+'BLOCK',
+'PARCEL'
+
+)),
+
+level INTEGER NOT NULL
+CHECK(level BETWEEN 0 AND 5),
+
+parentId INTEGER,
+
+path TEXT NOT NULL,
+
+/* GEO */
+
+latitude REAL,
+longitude REAL,
+
+/* GLOBAL */
+
+isoCode TEXT,
+
+timezone TEXT DEFAULT 'UTC',
+
+/* ADMIN */
+
+childCount INTEGER DEFAULT 0,
+
+sortOrder INTEGER DEFAULT 0,
+
+isActive INTEGER DEFAULT 1
+CHECK(isActive IN(0,1)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(parentId)
+REFERENCES regions(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+/* ==================================================
+REGION INDEX (PERFORMANCE)
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_regions_parent
+ON regions(parentId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_regions_level_parent
+ON regions(level,parentId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_regions_code
+ON regions(code)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_regions_fullname
+ON regions(fullName)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_regions_country
+ON regions(countryCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_regions_path
+ON regions(path)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_regions_geo
+ON regions(latitude,longitude)
+`)
+
+/* ==================================================
+DATA INTEGRITY
+================================================== */
+
+db.exec(`
+
+DELETE FROM regions
+WHERE id NOT IN(
+
+SELECT MIN(id)
+FROM regions
+GROUP BY
+countryCode,
+name,
+level,
+parentId
+
+)
+
+`)
+
+db.exec(`
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_regions_unique
+
+ON regions(
+
+countryCode,
+name,
+level,
+parentId
+
+)
+
+`)
+
+/* ==================================================
+PATH PERFORMANCE (VERY IMPORTANT)
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_regions_path_prefix
+ON regions(path)
+`)
+
+/* ==================================================
+ACTIVE FILTER PERFORMANCE
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_regions_active
+ON regions(isActive)
+`)
+
+/* ==================================================
+SECTION 02 USERS
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS users(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+email TEXT NOT NULL UNIQUE,
+passwordHash TEXT NOT NULL,
+
+displayName TEXT,
+
+accountType TEXT DEFAULT 'USER',
+
+status TEXT CHECK(status IN(
+'ACTIVE',
+'INACTIVE'
+)) DEFAULT 'ACTIVE',
+
+feedRegionId INTEGER,
+
+phone TEXT,
+type TEXT DEFAULT 'normal',
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(feedRegionId)
+REFERENCES regions(id)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_users_feedRegion
+ON users(feedRegionId)
+`)
+
+/* ==================================================
+SECTION 03 CATEGORIES
+STANDARD ADMIN CATEGORY STRUCTURE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS categories(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+code TEXT UNIQUE NOT NULL,
+
+name TEXT NOT NULL,
+
+isActive INTEGER DEFAULT 1,
+
+sortOrder INTEGER DEFAULT 0,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+)
+
+`)
+
+/* INDEX */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_categories_code
+ON categories(code)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_categories_active
+ON categories(isActive)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_categories_sort
+ON categories(sortOrder)
+`)
+
+/* DEFAULT DATA */
+
+const categories=[
+
+['GENERAL','일반 게시물',0],
+
+['PLACE','장소',1],
+
+['USED','중고거래',2],
+
+['REAL_ESTATE','부동산',3],
+
+['AUTO','자동차',4],
+
+['JOB','구인구직',5],
+
+['GROUP','모임',6]
+
+]
+
+const insertCategory=db.prepare(`
+
+INSERT OR IGNORE INTO categories(
+
+code,
+name,
+sortOrder
+
+)
+
+VALUES(?,?,?)
+
+`)
+
+categories.forEach(c=>
+
+insertCategory.run(c)
+
+)
+
+/* ==================================================
+SECTION 04 INDUSTRIES
+CATEGORY FK INTEGRITY FIX
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS industries(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+code TEXT UNIQUE,
+name TEXT,
+
+categoryCode TEXT NOT NULL,
+
+isActive INTEGER DEFAULT 1,
+sortOrder INTEGER DEFAULT 0,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(categoryCode)
+REFERENCES categories(code)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_industries_category
+ON industries(categoryCode)
+`)
+
+const industries=[
+
+['FOOD_RESTAURANT','음식점','PLACE'],
+['CAFE','카페','PLACE'],
+['BEAUTY','뷰티','PLACE'],
+['MEDICAL','병원','PLACE'],
+['EDUCATION','교육','PLACE'],
+['RELIGION','종교','PLACE'],
+['FITNESS','헬스','PLACE'],
+['LIFE_SERVICE','생활서비스','PLACE'],
+['FREELANCER','프리랜서','PLACE'],
+['AUTO_SERVICE','자동차정비','PLACE'],
+['MAKER','제조/공장','PLACE'],
+
+['USED_GOODS','중고거래','USED'],
+['DISTRIBUTION','유통','USED'],
+
+['AUTO_SALES','자동차매매','AUTO'],
+['REAL_ESTATE_LISTING','부동산','REAL_ESTATE']
+
+]
+
+const insertIndustry=db.prepare(`
+INSERT OR IGNORE INTO industries(
+code,
+name,
+categoryCode
+)
+VALUES(?,?,?)
+`)
+
+industries.forEach(i=>
+insertIndustry.run(i)
+)
+
+/* ==================================================
+SECTION 05 INDUSTRY_SUBTYPES
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS industry_subtypes(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+industryId INTEGER NOT NULL,
+
+code TEXT UNIQUE,
+name TEXT,
+
+sortOrder INTEGER DEFAULT 0,
+isActive INTEGER DEFAULT 1,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(industryId)
+REFERENCES industries(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_industry_subtypes_industry
+ON industry_subtypes(industryId)
+`)
+
+/* ==================================================
+SECTION 06 ADDRESS_DETAILS
+GLOBAL ADDRESS STRUCTURE (PRODUCTION READY)
+REGION NORMALIZED ADDRESS MODEL
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS address_details(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+regionId INTEGER NOT NULL,
+
+/* KR COMPATIBILITY */
+
+lotNumber TEXT,
+
+buildingName TEXT,
+
+buildingDong TEXT,
+
+/* GLOBAL STANDARD */
+
+streetName TEXT,
+
+buildingNumber TEXT,
+
+subBuilding TEXT,
+
+unitNumber TEXT,
+
+postalCode TEXT,
+
+/* NORMALIZED */
+
+fullAddress TEXT,
+
+latitude REAL,
+
+longitude REAL,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(regionId)
+REFERENCES regions(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+/* ==================================================
+ADDRESS INDEX
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_address_region
+ON address_details(regionId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_address_postal
+ON address_details(postalCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_address_geo
+ON address_details(latitude,longitude)
+`)
+
+/* ==================================================
+SECTION 07 IMAGE_ASSETS (복구)
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS image_assets(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+hash TEXT UNIQUE,
+
+filePath TEXT NOT NULL,
+
+width INTEGER,
+height INTEGER,
+
+size INTEGER,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_image_assets_hash
+ON image_assets(hash)
+`)
+
+/* ==================================================
+SECTION 08 : PROFILES TABLE (CRITICAL FIX)
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS profiles(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+userId INTEGER NOT NULL,
+
+profileType TEXT NOT NULL
+CHECK(profileType IN(
+'GENERAL',
+'BUSINESS'
+)),
+
+displayName TEXT,
+
+slug TEXT,
+
+bio TEXT,
+
+regionId INTEGER,
+
+profilePhotoId INTEGER,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(userId)
+REFERENCES users(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(regionId)
+REFERENCES regions(id)
+
+)
+
+`)
+
+/* ==================================================
+SECTION 08-1 : PROFILES
+PRODUCTION IDENTITY HARDENING FINAL
+================================================== */
+
+db.exec(`
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_user_type
+
+ON profiles(
+userId,
+profileType
+)
+
+`)
+
+/* displayName search */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profiles_display
+ON profiles(displayName)
+`)
+
+/* slug 대비 */
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_slug
+ON profiles(slug)
+WHERE slug IS NOT NULL
+`)
+
+/* region feed */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profiles_region
+ON profiles(regionId)
+`)
+
+/* ==================================================
+SECTION 08-2 : PHOTOS
+================================================== */
+db.exec(`CREATE TABLE IF NOT EXISTS photos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profileId INTEGER NOT NULL,
+  imageAssetId INTEGER NOT NULL,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(profileId) REFERENCES profiles(id) ON DELETE CASCADE,
+  FOREIGN KEY(imageAssetId) REFERENCES image_assets(id) ON DELETE CASCADE
+)`)
+db.exec(`CREATE INDEX IF NOT EXISTS idx_photos_profile ON photos(profileId,createdAt DESC)`)
+db.exec(`CREATE INDEX IF NOT EXISTS idx_photos_asset ON photos(imageAssetId)`)
+
+/* ==================================================
+SECTION 08-3 PROFILE_SESSIONS
+ACTIVE PROFILE SESSION MANAGEMENT (PRODUCTION SAFE)
+LOGIN / PROFILE SWITCH CORE TABLE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS profile_sessions(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+userId INTEGER NOT NULL UNIQUE,
+
+profileId INTEGER NOT NULL,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+/* FK */
+
+FOREIGN KEY(userId)
+REFERENCES users(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+/* ==================================================
+SESSION INDEX
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_sessions_user
+ON profile_sessions(userId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_sessions_profile
+ON profile_sessions(profileId)
+`)
+
+/* ==================================================
+SESSION FAST LOOKUP
+================================================== */
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_sessions_user_unique
+ON profile_sessions(userId)
+`)
+
+/* ==================================================
+SECTION 09-0 : POSTS TABLE (CRITICAL)
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS posts(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL,
+
+regionId INTEGER,
+
+categoryId INTEGER,
+
+type TEXT DEFAULT 'GENERAL',
+
+content TEXT,
+
+status TEXT DEFAULT 'ACTIVE'
+CHECK(status IN(
+'ACTIVE',
+'DELETED',
+'HIDDEN'
+)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(regionId)
+REFERENCES regions(id),
+
+FOREIGN KEY(categoryId)
+REFERENCES categories(id)
+
+)
+
+`)
+
+/* ==================================================
+SECTION 09 : POSTS
+PRODUCTION FEED INDEX HARDENING FINAL
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_posts_profile
+ON posts(profileId,createdAt DESC)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_posts_region
+ON posts(regionId,createdAt DESC)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_posts_type
+ON posts(type)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_posts_status
+ON posts(status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_posts_feed
+ON posts(
+regionId,
+type,
+status,
+createdAt DESC
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_posts_profile_feed
+ON posts(
+profileId,
+status,
+createdAt DESC
+)
+`)
+
+/* ==================================================
+SECTION 10 : POST_IMAGES
+================================================== */
+db.exec(`CREATE TABLE IF NOT EXISTS post_images (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  postId INTEGER NOT NULL,
+  imageAssetId INTEGER NOT NULL,
+  sortOrder INTEGER DEFAULT 0,
+  FOREIGN KEY(postId) REFERENCES posts(id) ON DELETE CASCADE,
+  FOREIGN KEY(imageAssetId) REFERENCES image_assets(id) ON DELETE CASCADE
+)`)
+db.exec(`CREATE INDEX IF NOT EXISTS idx_post_images_post_sort ON post_images(postId,sortOrder)`)
+
+/* ==================================================
+SECTION 11 PROFILE PHOTO SAFETY TRIGGER
+FK INTEGRITY FIX (photos 기준)
+================================================== */
+
+db.exec(`
+
+CREATE TRIGGER IF NOT EXISTS trg_profile_photo_cleanup
+
+AFTER DELETE ON photos
+
+BEGIN
+
+UPDATE profiles
+SET profilePhotoId=NULL
+WHERE profilePhotoId=OLD.id;
+
+END;
+
+`)
+
+/* ==================================================
+SECTION 13 PROFILE_HERO_SLIDES
+PROFILE HERO IMAGE STRUCTURE (PRODUCTION FINAL)
+HERO SLOT SAFE VERSION
+CHECK + UNIQUE + TRIGGER SAFE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS profile_hero_slides (
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL,
+
+photoId INTEGER NOT NULL,
+
+sortOrder INTEGER NOT NULL
+CHECK(sortOrder BETWEEN 1 AND 5),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+/* FK */
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(photoId)
+REFERENCES photos(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+/* ==================================================
+BASIC INDEX
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_hero_profile
+ON profile_hero_slides(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_hero_sort
+ON profile_hero_slides(profileId,sortOrder)
+`)
+
+/* ==================================================
+UNIQUE PHOTO
+================================================== */
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_hero_unique_photo
+ON profile_hero_slides(profileId,photoId)
+`)
+
+/* ==================================================
+UNIQUE SLOT
+================================================== */
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_hero_unique_slot
+ON profile_hero_slides(profileId,sortOrder)
+`)
+
+/* ==================================================
+LOOKUP PERFORMANCE
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_hero_photo
+ON profile_hero_slides(photoId)
+`)
+
+/* ==================================================
+DATA INTEGRITY TRIGGER
+================================================== */
+
+db.exec(`
+
+CREATE TRIGGER IF NOT EXISTS trg_profile_hero_sort_guard
+
+BEFORE INSERT ON profile_hero_slides
+
+WHEN NEW.sortOrder < 1 OR NEW.sortOrder > 5
+
+BEGIN
+
+SELECT RAISE(ABORT,'Invalid hero slot');
+
+END;
+
+`)
+
+/* ==================================================
+SECTION 14 : PROFILE_BLOCKS
+================================================== */
+db.exec(`CREATE TABLE IF NOT EXISTS profile_blocks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profileId INTEGER NOT NULL,
+  type TEXT CHECK(type IN ('TEXT','LINK')),
+  title TEXT,
+  content TEXT,
+  url TEXT,
+  description TEXT,
+  sortOrder INTEGER DEFAULT 0,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(profileId) REFERENCES profiles(id) ON DELETE CASCADE
+)`)
+db.exec(`CREATE INDEX IF NOT EXISTS idx_profile_blocks_profile ON profile_blocks(profileId)`)
+
+/* ==================================================
+SECTION 15 : POST_ENGAGEMENTS
+PRODUCTION SAFE UPDATED_AT TRIGGER HARDENED
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS post_engagements(
+
+postId INTEGER PRIMARY KEY,
+
+viewCount INTEGER DEFAULT 0,
+
+likeCount INTEGER DEFAULT 0,
+
+saveCount INTEGER DEFAULT 0,
+
+commentCount INTEGER DEFAULT 0,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(postId)
+REFERENCES posts(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_engagements_post
+ON post_engagements(postId)
+`)
+
+db.exec(`
+
+CREATE TRIGGER IF NOT EXISTS trg_post_engagements_updated
+
+AFTER UPDATE ON post_engagements
+
+FOR EACH ROW
+
+WHEN NEW.updatedAt = OLD.updatedAt
+
+BEGIN
+
+UPDATE post_engagements
+SET updatedAt=CURRENT_TIMESTAMP
+WHERE postId=NEW.postId;
+
+END;
+
+`)
+
+/* ==================================================
+SECTION 16 : POST_COMMENTS
+PRODUCTION SAFE UPDATED_AT TRIGGER HARDENED
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS post_comments(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+postId INTEGER NOT NULL,
+
+profileId INTEGER NOT NULL,
+
+parentId INTEGER,
+
+content TEXT NOT NULL,
+
+likeCount INTEGER DEFAULT 0,
+
+replyCount INTEGER DEFAULT 0,
+
+status TEXT CHECK(status IN(
+'ACTIVE',
+'DELETED'
+)) DEFAULT 'ACTIVE',
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(postId)
+REFERENCES posts(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(parentId)
+REFERENCES post_comments(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_comments_post
+ON post_comments(postId,createdAt DESC)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_comments_parent
+ON post_comments(parentId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_comments_profile
+ON post_comments(profileId)
+`)
+
+db.exec(`
+
+CREATE TRIGGER IF NOT EXISTS trg_comments_updated
+
+AFTER UPDATE ON post_comments
+
+FOR EACH ROW
+
+WHEN NEW.updatedAt = OLD.updatedAt
+
+BEGIN
+
+UPDATE post_comments
+SET updatedAt=CURRENT_TIMESTAMP
+WHERE id=NEW.id;
+
+END;
+
+`)
+
+/* ==================================================
+SECTION 17 : CONVERSATIONS (FIXED)
+MESSAGING CORE ROOM TABLE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS conversations(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+type TEXT DEFAULT 'DIRECT'
+CHECK(type IN(
+'DIRECT',
+'GROUP'
+)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+)
+
+`)
+
+/* ==================================================
+SECTION 17-1 : CONVERSATION_MEMBERS (CRITICAL ADD)
+MEMBER INTEGRITY TABLE
+GROUP / DIRECT MEMBER CONTROL
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS conversation_members(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+conversationId INTEGER NOT NULL,
+
+profileId INTEGER NOT NULL,
+
+role TEXT DEFAULT 'MEMBER'
+CHECK(role IN(
+'OWNER',
+'ADMIN',
+'MEMBER'
+)),
+
+joinedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+lastReadMessageId INTEGER,
+
+FOREIGN KEY(conversationId)
+REFERENCES conversations(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+UNIQUE(conversationId,profileId)
+
+)
+
+`)
+
+/* MEMBER LOOKUP */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_conv_member_conv
+ON conversation_members(conversationId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_conv_member_profile
+ON conversation_members(profileId)
+`)
+
+/* ==================================================
+SECTION 18 : MESSAGES (HARDENED)
+MEMBER VALIDATION READY
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS messages(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+conversationId INTEGER NOT NULL,
+
+senderProfileId INTEGER NOT NULL,
+
+content TEXT,
+
+type TEXT DEFAULT 'TEXT'
+CHECK(type IN(
+'TEXT',
+'IMAGE',
+'FILE',
+'SYSTEM'
+)),
+
+isRead INTEGER DEFAULT 0,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(conversationId)
+REFERENCES conversations(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(senderProfileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+/* MESSAGE LOOKUP */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_messages_conversation
+ON messages(conversationId,createdAt DESC)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_messages_sender
+ON messages(senderProfileId)
+`)
+
+/* ==================================================
+SECTION 18-1 : MESSAGE_READS
+GROUP MESSAGE READ TRACKING (CRITICAL)
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS message_reads(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+messageId INTEGER NOT NULL,
+
+profileId INTEGER NOT NULL,
+
+readAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(messageId)
+REFERENCES messages(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+UNIQUE(messageId,profileId)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_msg_reads_message
+ON message_reads(messageId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_msg_reads_profile
+ON message_reads(profileId)
+`)
+
+/* ==================================================
+SECTION 19 : NOTIFICATIONS
+UNIFIED NOTIFICATION TABLE
+USER + PROFILE COMPATIBLE STRUCTURE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS notifications(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+userId INTEGER,
+
+profileId INTEGER,
+
+type TEXT,
+
+title TEXT,
+
+message TEXT,
+
+content TEXT,
+
+referenceType TEXT,
+
+referenceId INTEGER,
+
+isRead INTEGER DEFAULT 0,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(userId)
+REFERENCES users(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+CHECK(
+userId IS NOT NULL
+OR profileId IS NOT NULL
+)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_notifications_user
+ON notifications(userId,isRead)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_notifications_profile
+ON notifications(profileId,isRead)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_notifications_type
+ON notifications(type)
+`)
+
+/* ==================================================
+SECTION 20 : REPORTS
+UNIFIED CONTENT REPORT SYSTEM
+POST + PROFILE + COMMENT SUPPORT
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS reports(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+reporterProfileId INTEGER NOT NULL,
+
+targetType TEXT NOT NULL
+CHECK(targetType IN(
+'POST',
+'PROFILE',
+'COMMENT'
+)),
+
+targetId INTEGER NOT NULL,
+
+targetPostId INTEGER,
+
+targetCommentId INTEGER,
+
+reason TEXT,
+
+status TEXT DEFAULT 'OPEN'
+CHECK(status IN(
+'OPEN',
+'REVIEW',
+'RESOLVED',
+'REJECTED'
+)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(reporterProfileId)
+REFERENCES profiles(id),
+
+FOREIGN KEY(targetPostId)
+REFERENCES posts(id),
+
+FOREIGN KEY(targetCommentId)
+REFERENCES post_comments(id)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_reports_target
+ON reports(targetType,targetId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_reports_status
+ON reports(status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_reports_reporter
+ON reports(reporterProfileId)
+`)
+
+/* ==================================================
+SECTION 21 : BUSINESS_INFO
+================================================== */
+
+db.exec(`CREATE TABLE IF NOT EXISTS business_info (
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+profileId INTEGER UNIQUE,
+businessName TEXT,
+businessNumber TEXT,
+contactPhone TEXT,
+website TEXT,
+kakao TEXT,
+openingHours TEXT,
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)`)
+
+/* ==================================================
+SECTION 22 : SYSTEM_LOGS
+================================================== */
+
+db.exec(`CREATE TABLE IF NOT EXISTS system_logs (
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+type TEXT,
+message TEXT,
+meta TEXT,
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+)`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_logs_type
+ON system_logs(type,createdAt DESC)
+`)
+
+/* ==================================================
+SECTION 23 : ANALYTICS_EVENTS
+================================================== */
+
+db.exec(`CREATE TABLE IF NOT EXISTS analytics_events (
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+userId INTEGER,
+profileId INTEGER,
+eventType TEXT,
+targetId INTEGER,
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY(userId)
+REFERENCES users(id),
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+
+)`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_analytics_event
+ON analytics_events(eventType,createdAt DESC)
+`)
+
+/* ==================================================
+SECTION 24 : REGION_ALIASES
+GLOBAL REGION SEARCH SUPPORT
+MULTI LANGUAGE / SHORT NAME / NORMALIZED SEARCH
+PRODUCTION SAFE VERSION (NOT NULL + UNIQUE + INDEX 강화)
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS region_aliases(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+regionId INTEGER NOT NULL,
+
+alias TEXT NOT NULL,
+
+language TEXT,
+
+/* SEARCH NORMALIZED TEXT (LOWER / TRIM / ASCII SAFE) */
+
+normalized TEXT NOT NULL,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(regionId)
+REFERENCES regions(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+/* ==================================================
+BASIC INDEX
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_alias
+ON region_aliases(alias)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_alias_norm
+ON region_aliases(normalized)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_alias_region
+ON region_aliases(regionId)
+`)
+
+/* ==================================================
+PRODUCTION UNIQUE SAFETY
+같은 region alias 중복 방지
+================================================== */
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_region_alias_unique
+ON region_aliases(regionId,alias)
+`)
+
+/* ==================================================
+SEARCH LANGUAGE FILTER
+다국어 검색 가속
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_alias_lang
+ON region_aliases(language)
+`)
+
+/* ==================================================
+NORMALIZED SEARCH PERFORMANCE
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_alias_norm_region
+ON region_aliases(regionId,normalized)
+`)
+
+/* ==================================================
+SECTION 25 : REGION_METADATA
+GLOBAL REGION EXTENSION DATA
+CURRENCY / LANGUAGE / PHONE / POPULATION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS region_metadata(
+
+regionId INTEGER PRIMARY KEY,
+
+currency TEXT,
+
+language TEXT,
+
+phoneCode TEXT,
+
+postalFormat TEXT,
+
+population INTEGER,
+
+areaKm REAL,
+
+flag TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(regionId)
+REFERENCES regions(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_meta_currency
+ON region_metadata(currency)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_meta_language
+ON region_metadata(language)
+`)
+
+/* ==================================================
+SECTION 26 : REGION_HIERARCHY_CACHE
+REGION LOOKUP PERFORMANCE CACHE
+GLOBAL FEED / FILTER / TARGETING SUPPORT
+PRODUCTION FINAL VERSION (CHECK + INTEGRITY SAFE)
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS region_hierarchy_cache(
+
+/* ROOT */
+
+regionId INTEGER PRIMARY KEY,
+
+/* HIERARCHY CORE */
+
+countryId INTEGER NOT NULL,
+
+adminAreaId INTEGER,
+
+cityId INTEGER,
+
+districtId INTEGER,
+
+neighborhoodId INTEGER,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+/* FK */
+
+FOREIGN KEY(regionId)
+REFERENCES regions(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(countryId)
+REFERENCES regions(id),
+
+FOREIGN KEY(adminAreaId)
+REFERENCES regions(id),
+
+FOREIGN KEY(cityId)
+REFERENCES regions(id),
+
+FOREIGN KEY(districtId)
+REFERENCES regions(id),
+
+FOREIGN KEY(neighborhoodId)
+REFERENCES regions(id),
+
+/* ==================================================
+INTEGRITY CHECK
+================================================== */
+
+CHECK(countryId > 0),
+
+CHECK(regionId != countryId),
+
+CHECK(
+adminAreaId IS NULL
+OR adminAreaId != regionId
+),
+
+CHECK(
+cityId IS NULL
+OR cityId != regionId
+),
+
+CHECK(
+districtId IS NULL
+OR districtId != regionId
+),
+
+CHECK(
+neighborhoodId IS NULL
+OR neighborhoodId != regionId
+)
+
+)
+
+`)
+
+/* ==================================================
+BASIC INDEX
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_cache_country
+ON region_hierarchy_cache(countryId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_cache_admin
+ON region_hierarchy_cache(adminAreaId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_cache_city
+ON region_hierarchy_cache(cityId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_cache_district
+ON region_hierarchy_cache(districtId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_cache_neighborhood
+ON region_hierarchy_cache(neighborhoodId)
+`)
+
+/* ==================================================
+COMPOSITE INDEX (FEED FILTER CORE)
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_cache_full
+ON region_hierarchy_cache(
+
+countryId,
+adminAreaId,
+cityId,
+districtId
+
+)
+`)
+
+/* ==================================================
+CITY RANGE FILTER
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_cache_city_neighborhood
+ON region_hierarchy_cache(
+
+cityId,
+neighborhoodId
+
+)
+`)
+
+/* ==================================================
+DISTRICT RANGE FILTER
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_cache_district_neighborhood
+ON region_hierarchy_cache(
+
+districtId,
+neighborhoodId
+
+)
+`)
+
+/* ==================================================
+PROFILE LOOKUP OPTIMIZATION
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_cache_region_country
+ON region_hierarchy_cache(
+
+regionId,
+countryId
+
+)
+`)
+
+/* ==================================================
+DATA SAFETY (INVALID INSERT BLOCK)
+================================================== */
+
+db.exec(`
+
+CREATE TRIGGER IF NOT EXISTS trg_region_cache_self_guard
+
+BEFORE INSERT ON region_hierarchy_cache
+
+WHEN
+NEW.regionId = NEW.adminAreaId
+OR NEW.regionId = NEW.cityId
+OR NEW.regionId = NEW.districtId
+OR NEW.regionId = NEW.neighborhoodId
+
+BEGIN
+
+SELECT RAISE(ABORT,'Invalid hierarchy self reference');
+
+END;
+
+`)
+
+/* ==================================================
+UPDATE SAFETY
+================================================== */
+
+db.exec(`
+
+CREATE TRIGGER IF NOT EXISTS trg_region_cache_update_guard
+
+BEFORE UPDATE ON region_hierarchy_cache
+
+WHEN
+NEW.regionId = NEW.adminAreaId
+OR NEW.regionId = NEW.cityId
+OR NEW.regionId = NEW.districtId
+OR NEW.regionId = NEW.neighborhoodId
+
+BEGIN
+
+SELECT RAISE(ABORT,'Invalid hierarchy update');
+
+END;
+
+`)
+
+/* ==================================================
+SECTION 27 : PROFILE_RELATIONSHIPS
+SOCIAL GRAPH (FOLLOW / BLOCK / MUTE)
+PRODUCTION SOCIAL STRUCTURE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS profile_relationships(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+sourceProfileId INTEGER NOT NULL,
+
+targetProfileId INTEGER NOT NULL,
+
+relationType TEXT NOT NULL
+CHECK(relationType IN(
+'FOLLOW',
+'BLOCK',
+'MUTE'
+)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(sourceProfileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(targetProfileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+UNIQUE(sourceProfileId,targetProfileId,relationType)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_relationship_source
+ON profile_relationships(sourceProfileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_relationship_target
+ON profile_relationships(targetProfileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_relationship_type
+ON profile_relationships(relationType)
+`)
+
+/* ==================================================
+SECTION 27-1 : PROFILE_FOLLOW_STATS
+FOLLOW COUNT CACHE (PERFORMANCE CRITICAL)
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS profile_follow_stats(
+
+profileId INTEGER PRIMARY KEY,
+
+followerCount INTEGER DEFAULT 0,
+
+followingCount INTEGER DEFAULT 0,
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_follow_stats_followers
+ON profile_follow_stats(followerCount DESC)
+`)
+
+
+/* ==================================================
+SECTION 28 : ACTIVITY_LOGS
+USER BEHAVIOR TRACKING (AI / FEED / ANALYTICS)
+PRODUCTION INTEGRITY VERSION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS activity_logs(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL,
+
+action TEXT NOT NULL
+CHECK(action IN(
+
+'POST_CREATE',
+'POST_VIEW',
+'POST_LIKE',
+'POST_COMMENT',
+'PROFILE_VIEW',
+'FOLLOW',
+'UNFOLLOW',
+'MESSAGE_SEND',
+'LOGIN',
+'SEARCH'
+
+)),
+
+targetType TEXT
+CHECK(targetType IN(
+'POST',
+'PROFILE',
+'MESSAGE',
+'REGION',
+'SYSTEM'
+)),
+
+targetId INTEGER,
+
+regionId INTEGER,
+
+meta TEXT
+CHECK(
+meta IS NULL
+OR json_valid(meta)
+),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+/* FK */
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(regionId)
+REFERENCES regions(id)
+ON DELETE SET NULL
+
+)
+
+`)
+
+/* ==================================================
+PROFILE ACTIVITY LOOKUP
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_activity_profile
+ON activity_logs(profileId)
+`)
+
+/* ==================================================
+ACTION FILTER
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_activity_action
+ON activity_logs(action)
+`)
+
+/* ==================================================
+RECENT ACTIVITY (FEED AI CORE)
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_activity_created
+ON activity_logs(createdAt DESC)
+`)
+
+/* ==================================================
+REGION TARGETING
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_activity_region
+ON activity_logs(regionId)
+`)
+
+/* ==================================================
+TARGET LOOKUP
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_activity_target
+ON activity_logs(targetType,targetId)
+`)
+
+/* ==================================================
+PRODUCTION FEED AI INDEX
+(profile + action + time)
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_activity_profile_action_time
+ON activity_logs(profileId,action,createdAt DESC)
+`)
+
+/* ==================================================
+REGION ACTIVITY RANGE
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_activity_region_time
+ON activity_logs(regionId,createdAt DESC)
+`)
+
+/* ==================================================
+SECTION 29 : CACHE_KEYS
+APPLICATION CACHE LAYER (REDIS COMPATIBLE STRUCTURE)
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS cache_keys(
+
+key TEXT PRIMARY KEY,
+
+value TEXT,
+
+expiresAt TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cache_expire
+ON cache_keys(expiresAt)
+`)
+
+/* ==================================================
+SECTION 30 : JOB_QUEUE
+PRODUCTION QUEUE RACE CONDITION HARDENING FINAL
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS job_queue(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+jobType TEXT NOT NULL,
+
+payload TEXT NOT NULL
+CHECK(json_valid(payload)),
+
+status TEXT DEFAULT 'PENDING'
+CHECK(status IN(
+
+'PENDING',
+'PROCESSING',
+'DONE',
+'FAILED'
+
+)),
+
+priority INTEGER DEFAULT 0
+CHECK(priority BETWEEN 0 AND 10),
+
+attempts INTEGER DEFAULT 0
+CHECK(attempts BETWEEN 0 AND 10),
+
+maxAttempts INTEGER DEFAULT 5
+CHECK(maxAttempts BETWEEN 1 AND 10),
+
+lockedAt TEXT,
+
+runAt TEXT,
+
+lastError TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+)
+
+`)
+
+/* worker fetch */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_job_worker_fetch
+
+ON job_queue(
+status,
+priority DESC,
+runAt,
+lockedAt
+)
+`)
+
+/* retry lookup */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_job_attempts
+ON job_queue(attempts,maxAttempts)
+`)
+
+/* type */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_job_type
+ON job_queue(jobType)
+`)
+
+/* lock */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_job_locked
+ON job_queue(lockedAt)
+`)
+
+/* update trigger */
+
+db.exec(`
+
+CREATE TRIGGER IF NOT EXISTS trg_job_updated
+
+AFTER UPDATE ON job_queue
+
+FOR EACH ROW
+
+WHEN NEW.updatedAt = OLD.updatedAt
+
+BEGIN
+
+UPDATE job_queue
+SET updatedAt=CURRENT_TIMESTAMP
+WHERE id=NEW.id;
+
+END;
+
+`)
+
+/* retry guard */
+
+db.exec(`
+
+CREATE TRIGGER IF NOT EXISTS trg_job_retry_limit_guard
+
+BEFORE UPDATE ON job_queue
+
+FOR EACH ROW
+
+WHEN NEW.attempts > NEW.maxAttempts
+
+BEGIN
+
+SELECT RAISE(ABORT,'Job attempts exceeded maxAttempts');
+
+END;
+
+`)
+
+/* final retry guard */
+
+db.exec(`
+
+CREATE TRIGGER IF NOT EXISTS trg_job_retry_failed_guard
+
+BEFORE UPDATE ON job_queue
+
+FOR EACH ROW
+
+WHEN NEW.attempts = NEW.maxAttempts
+AND NEW.status NOT IN('FAILED','DONE')
+
+BEGIN
+
+SELECT RAISE(ABORT,'Final retry must transition to FAILED or DONE');
+
+END;
+
+`)
+
+/* ==================================================
+SECTION 30-1 : SEARCH_INDEX (INTEGRITY FIX)
+SEARCH TARGET STRUCTURE HARDENED
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS search_index(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+targetType TEXT NOT NULL
+CHECK(targetType IN(
+'POST',
+'PROFILE',
+'BUSINESS',
+'REGION'
+)),
+
+targetId INTEGER NOT NULL,
+
+text TEXT NOT NULL,
+
+regionId INTEGER,
+
+status TEXT DEFAULT 'ACTIVE'
+CHECK(status IN(
+'ACTIVE',
+'HIDDEN',
+'DELETED'
+)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(regionId)
+REFERENCES regions(id)
+
+)
+
+`)
+
+/* TYPE TARGET LOOKUP */
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS idx_search_type_target
+
+ON search_index(
+targetType,
+targetId
+
+)
+
+`)
+
+/* SEARCH TEXT */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_search_text
+ON search_index(text)
+`)
+
+/* STATUS */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_search_status
+ON search_index(status)
+`)
+
+/* REGION */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_search_region
+ON search_index(regionId)
+`)
+
+/* SEARCH PERFORMANCE */
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS idx_search_full
+
+ON search_index(
+targetType,
+regionId,
+status
+)
+
+`)
+
+/* ORPHAN CLEANER (INTEGRITY SAFETY) */
+
+db.exec(`
+
+CREATE TRIGGER IF NOT EXISTS trg_search_post_cleanup
+
+AFTER DELETE ON posts
+
+BEGIN
+
+DELETE FROM search_index
+WHERE targetType='POST'
+AND targetId=OLD.id;
+
+END;
+
+`)
+
+db.exec(`
+
+CREATE TRIGGER IF NOT EXISTS trg_search_profile_cleanup
+
+AFTER DELETE ON profiles
+
+BEGIN
+
+DELETE FROM search_index
+WHERE targetType='PROFILE'
+AND targetId=OLD.id;
+
+END;
+
+`)
+
+/* ==================================================
+SECTION 30-2 : API_RATE_LIMIT
+API ABUSE PROTECTION (SECURITY)
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS api_rate_limits(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+ip TEXT,
+
+profileId INTEGER,
+
+endpoint TEXT NOT NULL,
+
+requestCount INTEGER DEFAULT 1,
+
+windowStart TEXT NOT NULL,
+
+lastRequestAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_rate_ip
+ON api_rate_limits(ip)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_rate_profile
+ON api_rate_limits(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_rate_endpoint
+ON api_rate_limits(endpoint)
+`)
+
+/* ==================================================
+SECTION 31-1 : DELETE_AUDIT_LOG
+SOFT DELETE RECOVERY SAFETY
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS delete_audit_log(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+targetType TEXT NOT NULL,
+
+targetId INTEGER NOT NULL,
+
+profileId INTEGER,
+
+reason TEXT,
+
+deletedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+snapshot TEXT,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_delete_target
+ON delete_audit_log(targetType,targetId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_delete_profile
+ON delete_audit_log(profileId)
+`)
+
+/* ==================================================
+SECTION 32 : POST_IMPRESSIONS
+FEED EXPOSURE TRACKING (AI FEED CORE)
+CTR / RANKING / RECOMMENDATION DATA
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS post_impressions(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+postId INTEGER NOT NULL,
+
+profileId INTEGER NOT NULL,
+
+feedType TEXT
+CHECK(feedType IN(
+'LOCAL',
+'FOLLOW',
+'TREND',
+'RECOMMEND'
+)),
+
+position INTEGER,
+
+shownAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(postId)
+REFERENCES posts(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_impressions_post
+ON post_impressions(postId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_impressions_profile
+ON post_impressions(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_impressions_time
+ON post_impressions(shownAt DESC)
+`)
+
+/* ==================================================
+SECTION 33 : FEED_SEEN_HISTORY
+FEED DUPLICATE PREVENTION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS feed_seen_history(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL,
+
+postId INTEGER NOT NULL,
+
+seenAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(postId)
+REFERENCES posts(id)
+ON DELETE CASCADE,
+
+UNIQUE(profileId,postId)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_seen_profile
+ON feed_seen_history(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_seen_post
+ON feed_seen_history(postId)
+`)
+
+/* ==================================================
+SECTION 34 : PROFILE_INTEREST_TAGS
+USER INTEREST MODEL
+AI RECOMMEND BASE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS profile_interest_tags(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL,
+
+tag TEXT NOT NULL,
+
+score REAL DEFAULT 0,
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+UNIQUE(profileId,tag)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_interest_profile
+ON profile_interest_tags(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_interest_tag
+ON profile_interest_tags(tag)
+`)
+
+/* ==================================================
+SECTION 35 : FEED_PREFERENCES
+PERSONAL FEED SETTINGS
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS feed_preferences(
+
+profileId INTEGER PRIMARY KEY,
+
+feedMode TEXT DEFAULT 'LOCAL'
+CHECK(feedMode IN(
+'LOCAL',
+'FOLLOW',
+'TREND',
+'NEW'
+)),
+
+radiusKm INTEGER DEFAULT 10,
+
+hideSeen INTEGER DEFAULT 1,
+
+hideBlocked INTEGER DEFAULT 1,
+
+hideReported INTEGER DEFAULT 1,
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+/* ==================================================
+SECTION 36 : PROFILE_REPUTATION
+PROFILE TRUST SCORE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS profile_reputation(
+
+profileId INTEGER PRIMARY KEY,
+
+score REAL DEFAULT 0,
+
+reviewScore REAL DEFAULT 0,
+
+reportCount INTEGER DEFAULT 0,
+
+trustLevel TEXT DEFAULT 'NORMAL'
+CHECK(trustLevel IN(
+'LOW',
+'NORMAL',
+'HIGH',
+'TRUSTED'
+)),
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_reputation_score
+ON profile_reputation(score DESC)
+`)
+
+/* ==================================================
+SECTION 37 : FEED_HIDE_FILTER
+USER FEED FILTER CONTROL
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS feed_hide_filter(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL,
+
+targetProfileId INTEGER,
+
+targetPostId INTEGER,
+
+reason TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(targetProfileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(targetPostId)
+REFERENCES posts(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_feed_hide_profile
+ON feed_hide_filter(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_feed_hide_target_profile
+ON feed_hide_filter(targetProfileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_feed_hide_post
+ON feed_hide_filter(targetPostId)
+`)
+
+/* ==================================================
+SECTION 38 : FEED_RANK_CACHE
+FEED SCORE CACHE (AI FEED ENGINE CORE)
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS feed_rank_cache(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL,
+
+postId INTEGER NOT NULL,
+
+score REAL NOT NULL,
+
+reason TEXT,
+
+expiresAt TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(postId)
+REFERENCES posts(id)
+ON DELETE CASCADE,
+
+UNIQUE(profileId,postId)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_feed_rank_profile
+ON feed_rank_cache(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_feed_rank_score
+ON feed_rank_cache(score DESC)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_feed_rank_expire
+ON feed_rank_cache(expiresAt)
+`)
+
+/* ==================================================
+SECTION 39 : POST_TREND_SCORE
+TREND CALCULATION TABLE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS post_trend_score(
+
+postId INTEGER PRIMARY KEY,
+
+trendScore REAL DEFAULT 0,
+
+velocity REAL DEFAULT 0,
+
+regionId INTEGER,
+
+calculatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(postId)
+REFERENCES posts(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(regionId)
+REFERENCES regions(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_trend_score
+ON post_trend_score(trendScore DESC)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_trend_region
+ON post_trend_score(regionId)
+`)
+
+/* ==================================================
+SECTION 40 : CONTENT_QUALITY_SCORE
+CONTENT MODERATION SCORE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS content_quality_score(
+
+postId INTEGER PRIMARY KEY,
+
+qualityScore REAL DEFAULT 0,
+
+reportCount INTEGER DEFAULT 0,
+
+spamScore REAL DEFAULT 0,
+
+moderationState TEXT DEFAULT 'NORMAL'
+CHECK(moderationState IN(
+
+'NORMAL',
+'REVIEW',
+'LIMITED',
+'BLOCKED'
+
+)),
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(postId)
+REFERENCES posts(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_quality_score
+ON content_quality_score(qualityScore DESC)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_quality_state
+ON content_quality_score(moderationState)
+`)
+
+/* ==================================================
+SECTION 41-0 : ORDERS TABLE (CRITICAL)
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS orders(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+buyerProfileId INTEGER,
+
+sellerProfileId INTEGER,
+
+status TEXT DEFAULT 'CREATED'
+CHECK(status IN(
+
+'CREATED',
+'PAID',
+'CANCELLED',
+'COMPLETED',
+'DISPUTED'
+
+)),
+
+totalAmount INTEGER,
+
+currency TEXT DEFAULT 'KRW',
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(buyerProfileId)
+REFERENCES profiles(id),
+
+FOREIGN KEY(sellerProfileId)
+REFERENCES profiles(id)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_orders_buyer
+ON orders(buyerProfileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_orders_seller
+ON orders(sellerProfileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_orders_status
+ON orders(status)
+`)
+
+/* ==================================================
+SECTION 41 : PROFILE_ACTIVITY_SCORE
+PROFILE ACTIVITY INDEX
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS profile_activity_score(
+
+profileId INTEGER PRIMARY KEY,
+
+activityScore REAL DEFAULT 0,
+
+postCount INTEGER DEFAULT 0,
+
+engagementScore REAL DEFAULT 0,
+
+lastActiveAt TEXT,
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_activity_score
+ON profile_activity_score(activityScore DESC)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_last_active
+ON profile_activity_score(lastActiveAt)
+`)
+
+/* ==================================================
+SECTION 42 : WALLETS
+PRODUCTION FINAL HARDENED
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS wallets(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL UNIQUE,
+
+balance INTEGER DEFAULT 0
+CHECK(balance>=0),
+
+holdBalance INTEGER DEFAULT 0
+CHECK(holdBalance>=0),
+
+currency TEXT DEFAULT 'KRW',
+
+status TEXT DEFAULT 'ACTIVE'
+CHECK(status IN(
+'ACTIVE',
+'LOCKED',
+'SUSPENDED'
+)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+updatedAt TEXT,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_wallet_profile
+ON wallets(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_wallet_status
+ON wallets(status)
+`)
+
+/* ==================================================
+SECTION 43 : WALLET_TRANSACTIONS
+LEDGER INTEGRITY HARDENED FINAL
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS wallet_transactions(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+walletId INTEGER NOT NULL,
+
+paymentId INTEGER,
+
+orderId INTEGER,
+
+type TEXT
+CHECK(type IN(
+
+'CREDIT',
+'DEBIT',
+'REFUND',
+'FEE',
+'ESCROW_HOLD',
+'ESCROW_RELEASE'
+
+)),
+
+amount INTEGER NOT NULL
+CHECK(amount>0),
+
+balanceAfter INTEGER,
+
+description TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(walletId)
+REFERENCES wallets(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(paymentId)
+REFERENCES payments(id),
+
+FOREIGN KEY(orderId)
+REFERENCES orders(id)
+
+)
+
+`)
+
+/* wallet lookup */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_wallet
+ON wallet_transactions(walletId)
+`)
+
+/* payment lookup */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_payment
+ON wallet_transactions(paymentId)
+`)
+
+/* type */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_type
+ON wallet_transactions(type)
+`)
+
+/* ledger duplicate protection */
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_wallet_tx_unique_payment
+
+ON wallet_transactions(
+walletId,
+paymentId,
+type
+)
+
+WHERE paymentId IS NOT NULL
+`)
+
+/* order ledger */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_order
+ON wallet_transactions(orderId)
+`)
+
+/* ==================================================
+SECTION 45 : PAYMENTS
+PRODUCTION FINAL HARDENED
+IDEMPOTENCY + PROVIDER DUPLICATE SAFE
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS payments(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+orderId INTEGER NOT NULL,
+
+buyerProfileId INTEGER NOT NULL,
+
+sellerProfileId INTEGER,
+
+walletId INTEGER,
+
+amount INTEGER NOT NULL
+CHECK(amount>0),
+
+currency TEXT DEFAULT 'KRW',
+
+idempotencyKey TEXT UNIQUE,
+
+status TEXT DEFAULT 'READY'
+CHECK(status IN(
+'READY',
+'SUCCESS',
+'FAILED',
+'REFUNDED',
+'CANCELLED'
+)),
+
+provider TEXT,
+
+providerPaymentId TEXT,
+
+method TEXT
+CHECK(method IN(
+'WALLET',
+'CARD',
+'TRANSFER',
+'POINT'
+)),
+
+errorCode TEXT,
+
+errorMessage TEXT,
+
+meta TEXT
+CHECK(
+meta IS NULL
+OR json_valid(meta)
+),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+paidAt TEXT,
+
+refundedAt TEXT,
+
+FOREIGN KEY(orderId)
+REFERENCES orders(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(buyerProfileId)
+REFERENCES profiles(id),
+
+FOREIGN KEY(sellerProfileId)
+REFERENCES profiles(id),
+
+FOREIGN KEY(walletId)
+REFERENCES wallets(id)
+
+)
+
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_provider_unique
+ON payments(provider,providerPaymentId)
+WHERE providerPaymentId IS NOT NULL
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_order
+ON payments(orderId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_buyer
+ON payments(buyerProfileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_seller
+ON payments(sellerProfileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_wallet
+ON payments(walletId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_status
+ON payments(status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_provider
+ON payments(providerPaymentId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_created
+ON payments(createdAt DESC)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_buyer_status_time
+ON payments(buyerProfileId,status,createdAt DESC)
+`)
+
+/* ==================================================
+SECTION 46 : REFUNDS
+REFUND MANAGEMENT
+INTEGER MONEY SAFE VERSION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS refunds(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+paymentId INTEGER NOT NULL,
+
+amount INTEGER NOT NULL
+CHECK(amount>0),
+
+reason TEXT,
+
+status TEXT DEFAULT 'REQUEST'
+CHECK(status IN(
+
+'REQUEST',
+'APPROVED',
+'REJECTED',
+'DONE'
+
+)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(paymentId)
+REFERENCES payments(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_refund_payment
+ON refunds(paymentId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_refund_status
+ON refunds(status)
+`)
+
+/* ==================================================
+SECTION 47 : SETTLEMENTS
+BUSINESS PAYOUT
+INTEGER MONEY SAFE VERSION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS settlements(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+sellerProfileId INTEGER NOT NULL,
+
+amount INTEGER NOT NULL
+CHECK(amount>0),
+
+fee INTEGER DEFAULT 0
+CHECK(fee>=0),
+
+netAmount INTEGER NOT NULL
+CHECK(netAmount>=0),
+
+status TEXT DEFAULT 'READY'
+CHECK(status IN(
+
+'READY',
+'PROCESSING',
+'PAID'
+
+)),
+
+settledAt TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(sellerProfileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE,
+
+CHECK(netAmount=amount-fee)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_settlement_seller
+ON settlements(sellerProfileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_settlement_status
+ON settlements(status)
+`)
+
+/* ==================================================
+SECTION 48 : PAYMENT_METHODS
+SAVED PAYMENT METHODS
+DEFAULT UNIQUENESS HARDENED
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS payment_methods(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL,
+
+methodType TEXT
+CHECK(methodType IN(
+
+'CARD',
+'BANK',
+'WALLET'
+
+)),
+
+provider TEXT,
+
+maskedNumber TEXT,
+
+token TEXT,
+
+isDefault INTEGER DEFAULT 0
+CHECK(isDefault IN(0,1)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_method_profile
+ON payment_methods(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_method_default
+ON payment_methods(profileId,isDefault)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_method_one_default
+ON payment_methods(profileId)
+WHERE isDefault=1
+`)
+
+/* ==================================================
+SECTION 49 : SUBSCRIPTIONS
+RECURRING PAYMENT
+INTEGER MONEY SAFE VERSION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS subscriptions(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL,
+
+plan TEXT,
+
+price INTEGER
+CHECK(price IS NULL OR price>=0),
+
+currency TEXT DEFAULT 'KRW',
+
+billingCycle TEXT
+CHECK(billingCycle IN(
+
+'MONTH',
+'YEAR'
+
+)),
+
+status TEXT DEFAULT 'ACTIVE'
+CHECK(status IN(
+
+'ACTIVE',
+'CANCELLED',
+'EXPIRED'
+
+)),
+
+startedAt TEXT,
+
+expiresAt TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_subscription_profile
+ON subscriptions(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_subscription_status
+ON subscriptions(status)
+`)
+
+/* ==================================================
+SECTION 50 : INVOICES
+BILLING DOCUMENT
+INTEGER MONEY SAFE VERSION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS invoices(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+orderId INTEGER,
+
+profileId INTEGER,
+
+invoiceNumber TEXT UNIQUE,
+
+amount INTEGER
+CHECK(amount IS NULL OR amount>=0),
+
+tax INTEGER DEFAULT 0
+CHECK(tax>=0),
+
+total INTEGER
+CHECK(total IS NULL OR total>=0),
+
+currency TEXT DEFAULT 'KRW',
+
+status TEXT DEFAULT 'ISSUED'
+CHECK(status IN(
+
+'DRAFT',
+'ISSUED',
+'PAID',
+'CANCELLED'
+
+)),
+
+issuedAt TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(orderId)
+REFERENCES orders(id),
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id),
+
+CHECK(
+total IS NULL
+OR amount IS NULL
+OR total=amount+tax
+)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_invoice_order
+ON invoices(orderId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_invoice_profile
+ON invoices(profileId)
+`)
+
+/* ==================================================
+SECTION 51 : BUSINESS_SERVICES
+BUSINESS SELLABLE SERVICES
+INTEGER MONEY SAFE VERSION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS business_services(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL,
+
+title TEXT NOT NULL,
+
+description TEXT,
+
+price INTEGER
+CHECK(price IS NULL OR price>=0),
+
+currency TEXT DEFAULT 'KRW',
+
+durationMinutes INTEGER,
+
+isActive INTEGER DEFAULT 1,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_business_service_profile
+ON business_services(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_business_service_active
+ON business_services(isActive)
+`)
+
+/* ==================================================
+SECTION 52 : ORDER_ITEMS
+ORDER DETAIL ITEMS
+INTEGER MONEY SAFE VERSION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS order_items(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+orderId INTEGER NOT NULL,
+
+serviceId INTEGER,
+
+title TEXT,
+
+price INTEGER
+CHECK(price IS NULL OR price>=0),
+
+quantity INTEGER DEFAULT 1
+CHECK(quantity>0),
+
+total INTEGER
+CHECK(total IS NULL OR total>=0),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(orderId)
+REFERENCES orders(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(serviceId)
+REFERENCES business_services(id)
+ON DELETE SET NULL,
+
+CHECK(
+total IS NULL
+OR price IS NULL
+OR total=price*quantity
+)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_order_items_order
+ON order_items(orderId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_order_items_service
+ON order_items(serviceId)
+`)
+
+/* ==================================================
+SECTION 53 : NOTIFICATIONS
+UNIFIED NOTIFICATION INDEX HARDENING
+SECTION 19 BASE TABLE ONLY
+================================================== */
+
+/* ==================================================
+PROFILE NOTIFICATION LOOKUP
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_notification_profile
+ON notifications(profileId)
+`)
+
+/* ==================================================
+PROFILE READ STATUS LOOKUP
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_notification_read
+ON notifications(profileId,isRead)
+`)
+
+/* ==================================================
+REFERENCE LOOKUP
+================================================== */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_notification_reference
+ON notifications(referenceType,referenceId)
+`)
+
+/* ==================================================
+SECTION 54 : NOTIFICATION_SETTINGS
+USER NOTIFICATION CONTROL
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS notification_settings(
+
+profileId INTEGER PRIMARY KEY,
+
+likeNotify INTEGER DEFAULT 1,
+
+commentNotify INTEGER DEFAULT 1,
+
+followNotify INTEGER DEFAULT 1,
+
+orderNotify INTEGER DEFAULT 1,
+
+paymentNotify INTEGER DEFAULT 1,
+
+marketingNotify INTEGER DEFAULT 0,
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+/* ==================================================
+SECTION 55 : REPORTS
+UNIFIED REPORT INDEX HARDENING
+SECTION 20 BASE TABLE ONLY
+================================================== */
+
+/* CREATED TIME LOOKUP */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_reports_created
+ON reports(createdAt DESC)
+`)
+
+/* ==================================================
+SECTION 56 : AUDIT_LOG
+ADMIN CHANGE TRACKING
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS audit_log(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+adminProfileId INTEGER,
+
+action TEXT,
+
+targetType TEXT,
+
+targetId INTEGER,
+
+beforeData TEXT,
+
+afterData TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(adminProfileId)
+REFERENCES profiles(id)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_audit_admin
+ON audit_log(adminProfileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_audit_target
+ON audit_log(targetType,targetId)
+`)
+
+/* ==================================================
+SECTION 57 : FEATURE_FLAGS
+FEATURE TOGGLE SYSTEM
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS feature_flags(
+
+key TEXT PRIMARY KEY,
+
+value TEXT,
+
+description TEXT,
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+)
+
+`)
+
+/* ==================================================
+SECTION 58 : SYSTEM_CONFIG
+PLATFORM GLOBAL SETTINGS
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS system_config(
+
+key TEXT PRIMARY KEY,
+
+value TEXT,
+
+description TEXT,
+
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+)
+
+`)
+
+/* ==================================================
+SECTION 59 : PAYMENT_ATTEMPTS
+PAYMENT TRY LOG (FAIL / RETRY TRACKING)
+ATTEMPT ORDER HARDENED
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS payment_attempts(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+paymentId INTEGER NOT NULL,
+
+attemptNo INTEGER DEFAULT 1
+CHECK(attemptNo>=1),
+
+status TEXT
+CHECK(status IN(
+
+'TRY',
+'SUCCESS',
+'FAILED'
+
+)),
+
+provider TEXT,
+
+errorCode TEXT,
+
+errorMessage TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(paymentId)
+REFERENCES payments(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_attempt_unique
+ON payment_attempts(paymentId,attemptNo)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_attempt_payment
+ON payment_attempts(paymentId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_attempt_status
+ON payment_attempts(status)
+`)
+
+/* ==================================================
+SECTION 60 : PAYMENT_EVENTS
+PG WEBHOOK EVENT LOG
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS payment_events(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+paymentId INTEGER,
+
+eventType TEXT,
+
+provider TEXT,
+
+providerEventId TEXT,
+
+payload TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(paymentId)
+REFERENCES payments(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_event_payment
+ON payment_events(paymentId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payment_event_type
+ON payment_events(eventType)
+`)
+
+/* ==================================================
+SECTION 61 : DISPUTES
+PAYMENT DISPUTE / CHARGEBACK MANAGEMENT
+INTEGER MONEY SAFE VERSION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS disputes(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+paymentId INTEGER NOT NULL,
+
+orderId INTEGER,
+
+buyerProfileId INTEGER,
+
+sellerProfileId INTEGER,
+
+amount INTEGER
+CHECK(amount IS NULL OR amount>=0),
+
+reason TEXT,
+
+status TEXT DEFAULT 'OPEN'
+CHECK(status IN(
+
+'OPEN',
+'INVESTIGATING',
+'RESOLVED',
+'REJECTED'
+
+)),
+
+resolution TEXT,
+
+openedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+closedAt TEXT,
+
+FOREIGN KEY(paymentId)
+REFERENCES payments(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(orderId)
+REFERENCES orders(id),
+
+FOREIGN KEY(buyerProfileId)
+REFERENCES profiles(id),
+
+FOREIGN KEY(sellerProfileId)
+REFERENCES profiles(id)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_dispute_payment
+ON disputes(paymentId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_dispute_order
+ON disputes(orderId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_dispute_status
+ON disputes(status)
+`)
+
+/* ==================================================
+SECTION 62 : ESCROW_TRANSACTIONS
+FINAL FINANCIAL SAFETY HARDENING
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS escrow_transactions(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+paymentId INTEGER NOT NULL UNIQUE,
+
+orderId INTEGER NOT NULL,
+
+buyerProfileId INTEGER NOT NULL,
+
+sellerProfileId INTEGER NOT NULL,
+
+amount INTEGER NOT NULL
+CHECK(amount>0),
+
+feeAmount INTEGER DEFAULT 0
+CHECK(feeAmount>=0),
+
+netAmount INTEGER
+CHECK(netAmount>=0),
+
+status TEXT DEFAULT 'HOLD'
+CHECK(status IN(
+
+'HOLD',
+'RELEASED',
+'REFUNDED',
+'DISPUTED',
+'CANCELLED'
+
+)),
+
+holdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+releaseAt TEXT,
+
+refundAt TEXT,
+
+notes TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+updatedAt TEXT,
+
+FOREIGN KEY(paymentId)
+REFERENCES payments(id)
+ON DELETE CASCADE,
+
+FOREIGN KEY(orderId)
+REFERENCES orders(id),
+
+FOREIGN KEY(buyerProfileId)
+REFERENCES profiles(id),
+
+FOREIGN KEY(sellerProfileId)
+REFERENCES profiles(id),
+
+CHECK(
+netAmount IS NULL
+OR netAmount = amount - feeAmount
+),
+
+CHECK(
+status!='RELEASED'
+OR releaseAt IS NOT NULL
+),
+
+CHECK(
+status!='REFUNDED'
+OR refundAt IS NOT NULL
+)
+
+)
+
+`)
+
+/* lookup */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_escrow_order
+ON escrow_transactions(orderId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_escrow_buyer
+ON escrow_transactions(buyerProfileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_escrow_seller
+ON escrow_transactions(sellerProfileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_escrow_status
+ON escrow_transactions(status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_escrow_payment
+ON escrow_transactions(paymentId)
+`)
+
+/* financial monitoring */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_escrow_financial
+ON escrow_transactions(status,createdAt)
+`)
+
+/* ==================================================
+SECTION 63 : PAYOUT_ACCOUNTS
+SELLER SETTLEMENT ACCOUNT
+DEFAULT UNIQUENESS HARDENED
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS payout_accounts(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+profileId INTEGER NOT NULL,
+
+accountType TEXT
+CHECK(accountType IN(
+
+'BANK',
+'PAY_PROVIDER'
+
+)),
+
+bankName TEXT,
+
+accountNumberMasked TEXT,
+
+accountHolder TEXT,
+
+provider TEXT,
+
+providerAccountId TEXT,
+
+isDefault INTEGER DEFAULT 1
+CHECK(isDefault IN(0,1)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payout_profile
+ON payout_accounts(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_payout_provider_account
+ON payout_accounts(providerAccountId)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payout_one_default
+ON payout_accounts(profileId)
+WHERE isDefault=1
+`)
+
+/* ==================================================
+SECTION 64 : PAYMENT_FEES
+PLATFORM FEE BREAKDOWN
+INTEGER MONEY SAFE VERSION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS payment_fees(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+paymentId INTEGER NOT NULL,
+
+platformFee INTEGER DEFAULT 0
+CHECK(platformFee>=0),
+
+providerFee INTEGER DEFAULT 0
+CHECK(providerFee>=0),
+
+taxFee INTEGER DEFAULT 0
+CHECK(taxFee>=0),
+
+netAmount INTEGER
+CHECK(netAmount IS NULL OR netAmount>=0),
+
+currency TEXT DEFAULT 'KRW',
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(paymentId)
+REFERENCES payments(id)
+ON DELETE CASCADE
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_fee_payment
+ON payment_fees(paymentId)
+`)
+
+/* ==================================================
+SECTION 65 : TAX_RECORDS
+TAX / VAT RECORD
+INTEGER MONEY SAFE VERSION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS tax_records(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+invoiceId INTEGER,
+
+orderId INTEGER,
+
+profileId INTEGER,
+
+taxType TEXT,
+
+taxRate REAL,
+
+taxAmount INTEGER
+CHECK(taxAmount IS NULL OR taxAmount>=0),
+
+country TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(invoiceId)
+REFERENCES invoices(id),
+
+FOREIGN KEY(orderId)
+REFERENCES orders(id),
+
+FOREIGN KEY(profileId)
+REFERENCES profiles(id)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_tax_invoice
+ON tax_records(invoiceId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_tax_profile
+ON tax_records(profileId)
+`)
+
+/* ==================================================
+SECTION 66 : PROMOTIONS
+COUPON / DISCOUNT SYSTEM
+INTEGER MONEY SAFE VERSION
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS promotions(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+code TEXT UNIQUE,
+
+title TEXT,
+
+description TEXT,
+
+discountType TEXT
+CHECK(discountType IN(
+
+'PERCENT',
+'FIXED'
+
+)),
+
+discountValue INTEGER
+CHECK(discountValue IS NULL OR discountValue>=0),
+
+maxDiscount INTEGER
+CHECK(maxDiscount IS NULL OR maxDiscount>=0),
+
+minOrderAmount INTEGER
+CHECK(minOrderAmount IS NULL OR minOrderAmount>=0),
+
+usageLimit INTEGER
+CHECK(usageLimit IS NULL OR usageLimit>=0),
+
+usedCount INTEGER DEFAULT 0
+CHECK(usedCount>=0),
+
+startAt TEXT,
+
+endAt TEXT,
+
+status TEXT DEFAULT 'ACTIVE'
+CHECK(status IN(
+
+'ACTIVE',
+'EXPIRED',
+'DISABLED'
+
+)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+CHECK(
+startAt IS NULL
+OR endAt IS NULL
+OR startAt<=endAt
+)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_promo_code
+ON promotions(code)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_promo_status
+ON promotions(status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_promo_period
+ON promotions(startAt,endAt)
+`)
+
+/* ==================================================
+SECTION 67 : REVIEW_RATINGS
+REVIEW INTEGRITY HARDENED FINAL
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS review_ratings(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+orderId INTEGER NOT NULL,
+
+reviewerProfileId INTEGER NOT NULL,
+
+targetProfileId INTEGER NOT NULL,
+
+rating INTEGER
+CHECK(rating BETWEEN 1 AND 5),
+
+reviewText TEXT,
+
+status TEXT DEFAULT 'ACTIVE'
+CHECK(status IN(
+
+'ACTIVE',
+'HIDDEN',
+'REPORTED'
+
+)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(orderId)
+REFERENCES orders(id),
+
+FOREIGN KEY(reviewerProfileId)
+REFERENCES profiles(id),
+
+FOREIGN KEY(targetProfileId)
+REFERENCES profiles(id)
+
+)
+
+`)
+
+/* order lookup */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_review_order
+ON review_ratings(orderId)
+`)
+
+/* reviewer */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_review_reviewer
+ON review_ratings(reviewerProfileId)
+`)
+
+/* target */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_review_target
+ON review_ratings(targetProfileId)
+`)
+
+/* review integrity */
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_review_unique
+
+ON review_ratings(
+orderId,
+reviewerProfileId
+)
+`)
+
+/* ==================================================
+SECTION 68 : SERVICE_AVAILABILITY
+BUSINESS BOOKING TIME SLOT
+INTEGRITY HARDENED
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS service_availability(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+serviceId INTEGER NOT NULL,
+
+dayOfWeek INTEGER
+CHECK(dayOfWeek BETWEEN 0 AND 6),
+
+startTime TEXT NOT NULL,
+
+endTime TEXT NOT NULL,
+
+slotMinutes INTEGER DEFAULT 30
+CHECK(slotMinutes>0),
+
+capacity INTEGER DEFAULT 1
+CHECK(capacity>0),
+
+isActive INTEGER DEFAULT 1
+CHECK(isActive IN(0,1)),
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(serviceId)
+REFERENCES business_services(id)
+ON DELETE CASCADE,
+
+CHECK(startTime < endTime)
+
+)
+
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_availability_service
+ON service_availability(serviceId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_availability_day
+ON service_availability(dayOfWeek)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_availability_service_day
+ON service_availability(serviceId,dayOfWeek,isActive)
+`)
+
+/* ==================================================
+SECTION 69 : BOOKING_RESERVATIONS
+PRODUCTION DOUBLE BOOKING PROTECTION FINAL
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS booking_reservations(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+serviceId INTEGER NOT NULL,
+
+orderId INTEGER,
+
+buyerProfileId INTEGER,
+
+sellerProfileId INTEGER,
+
+startAt TEXT NOT NULL,
+
+endAt TEXT NOT NULL,
+
+status TEXT DEFAULT 'BOOKED'
+CHECK(status IN(
+
+'BOOKED',
+'CANCELLED',
+'COMPLETED',
+'NO_SHOW'
+
+)),
+
+price INTEGER,
+
+notes TEXT,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+FOREIGN KEY(serviceId)
+REFERENCES business_services(id),
+
+FOREIGN KEY(orderId)
+REFERENCES orders(id),
+
+FOREIGN KEY(buyerProfileId)
+REFERENCES profiles(id),
+
+FOREIGN KEY(sellerProfileId)
+REFERENCES profiles(id),
+
+CHECK(startAt < endAt)
+
+)
+
+`)
+
+/* 예약 조회 */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_booking_service
+ON booking_reservations(serviceId)
+`)
+
+/* 시간 조회 */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_booking_time
+ON booking_reservations(serviceId,startAt,endAt)
+`)
+
+/* 상태 조회 */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_booking_status
+ON booking_reservations(status)
+`)
+
+/* Double booking 보호 */
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_booking_unique_slot
+ON booking_reservations(
+serviceId,
+startAt,
+endAt
+)
+WHERE status='BOOKED'
+`)
+
+/* ==================================================
+SECTION 71 : STATUS_CODES
+PRODUCTION STATUS REGISTRY HARDENING
+================================================== */
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS status_codes(
+
+code TEXT PRIMARY KEY,
+
+category TEXT,
+
+description TEXT,
+
+isActive INTEGER DEFAULT 1,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+)
+
+`)
+
+/* category */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_status_category
+ON status_codes(category)
+`)
+
+/* active */
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_status_active
+ON status_codes(isActive)
+`)
+
+/* ==================================================
+SECTION DEV 01 : TEST USERS
+================================================== */
+
+const testPassword=
+bcrypt.hashSync('1234',10)
+
+const insertUser=db.prepare(`
+INSERT OR IGNORE INTO users(
+email,
+passwordHash,
+displayName,
+accountType,
+status,
+type
+)
+VALUES(?,?,?,?,?,?)
+`)
+
+insertUser.run(
+'test1@dev.com',
+testPassword,
+'테스트유저1',
+'USER',
+'ACTIVE',
+'normal'
+)
+
+insertUser.run(
+'test2@dev.com',
+testPassword,
+'테스트유저2',
+'USER',
+'ACTIVE',
+'normal'
+)
+
+/* ==================================================
+SECTION DEV 02 : TEST PROFILES
+================================================== */
+
+const users=db.prepare(`
+SELECT id,email
+FROM users
+WHERE email IN(
+'test1@dev.com',
+'test2@dev.com'
+)
+`).all()
+
+const insertProfile=db.prepare(`
+INSERT OR IGNORE INTO profiles(
+userId,
+profileType,
+displayName
+)
+VALUES(?,?,?)
+`)
+
+users.forEach(u=>{
+
+insertProfile.run(
+u.id,
+'GENERAL',
+`${u.email}_general`
+)
+
+insertProfile.run(
+u.id,
+'BUSINESS',
+`${u.email}_business`
+)
+
+})
+
+/* ==================================================
+SECTION DEV 03 : PROFILE SESSION INIT
+================================================== */
+
+const generalProfiles=db.prepare(`
+SELECT id,userId
+FROM profiles
+WHERE profileType='GENERAL'
+AND userId IN(
+SELECT id FROM users
+WHERE email IN(
+'test1@dev.com',
+'test2@dev.com'
+)
+)
+`).all()
+
+const insertSession=db.prepare(`
+INSERT OR IGNORE INTO profile_sessions(
+userId,
+profileId
+)
+VALUES(?,?)
+`)
+
+generalProfiles.forEach(p=>{
+
+insertSession.run(
+p.userId,
+p.id
+)
+
+})
+
+/* ==================================================
+SECTION END : INIT COMPLETE
+================================================== */
+
+console.log('DB v2 full init 완료')
+
+}
+
+/* ==================================================
+SECTION EXECUTION CONTROL
+FINAL ENTRY POINT
+================================================== */
+
+if(require.main === module){
+
+initDatabase()
+.then(()=>{
+
+console.log('DB INIT SUCCESS')
+
+})
+.catch(err=>{
+
+console.error('DB INIT FAILED',err)
+process.exit(1)
+
+})
+
+}

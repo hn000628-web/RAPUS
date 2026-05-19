@@ -1,0 +1,356 @@
+/* ==================================================
+
+BACKEND DEVELOPMENT GOLDEN RULES
+
+DEVELOPER ABSOLUTE IMPLEMENTATION RULE
+
+SNAPSHOT_BACKEND_GOLDEN_RULE_v1
+
+================================================== */
+
+
+/* ==================================================
+
+GOLDEN RULE 01
+
+DB FIRST RULE
+
+================================================== */
+
+
+Never write service logic before DB structure is clear.
+
+
+
+RULE:
+
+DB defines system structure.
+
+Service implements DB.
+
+Never reverse.
+
+
+
+FORBIDDEN:
+
+Guessing DB structure.
+
+
+
+/* ==================================================
+
+GOLDEN RULE 02
+
+ONE DOMAIN ONE RESPONSIBILITY
+
+================================================== */
+
+
+Each service must have single domain responsibility.
+
+
+
+Example:
+
+post.service → posts only
+
+profile.service → profiles only
+
+image.service → images only
+
+
+
+FORBIDDEN:
+
+Multi domain logic.
+
+
+
+RISK:
+
+Domain boundary collapse.
+
+
+
+/* ==================================================
+
+GOLDEN RULE 03
+
+FEED IS READ ONLY
+
+================================================== */
+
+
+Feed must never contain business logic.
+
+Feed must only aggregate data.
+
+
+
+FORBIDDEN:
+
+Data creation
+
+State change
+
+Validation logic
+
+
+
+RULE:
+
+Feed is view layer.
+
+
+
+/* ==================================================
+
+GOLDEN RULE 04
+
+VALIDATE BEFORE WRITE
+
+================================================== */
+
+
+Always validate before insert.
+
+
+
+Example:
+
+validate profile
+
+validate region
+
+then create post.
+
+
+
+FORBIDDEN:
+
+Blind insert.
+
+
+
+RISK:
+
+Invalid data state.
+
+
+
+/* ==================================================
+
+GOLDEN RULE 05
+
+NO CROSS DOMAIN WRITE
+
+================================================== */
+
+
+Service must not modify foreign domain tables.
+
+
+
+Example:
+
+post.service must not update profiles.
+
+
+
+FORBIDDEN:
+
+Cross domain write.
+
+
+
+RULE:
+
+Only owner modifies data.
+
+
+
+/* ==================================================
+
+GOLDEN RULE 06
+
+POST IS CORE ENTITY
+
+================================================== */
+
+
+Post is platform core entity.
+
+Protect post lifecycle carefully.
+
+
+
+RULE:
+
+Post creation must be safe.
+
+Post delete must be safe.
+
+
+
+RISK:
+
+Platform instability.
+
+
+
+/* ==================================================
+
+GOLDEN RULE 07
+
+ERROR MUST NOT BREAK CORE FLOW
+
+================================================== */
+
+
+Optional failures must not break core logic.
+
+
+
+Example:
+
+image fail → ignore
+
+feed fail → retry
+
+
+
+RULE:
+
+Graceful failure.
+
+
+
+/* ==================================================
+
+GOLDEN RULE 08
+
+NO MAGIC LOGIC
+
+================================================== */
+
+
+Every behavior must be explainable.
+
+
+
+FORBIDDEN:
+
+Hidden side effects
+
+Implicit logic
+
+
+
+RULE:
+
+Code must be predictable.
+
+
+
+/* ==================================================
+
+GOLDEN RULE 09
+
+CHANGE MUST BE TRACEABLE
+
+================================================== */
+
+
+Every structural change must be traceable.
+
+
+
+Example:
+
+DB snapshot
+
+rule update
+
+service update
+
+
+
+FORBIDDEN:
+
+Silent structure change.
+
+
+
+RULE:
+
+Architecture must remain understandable.
+
+
+
+/* ==================================================
+
+GOLDEN RULE 10
+
+SIMPLICITY OVER CLEVERNESS
+
+================================================== */
+
+
+Prefer simple structure over clever logic.
+
+
+
+RULE:
+
+Simple code survives.
+
+Complex code breaks.
+
+
+
+FORBIDDEN:
+
+Premature optimization.
+
+
+
+/* ==================================================
+
+FINAL GOLDEN PRINCIPLE
+
+================================================== */
+
+
+Structure first.
+
+Logic second.
+
+Optimization last.
+
+
+
+Never reverse order.
+
+
+
+/* ==================================================
+
+DEVELOPER CORE PRINCIPLE
+
+================================================== */
+
+
+Understand structure before coding.
+
+Understand ownership before modifying.
+
+Understand dependency before adding.
+
+
+
+/* ==================================================
+
+END OF GOLDEN RULES
+
+================================================== */

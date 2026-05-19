@@ -1,0 +1,3599 @@
+// FILE : docs/CHANNELCODE_SINGLE_OWNERSHIP_ABSOLUTE_RULE_SNAPSHOT.txt / 2026-04-19
+// ROOT : C:\Users\kjm\social-platform\docs\CHANNELCODE_SINGLE_OWNERSHIP_ABSOLUTE_RULE_SNAPSHOT.txt
+// STATUS : PRODUCTION LOCK (FINAL)
+// ROLE : CHANNELCODE SINGLE OWNERSHIP NAMING ABSOLUTE RULE
+// CHANGE SUMMARY :
+// - 단일 귀속 테이블의 채널 식별 컬럼명을 channelCode로 단일화
+// - ownerChannelCode 사용금지 규칙 고정
+// - channelCode = ownerChannelCode 의미 해석을 절대 규칙으로 명시
+// - 다중 주체/관계 테이블만 role + ChannelCode 허용으로 정리
+// - DB / Service / API / Front 전 구간 동일 적용 기준 확정
+
+/* ==================================================
+SECTION 01 : CORE PRINCIPLE
+================================================== */
+
+본 스냅샷의 절대 기준은 다음과 같다.
+
+ownerChannelCode 는 사용금지 개념이다.
+
+단일 채널 귀속 구조에서는
+
+channelCode
+=
+ownerChannelCode
+
+의미로 강제 해석한다.
+
+즉:
+
+소유 채널
+루트 채널
+대표 채널
+단일 귀속 채널
+
+모든 의미는
+별도 컬럼명 분리 없이
+
+channelCode
+
+하나로 통일한다.
+
+/* ==================================================
+SECTION 02 : ABSOLUTE NAMING RULE
+================================================== */
+
+단일 귀속 테이블 규칙:
+
+컬럼명은 반드시
+
+channelCode
+
+만 사용한다.
+
+절대 금지:
+
+ownerChannelCode
+rootChannelCode
+profileChannelCode
+mainChannelCode
+primaryChannelCode
+
+허용:
+
+channelCode
+
+즉:
+
+단일 채널 주체가 명확하고
+추가 역할 구분이 없는 경우
+
+무조건 channelCode 사용
+
+/* ==================================================
+SECTION 03 : SINGLE OWNERSHIP INTERPRETATION RULE
+================================================== */
+
+단일 귀속 테이블에서
+
+channelCode 의 의미는 다음과 같이 강제 해석한다.
+
+1. 소유 채널
+2. 루트 채널
+3. 대표 채널
+4. 자산 귀속 채널
+5. 단일 주체 채널
+
+즉:
+
+channelCode = ownerChannelCode 개념
+
+별도 ownerChannelCode 컬럼 추가 금지
+
+/* ==================================================
+SECTION 04 : MULTI ROLE TABLE RULE
+================================================== */
+
+다중 주체 / 관계 / 역할 분리 테이블만
+
+role + ChannelCode
+
+네이밍을 허용한다.
+
+허용 예시:
+
+authorChannelCode
+actorChannelCode
+buyerChannelCode
+sellerChannelCode
+payerChannelCode
+receiverChannelCode
+providerChannelCode
+customerChannelCode
+followerChannelCode
+followingChannelCode
+reporterChannelCode
+targetChannelCode
+
+즉:
+
+역할이 2개 이상이거나
+주체 충돌 가능성이 있는 테이블만
+role prefix 사용
+
+/* ==================================================
+SECTION 05 : SINGLE OWNERSHIP TABLE RULE
+================================================== */
+
+다음과 같은 단일 귀속 테이블은
+반드시 channelCode 만 사용한다.
+
+예시:
+
+profiles
+image_assets
+profile_avatars
+profile_hero_images
+profile_gallery_images
+
+기타 규칙:
+
+추가 역할 주체가 없고
+1 row = 1 channel 귀속 구조이면
+무조건 channelCode 사용
+
+절대 금지:
+
+image_assets.ownerChannelCode
+profile_avatars.ownerChannelCode
+profile_hero_images.ownerChannelCode
+profile_gallery_images.ownerChannelCode
+
+정답:
+
+image_assets.channelCode
+profile_avatars.channelCode
+profile_hero_images.channelCode
+profile_gallery_images.channelCode
+
+/* ==================================================
+SECTION 06 : PROFILES EXCEPTION RULE REINTERPRETATION
+================================================== */
+
+기존 해석에서
+profiles.channelCode 는
+루트 식별자 예외 개념으로 설명되었으나,
+
+본 스냅샷 이후에는
+
+단일 귀속 테이블 전체에 대해
+
+channelCode = ownerChannelCode 의미 해석
+
+을 공통 적용한다.
+
+즉:
+
+profiles 만의 예외 개념이 아니라
+
+단일 귀속 구조 전체에 대한
+통합 해석 규칙으로 확장 고정한다.
+
+/* ==================================================
+SECTION 07 : DB SCHEMA RULE
+================================================== */
+
+DB 스키마 작성 시 절대 규칙:
+
+1. 단일 귀속 테이블은 channelCode 컬럼만 사용
+2. ownerChannelCode 생성 금지
+3. 기존 ownerChannelCode 발견 시 규칙 위반
+4. FK 연결도 channelCode 기준으로 통일
+5. INDEX 명도 channelCode 기준으로 통일
+
+예시:
+
+CREATE TABLE image_assets(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channelCode TEXT NOT NULL,
+  ...
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode)
+)
+
+정답 구조이다.
+
+/* ==================================================
+SECTION 08 : SERVICE QUERY RULE
+================================================== */
+
+Service SQL 작성 시 절대 규칙:
+
+단일 귀속 테이블 조회 / 저장 / 수정 / 삭제는
+반드시 channelCode 기준으로 작성한다.
+
+허용:
+
+WHERE channelCode = ?
+SELECT channelCode
+INSERT INTO ... (channelCode)
+
+금지:
+
+WHERE ownerChannelCode = ?
+SELECT ownerChannelCode
+INSERT INTO ... (ownerChannelCode)
+
+즉:
+
+DB 컬럼명 / Service query / DTO / Response
+전부 channelCode 로 일치해야 한다.
+
+/* ==================================================
+SECTION 09 : API CONTRACT RULE
+================================================== */
+
+API 응답 / 요청 구조에서도
+단일 귀속 채널 식별자는
+
+channelCode
+
+만 사용한다.
+
+금지:
+
+ownerChannelCode
+rootChannelCode
+profileChannelCode
+
+허용:
+
+channelCode
+
+프론트는 channelCode 하나만 신뢰한다.
+
+/* ==================================================
+SECTION 10 : FRONTEND RULE
+================================================== */
+
+Frontend 상태 저장 / 라우팅 / 프로필 상세조회 / 미디어 조회에서
+
+단일 귀속 채널 기준값은
+반드시 channelCode 이다.
+
+금지:
+
+ownerChannelCode 기반 분기
+ownerChannelCode 저장
+ownerChannelCode 응답 의존
+
+허용:
+
+channelCode 저장
+channelCode 라우팅
+channelCode 상세조회
+
+/* ==================================================
+SECTION 11 : INDEX / HEADER RULE
+================================================== */
+
+DB 스키마 헤드 인덱스 작성 시
+기본 강제 문구는 다음과 같이 고정한다.
+
+[DB SCHEMA ABSOLUTE RULE]
+
+- ownerChannelCode 사용금지
+- channelCode = ownerChannelCode 개념 강제
+- 단일 귀속 테이블은 channelCode 만 사용
+- 다중 주체 테이블만 role + ChannelCode 사용
+- 스키마 / 서비스 / API / 프론트 전 구간 동일 적용
+
+이 문구를
+채널 귀속 구조 스키마 작업의 기본 헤더 규칙으로 고정한다.
+
+/* ==================================================
+SECTION 12 : MIGRATION RULE
+================================================== */
+
+기존 스키마에 ownerChannelCode 가 존재할 경우
+
+해석 기준:
+
+구조 위반 상태
+
+수정 원칙:
+
+ownerChannelCode
+→ channelCode 로 통일
+
+주의:
+
+CREATE TABLE IF NOT EXISTS 구조에서는
+기존 DB 파일 컬럼명이 자동 변경되지 않는다.
+
+따라서 다음 중 하나가 필요하다.
+
+1. DB 재생성
+2. 명시적 migration
+3. 컬럼명 정리 후 데이터 이관
+
+즉:
+
+코드 수정만으로 끝나지 않으며
+실제 DB 파일 구조도 반드시 channelCode 기준으로 맞춰야 한다.
+
+/* ==================================================
+SECTION 13 : ERROR INTERPRETATION RULE
+================================================== */
+
+다음 오류가 발생하면
+가장 먼저 본 규칙 위반 여부를 확인한다.
+
+예:
+
+no such column: channelCode
+no such column: ownerChannelCode
+
+판단 기준:
+
+단일 귀속 테이블이면
+정답 컬럼은 channelCode 이다.
+
+ownerChannelCode 관련 오류는
+구조 위반 또는 과도기 스키마 충돌로 해석한다.
+
+/* ==================================================
+SECTION 14 : EXAMPLE MAPPING RULE
+================================================== */
+
+정답 예시:
+
+profiles.channelCode
+image_assets.channelCode
+profile_avatars.channelCode
+profile_hero_images.channelCode
+profile_gallery_images.channelCode
+
+정답 예시 해석:
+
+profiles.channelCode
+= 채널 본체 루트 식별자
+
+image_assets.channelCode
+= 파일 귀속 채널
+
+profile_avatars.channelCode
+= 아바타 귀속 채널
+
+profile_hero_images.channelCode
+= 히어로 이미지 귀속 채널
+
+profile_gallery_images.channelCode
+= 갤러리 이미지 귀속 채널
+
+즉:
+
+모두 channelCode 하나로 통일
+
+/* ==================================================
+SECTION 15 : FORBIDDEN STRUCTURE
+================================================== */
+
+절대 금지 구조:
+
+- 같은 도메인 안에서 channelCode / ownerChannelCode 혼용
+- 단일 귀속 테이블인데 role prefix 사용
+- Service 는 channelCode, DB 는 ownerChannelCode
+- API 는 channelCode, DB 는 ownerChannelCode
+- Front 는 channelCode, Service 는 ownerChannelCode
+
+위 상태는 모두 구조 충돌로 간주한다.
+
+/* ==================================================
+SECTION 16 : FINAL DECLARATION
+================================================== */
+
+최종 기준:
+
+단일 귀속 테이블에서는
+
+channelCode = ownerChannelCode
+
+개념으로 강제 해석한다.
+
+하지만 실제 구현 컬럼명은
+
+ownerChannelCode 가 아니라
+무조건 channelCode
+
+를 사용한다.
+
+즉:
+
+의미는 owner
+표현은 channelCode
+
+이 구조를
+DB / Service / API / Front 전 구간 절대 기준으로 고정한다.
+
+/* ==================================================
+END OF SNAPSHOT
+================================================== */
+
+// FILE : docs/PROFILE_SINGLE_ROW_ABSOLUTE_RULE_SNAPSHOT.txt
+// ROOT : C:\Users\kjm\social-platform\docs\PROFILE_SINGLE_ROW_ABSOLUTE_RULE_SNAPSHOT.txt
+// STATUS : PRODUCTION LOCK
+// ROLE : PROFILE DOMAIN SINGLE ROW ABSOLUTE RULE
+// CHANGE SUMMARY :
+// - 프로필 도메인 전체 기본 구조를 1프로필 1행으로 강제
+// - GENERAL / BUSINESS 공통 적용 기준으로 고정
+// - profiles 본체 및 프로필 설정성 보조 테이블에 동일 적용
+// - 예외 다행 구조는 AI 임의 판단 금지
+// - 예외사항은 반드시 사용자와 별도 협의 후 승인 방식으로만 허용
+
+/* ==================================================
+SECTION 01 : PURPOSE
+================================================== */
+
+본 규칙의 목적은
+프로필 도메인 스키마 설계의 기본값을
+완전히 고정하는 것이다.
+
+기존 문제:
+
+- 프로필 구조 데이터가
+  1프로필 1행 구조인지
+  1프로필 다행 구조인지
+  설계 시점마다 흔들릴 수 있음
+
+- 설정 데이터 / 소개 데이터 / 운영 데이터 / 확장 데이터가
+  파일마다 다른 방식으로 분산될 위험이 있음
+
+- AI가 반복 데이터처럼 보인다는 이유로
+  임의로 row split 구조를 선택할 가능성이 있음
+
+본 규칙은
+이 문제를 차단하기 위해
+프로필 도메인 전체의 기본 구조를
+절대 기준으로 고정한다.
+
+
+/* ==================================================
+SECTION 02 : CORE PRINCIPLE
+================================================== */
+
+절대 기준:
+
+프로필 구조 데이터는
+
+무조건
+
+1 PROFILE
+=
+1 ROW
+
+를 기본 구조로 사용한다.
+
+즉:
+
+한 프로필에 귀속되는
+본체 정보
+설정 정보
+운영 정보
+구성 정보
+옵션 정보
+요약 정보
+
+는
+
+기본적으로 모두
+1프로필 1행 구조로 설계한다.
+
+AI는 이 기본값을
+절대적으로 우선 적용해야 한다.
+
+
+/* ==================================================
+SECTION 03 : SCOPE
+================================================== */
+
+본 규칙의 적용 범위는
+프로필 도메인 전체이다.
+
+포함 대상:
+
+- GENERAL 프로필
+- BUSINESS 프로필
+- profiles 본체
+- 프로필 설정 보조 테이블
+- 프로필 운영 설정
+- 프로필 환경설정
+- 프로필 기본 구성값
+- 프로필 노출 옵션
+- 프로필 영업시간 기본 설정
+- 프로필 예약 기본 설정
+- 프로필 알림 설정
+- 프로필 정책 설정
+
+즉:
+
+프로필 단위로 귀속되는 구조 데이터는
+모두 본 규칙 적용 대상이다.
+
+
+/* ==================================================
+SECTION 04 : DEFAULT DESIGN RULE
+================================================== */
+
+기본 설계 규칙:
+
+1. 프로필 구조 데이터는 1프로필 1행
+2. profiles 직접 확장 또는 전용 보조 테이블 사용 가능
+3. 단, 구조 단위는 항상 1행
+4. 텍스트 1칼럼당 1행 분해 금지
+5. 설정값 1개당 row 분리 금지
+6. 같은 프로필 데이터 세트를 리스트형으로 쪼개는 구조 금지
+
+즉:
+
+프로필 구조는
+객체형 1행 구조가 기본값이다.
+
+
+/* ==================================================
+SECTION 05 : TABLE DESIGN RULE
+================================================== */
+
+프로필 도메인 테이블 설계 시
+기본 패턴은 다음과 같다.
+
+TABLE:
+
+profiles
+또는
+profile_xxx_config
+profile_xxx_settings
+business_xxx_config
+
+핵심 구조:
+
+id
+profileId
+channelCode
+설정 칼럼들...
+createdAt
+updatedAt
+
+기본 제약:
+
+UNIQUE(profileId)
+UNIQUE(channelCode)
+
+FOREIGN KEY(profileId) REFERENCES profiles(id)
+FOREIGN KEY(channelCode) REFERENCES profiles(channelCode)
+
+즉:
+
+프로필 구조 테이블은
+1 profile = 1 row 제약을 기본으로 가진다.
+
+
+/* ==================================================
+SECTION 06 : PROFILES TABLE RULE
+================================================== */
+
+profiles 테이블은
+채널 본체 메타 정보 테이블이다.
+
+허용:
+
+- displayName
+- bio
+- channelURL
+- contactPhone
+- region
+- 업종
+- 프로필 본체 속성
+
+추가 허용 판단:
+
+- 프로필 핵심 본체 메타면 profiles 확장 가능
+- 설정성 묶음이면 전용 보조 테이블 분리
+
+단,
+어느 경우든
+
+구조 기준은
+1프로필 1행
+
+을 유지해야 한다.
+
+
+/* ==================================================
+SECTION 07 : NAMING RULE
+================================================== */
+
+단일 귀속 프로필 구조 테이블은
+반드시 다음 명명 규칙을 사용한다.
+
+허용:
+
+profileId
+channelCode
+
+절대 금지:
+
+ownerChannelCode
+rootChannelCode
+profileChannelCode
+mainChannelCode
+
+즉:
+
+단일 귀속 구조의 채널 식별 컬럼명은
+반드시 channelCode 만 사용한다.
+
+
+/* ==================================================
+SECTION 08 : IDENTITY RULE
+================================================== */
+
+프로필 구조 테이블의 식별 원칙:
+
+profileId
+=
+내부 JOIN 기준
+
+channelCode
+=
+외부 식별 / 소유 귀속 기준
+
+두 컬럼은 역할이 다르므로
+동시에 유지한다.
+
+기본값:
+
+UNIQUE(profileId)
+UNIQUE(channelCode)
+
+즉:
+
+1프로필 1행 구조의 정답은
+
+profileId + channelCode 동시 보유
+
+이다.
+
+
+/* ==================================================
+SECTION 09 : ABSOLUTE ENFORCEMENT RULE
+================================================== */
+
+AI는 프로필 도메인 스키마 설계 시
+반드시 다음 순서를 따른다.
+
+STEP 01
+이 데이터가 프로필 구조 데이터인지 먼저 판단
+
+STEP 02
+프로필 구조 데이터이면
+즉시 1프로필 1행 구조를 기본안으로 확정
+
+STEP 03
+row split / multi row 구조를 임의 제안 금지
+
+STEP 04
+예외가 필요하다고 판단되면
+반드시 사용자와 별도 협의 요청
+
+즉:
+
+AI는 예외를 자동 허용할 수 없다.
+
+
+/* ==================================================
+SECTION 10 : EXCEPTION POLICY
+================================================== */
+
+예외 구조는 존재할 수 있다.
+
+그러나
+예외 구조는
+AI가 독자적으로 확정할 수 없다.
+
+절대 기준:
+
+예외사항은
+반드시
+사용자와 별도 협의 후
+승인된 경우에만 허용한다.
+
+즉:
+
+기본값 = 1프로필 1행
+
+예외값 = 협의 후 승인
+
+
+/* ==================================================
+SECTION 11 : AI FORBIDDEN ACTION
+================================================== */
+
+AI 절대 금지:
+
+1. 프로필 구조 데이터를
+   임의로 다행 구조로 설계
+
+2. 반복 가능성이 있어 보인다는 이유만으로
+   row split 구조 자동 선택
+
+3. 예외 승인 없이
+   profile multi-row table 생성
+
+4. 텍스트 / 설정 / 옵션 데이터를
+   1칼럼 1행 방식으로 분해
+
+5. 사용자 협의 없이
+   프로필 구조를 리스트형 테이블로 전환
+
+즉:
+
+예외 판단권은
+AI가 아니라
+사용자에게 있다.
+
+
+/* ==================================================
+SECTION 12 : EXAMPLE RULE
+================================================== */
+
+예시 1
+
+영업시간 기본 설정
+
+정답:
+
+business_hours_config
+1 profile = 1 row
+
+--------------------------------------------------
+
+예시 2
+
+알림 설정
+
+정답:
+
+profile_notification_settings
+1 profile = 1 row
+
+--------------------------------------------------
+
+예시 3
+
+예약 기본 설정
+
+정답:
+
+profile_booking_settings
+1 profile = 1 row
+
+--------------------------------------------------
+
+예시 4
+
+프로필 노출 설정
+
+정답:
+
+profile_visibility_settings
+1 profile = 1 row
+
+즉:
+
+프로필 단위 설정 데이터는
+모두 기본적으로 1프로필 1행이다.
+
+
+/* ==================================================
+SECTION 13 : GENERAL + BUSINESS COMMON RULE
+================================================== */
+
+본 규칙은
+GENERAL / BUSINESS를 구분하지 않는다.
+
+GENERAL 프로필도
+BUSINESS 프로필도
+
+모두 동일하게
+
+1프로필 1행 구조
+
+를 기본 강제 적용한다.
+
+즉:
+
+이 규칙은
+비지니스 전용 규칙이 아니라
+프로필 도메인 공통 절대 규칙이다.
+
+
+/* ==================================================
+SECTION 14 : FINAL DECLARATION
+================================================== */
+
+최종 기준:
+
+프로필 구조 데이터는
+무조건
+1프로필 1행 구조를 기본으로 한다.
+
+AI는 이 구조를
+강제 적용해야 한다.
+
+예외사항은
+AI가 임의 판단하지 않는다.
+
+반드시
+사용자와 별도 협의 후
+승인된 경우에만
+다행 구조를 허용한다.
+
+즉:
+
+PROFILE DOMAIN DEFAULT
+=
+1 PROFILE 1 ROW
+
+EXCEPTION
+=
+USER CONSULTATION REQUIRED
+
+이 기준을
+프로필 도메인의 절대 기본값으로 고정한다.
+
+/* ==================================================
+END OF SNAPSHOT
+================================================== */
+
+============================================
+FILE : docs/SNS_REGION_DB_SCHEMA_SNAPSHOT.txt
+ROOT : C:\Users\kjm\social-platform\docs\SNS_REGION_DB_SCHEMA_SNAPSHOT.txt
+STATUS : PRODUCTION DB STRUCTURE SNAPSHOT
+ROLE : SNS + REGION FEED + PROFILE MEDIA FULL STRUCTURE
+
+
+
+SECTION 01 : IDENTITY CORE
+
+users
+→ 계정 인증 전용
+
+columns:
+
+id
+email
+passwordHash
+createdAt
+
+
+
+channels
+→ 플랫폼 절대 식별자
+
+columns:
+
+id
+channelCode UNIQUE
+channelType
+status
+createdAt
+
+
+
+profile_ownerships
+→ 채널 소유권 관리
+
+columns:
+
+id
+userId FK
+channelCode
+role
+createdAt
+
+
+
+profiles
+→ 채널 메타 정보
+
+columns:
+
+id
+channelCode UNIQUE
+displayName
+bio
+
+avatarId FK
+primaryHeroId FK
+
+primaryRegionId FK
+
+latitude
+longitude
+
+status
+
+createdAt
+updatedAt
+
+
+
+profile_sessions
+→ 로그인 세션
+
+columns:
+
+id
+profileId FK
+channelCode
+
+deviceId
+ipAddress
+
+status
+
+lastSeen
+createdAt
+
+
+
+
+SECTION 02 : PROFILE MEDIA
+
+
+profile_avatars
+→ 아바타 전용 테이블
+
+columns:
+
+id
+profileId FK
+channelCode
+
+imageAssetId FK
+
+filePath
+fileName
+
+mimeType
+fileSize
+
+isActive
+
+createdAt
+updatedAt
+
+
+
+profile_hero_images
+→ 프로필 대표 이미지 (외부 URL 허용)
+
+columns:
+
+id
+profileId FK
+channelCode
+
+imageAssetId FK NULL
+externalUrl NULL
+
+title
+description
+
+linkUrl
+
+sortOrder
+
+isActive
+
+createdAt
+updatedAt
+
+
+
+profile_blocks
+→ 프로필 UI 구성
+
+columns:
+
+id
+profileId FK
+channelCode
+
+blockType
+
+title
+content
+
+linkUrl
+
+sortOrder
+
+isActive
+
+createdAt
+
+
+
+
+SECTION 03 : MEDIA CORE
+
+
+image_assets
+→ 모든 이미지 메타
+
+columns:
+
+id
+channelCode
+
+usageType
+
+fileName
+filePath
+
+mimeType
+fileSize
+
+width
+height
+
+storageProvider
+
+checksum
+
+createdAt
+
+
+
+photos
+→ 내부 이미지 연결
+
+columns:
+
+id
+imageAssetId FK
+
+usageType
+
+createdAt
+
+
+
+
+SECTION 04 : REGION SYSTEM
+
+
+regions
+→ 지역 마스터
+
+columns:
+
+id
+code UNIQUE
+
+countryCode
+
+name
+fullName
+
+regionType
+
+parentId FK
+
+depth
+
+latitude
+longitude
+
+createdAt
+
+
+
+region_metadata
+→ 지역 추가 정보
+
+columns:
+
+id
+regionId FK
+
+population
+
+timezone
+
+createdAt
+
+
+
+region_aliases
+→ 검색용 지역명
+
+columns:
+
+id
+regionId FK
+
+aliasName
+
+createdAt
+
+
+
+channel_region_settings
+→ 사용자 활동 지역
+
+columns:
+
+id
+channelCode
+
+regionId FK
+
+isPrimary
+
+createdAt
+
+
+
+address_details
+→ 주소 상세
+
+columns:
+
+id
+profileId FK
+
+regionId FK
+
+addressLine
+
+postalCode
+
+createdAt
+
+
+
+
+SECTION 05 : CONTENT CORE
+
+
+posts
+→ SNS 게시물
+
+columns:
+
+id
+
+profileId FK
+channelCode
+
+regionId FK
+
+content
+
+visibility
+
+mediaCount
+
+latitude
+longitude
+
+status
+
+createdAt
+updatedAt
+
+
+
+post_images
+→ 게시물 이미지
+
+columns:
+
+id
+postId FK
+
+imageAssetId FK
+
+sortOrder
+
+createdAt
+
+
+
+post_comments
+→ 댓글
+
+columns:
+
+id
+postId FK
+
+channelCode
+
+content
+
+status
+
+createdAt
+
+
+
+post_engagements
+→ 좋아요
+
+columns:
+
+id
+postId FK
+
+channelCode
+
+type
+
+createdAt
+
+
+
+post_impressions
+→ 노출 기록
+
+columns:
+
+id
+postId FK
+
+viewerChannelCode
+
+createdAt
+
+
+
+
+SECTION 06 : SOCIAL GRAPH
+
+
+follows
+→ 팔로우
+
+columns:
+
+id
+
+channelCode
+targetChannelCode
+
+status
+
+createdAt
+
+
+
+blocks
+→ 차단
+
+columns:
+
+id
+
+channelCode
+targetChannelCode
+
+reason
+
+createdAt
+
+
+
+notifications
+→ 알림
+
+columns:
+
+id
+
+channelCode
+
+type
+
+referenceId
+
+isRead
+
+createdAt
+
+
+
+
+SECTION 07 : MESSAGING
+
+
+conversations
+→ 채팅방
+
+columns:
+
+id
+
+type
+
+createdAt
+
+
+
+messages
+→ 메시지
+
+columns:
+
+id
+
+conversationId FK
+
+senderChannelCode
+
+content
+
+messageType
+
+createdAt
+
+
+
+
+SECTION 08 : FEED AI SYSTEM
+
+
+feed_seen_history
+→ 본 피드 기록
+
+columns:
+
+id
+
+viewerChannelCode
+
+postId FK
+
+seenAt
+
+
+
+feed_rank_cache
+→ 피드 캐시
+
+columns:
+
+id
+
+channelCode
+
+postId FK
+
+score
+
+createdAt
+
+
+
+feed_preferences
+→ 피드 설정
+
+columns:
+
+id
+
+channelCode
+
+preferenceType
+
+value
+
+createdAt
+
+
+
+feed_hide_filter
+→ 숨김 필터
+
+columns:
+
+id
+
+channelCode
+
+targetChannelCode
+
+createdAt
+
+
+
+
+SECTION 09 : PROFILE AI DATA
+
+
+profile_interest_tags
+→ 관심사
+
+columns:
+
+id
+
+channelCode
+
+tag
+
+createdAt
+
+
+
+profile_activity_score
+→ 활동 점수
+
+columns:
+
+id
+
+channelCode
+
+score
+
+updatedAt
+
+
+
+profile_reputation
+→ 신뢰도
+
+columns:
+
+id
+
+channelCode
+
+reputationScore
+
+updatedAt
+
+
+
+
+SECTION 10 : SEARCH
+
+
+search_index
+→ 검색 인덱스
+
+columns:
+
+id
+
+channelCode
+
+contentType
+
+contentId
+
+searchText
+
+createdAt
+
+
+
+
+SECTION 11 : SYSTEM
+
+
+audit_logs
+→ 감사 로그
+
+columns:
+
+id
+
+channelCode
+
+action
+
+targetType
+
+targetId
+
+createdAt
+
+
+
+reports
+→ 신고
+
+columns:
+
+id
+
+reporterChannelCode
+
+targetChannelCode
+
+reason
+
+status
+
+createdAt
+
+
+
+activity_logs
+→ 활동 로그
+
+columns:
+
+id
+
+channelCode
+
+activityType
+
+createdAt
+
+
+
+feature_flags
+→ 기능 토글
+
+columns:
+
+id
+
+featureName
+
+isEnabled
+
+createdAt
+
+
+
+
+SECTION 12 : OPTIONAL ANALYTICS
+
+
+hero_view_logs
+→ 히어로 조회
+
+columns:
+
+id
+
+heroId FK
+
+viewerChannelCode
+
+createdAt
+
+
+
+hero_click_logs
+→ 히어로 클릭
+
+columns:
+
+id
+
+heroId FK
+
+viewerChannelCode
+
+createdAt
+
+
+
+
+SECTION FINAL : CORE ARCHITECTURE SUMMARY
+
+
+IDENTITY
+
+users
+channels
+profiles
+profile_sessions
+
+
+
+PROFILE MEDIA
+
+profile_avatars
+profile_hero_images
+profile_blocks
+
+
+
+REGION
+
+regions
+channel_region_settings
+
+
+
+CONTENT
+
+posts
+post_images
+post_comments
+
+
+
+SOCIAL
+
+follows
+blocks
+notifications
+
+
+
+MEDIA
+
+image_assets
+
+
+
+FEED
+
+feed_seen_history
+feed_rank_cache
+
+
+
+AI
+
+profile_interest_tags
+profile_reputation
+
+
+
+SYSTEM
+
+audit_logs
+reports
+
+
+
+
+END OF SNAPSHOT
+==============================
+FILE : docs/DB_FINAL_PRE_DEV_CHECKLIST.txt
+ROOT : C:\Users\kjm\social-platform\docs\DB_FINAL_PRE_DEV_CHECKLIST.txt
+STATUS : FINAL PRE DEVELOPMENT DB VALIDATION CHECKLIST
+ROLE : DEVELOPMENT BLOCKER PREVENTION
+PRIORITY : ABSOLUTE CHECK REQUIRED
+
+
+
+SECTION 01 : IDENTITY STRUCTURE CHECK
+
+
+[ ] channelCode UNIQUE 확인
+
+없으면:
+
+SNS 관계 깨짐
+
+
+
+[ ] profiles.channelCode UNIQUE 확인
+
+없으면:
+
+채널 중복 생성 가능
+
+
+
+[ ] users.email UNIQUE 확인
+
+없으면:
+
+로그인 충돌 발생
+
+
+
+[ ] profile_sessions FK 확인
+
+profileId FK 존재해야함
+
+
+
+[ ] ownership 연결 확인
+
+user → channel → profile 흐름 유지
+
+
+
+
+SECTION 02 : CORE FK VALIDATION
+
+
+[ ] posts.profileId FK 존재
+
+없으면:
+
+orphan post 발생
+
+
+
+[ ] post_images.postId FK 확인
+
+
+
+[ ] post_comments.postId FK 확인
+
+
+
+[ ] follows.channelCode FK 논리 확인
+
+
+
+[ ] image_assets channelCode 연결 확인
+
+
+
+
+SECTION 03 : REGION STRUCTURE CHECK
+
+
+[ ] regions.code UNIQUE 확인
+
+
+
+[ ] regions parentId FK 확인
+
+
+
+[ ] posts.regionId FK 확인
+
+
+
+[ ] channel_region_settings FK 확인
+
+
+
+[ ] latitude longitude 존재 여부 확인
+
+지역피드 필요
+
+
+
+
+SECTION 04 : MEDIA STRUCTURE CHECK
+
+
+[ ] image_assets 존재 확인
+
+
+
+[ ] profile_avatars imageAssetId FK 확인
+
+
+
+[ ] post_images imageAssetId FK 확인
+
+
+
+[ ] orphan media 존재 여부 확인
+
+
+
+[ ] usageType 정의 확인
+
+
+
+
+SECTION 05 : SYSTEM COLUMN CHECK
+
+
+모든 주요 테이블:
+
+[ ] id PK 존재
+
+[ ] createdAt 존재
+
+[ ] status 존재 (권장)
+
+
+
+posts:
+
+[ ] visibility 존재
+
+
+
+profiles:
+
+[ ] status 존재
+
+
+
+
+SECTION 06 : INDEX CHECK
+
+
+필수 index:
+
+
+
+[ ] profiles.channelCode index
+
+
+
+[ ] posts.profileId index
+
+
+
+[ ] posts.regionId index
+
+
+
+[ ] follows.channelCode index
+
+
+
+[ ] image_assets.channelCode index
+
+
+
+없으면:
+
+feed 느려짐
+
+
+
+
+SECTION 07 : SOFT DELETE POLICY
+
+
+확인:
+
+
+
+[ ] status column 존재 여부
+
+
+
+[ ] delete 구조 정의 여부
+
+
+
+[ ] physical delete 사용 여부
+
+
+
+권장:
+
+soft delete only
+
+
+
+
+SECTION 08 : DATA DOMAIN ISOLATION
+
+
+확인:
+
+
+
+[ ] email users ONLY
+
+
+
+[ ] phone users ONLY
+
+
+
+[ ] passwordHash users ONLY
+
+
+
+다른 테이블 존재시 FAIL
+
+
+
+
+SECTION 09 : SERVICE MATCH CHECK
+
+
+확인:
+
+
+
+[ ] DB 테이블 = service 존재
+
+
+
+[ ] service 없는 DB 없음
+
+
+
+[ ] DB 없는 service 없음
+
+
+
+이거 안맞으면:
+
+init 오류 발생
+
+
+
+
+SECTION 10 : INIT SAFETY CHECK
+
+
+확인:
+
+
+
+[ ] CREATE TABLE IF NOT EXISTS 사용
+
+
+
+[ ] DROP TABLE 없음
+
+
+
+[ ] ALTER 안전 적용
+
+
+
+[ ] default 값 존재
+
+
+
+없으면:
+
+init 실패 가능
+
+
+
+
+SECTION 11 : CHANNELCODE RULE CHECK
+
+
+확인:
+
+
+
+[ ] channelCode 필요한 테이블만 존재
+
+
+
+[ ] 필요 없는 테이블 제거
+
+
+
+[ ] channelCode index 존재
+
+
+
+[ ] channelCode datatype 동일
+
+
+
+TEXT vs VARCHAR 혼합 금지
+
+
+
+
+SECTION 12 : FEED SAFETY CHECK
+
+
+확인:
+
+
+
+[ ] post_counts 존재
+
+
+
+[ ] feed_seen_history 존재
+
+
+
+[ ] post_impressions 존재
+
+
+
+없으면:
+
+feed ranking 불가능
+
+
+
+
+SECTION 13 : PERFORMANCE CHECK
+
+
+확인:
+
+
+
+[ ] COUNT cache 존재
+
+
+
+[ ] geo index 존재
+
+
+
+[ ] follow count cache 존재
+
+
+
+없으면:
+
+성능 문제
+
+
+
+
+SECTION 14 : MIGRATION SAFETY
+
+
+확인:
+
+
+
+[ ] 컬럼 nullable 여부
+
+
+
+[ ] default 존재
+
+
+
+[ ] FK cascade 설정
+
+
+
+[ ] schema version 존재
+
+
+
+권장:
+
+schema_version table
+
+
+
+
+SECTION 15 : FINAL PASS CONDITIONS
+
+
+아래 모두 TRUE여야 개발 시작:
+
+
+
+identity 정상
+
+FK 정상
+
+index 정상
+
+media 정상
+
+region 정상
+
+service match
+
+init 가능
+
+migration 가능
+
+
+
+1개라도 FAIL이면:
+
+
+
+개발 시작 금지
+
+
+
+
+SECTION FINAL DECLARATION
+
+
+개발 시작 가능 조건:
+
+
+
+DB init 성공
+
+테이블 mismatch 없음
+
+FK 오류 없음
+
+service mismatch 없음
+
+
+
+위 통과시:
+
+
+
+DEVELOPMENT SAFE
+
+
+
+
+END OF CHECKLIST
+=========================================
+FILE : docs/SNS_PLATFORM_DEV_ROADMAP.txt
+ROOT : C:\Users\kjm\social-platform\docs\SNS_PLATFORM_DEV_ROADMAP.txt
+STATUS : DEVELOPMENT ORDER AFTER DB DESIGN
+ROLE : SAFE DEVELOPMENT SEQUENCE
+PRIORITY : PRODUCTION SAFE ORDER
+
+
+
+SECTION 01 : DB FREEZE STEP
+
+
+목적:
+
+DB 구조 안정화
+
+
+
+작업:
+
+
+
+[ ] CORE TABLE LOCK
+
+users
+channels
+profiles
+posts
+image_assets
+regions
+
+
+
+[ ] FK 전부 확인
+
+
+
+[ ] index 추가
+
+
+
+[ ] nullable 확인
+
+
+
+[ ] default 값 확인
+
+
+
+[ ] init 테스트
+
+
+
+완료 조건:
+
+
+
+init-db 오류 없음
+
+
+
+
+SECTION 02 : DB ACCESS LAYER
+
+
+목적:
+
+DB 접근 통합
+
+
+
+작업:
+
+
+
+[ ] database.ts 생성
+
+
+
+[ ] connection pool 설정
+
+
+
+[ ] transaction wrapper 생성
+
+
+
+[ ] error handler 추가
+
+
+
+[ ] query helper 작성
+
+
+
+완료 조건:
+
+
+
+service에서 DB 접근 가능
+
+
+
+
+SECTION 03 : BASE SERVICE LAYER
+
+
+목적:
+
+공통 서비스 구축
+
+
+
+먼저 만들 것:
+
+
+
+ProfileService
+ChannelService
+MediaService
+RegionService
+
+
+
+이유:
+
+
+
+모든 서비스 의존함
+
+
+
+작업:
+
+
+
+[ ] CRUD 작성
+
+
+
+[ ] FK validation
+
+
+
+[ ] error handling
+
+
+
+[ ] transaction 처리
+
+
+
+완료 조건:
+
+
+
+기본 서비스 정상 작동
+
+
+
+
+SECTION 04 : CONTENT SERVICE
+
+
+SNS 핵심:
+
+
+
+PostService
+CommentService
+EngagementService
+
+
+
+작업:
+
+
+
+[ ] post create
+
+
+
+[ ] comment create
+
+
+
+[ ] like 처리
+
+
+
+[ ] visibility 처리
+
+
+
+[ ] media 연결
+
+
+
+완료 조건:
+
+
+
+SNS 핵심 기능 동작
+
+
+
+
+SECTION 05 : SOCIAL GRAPH SERVICE
+
+
+SNS 관계:
+
+
+
+FollowService
+BlockService
+NotificationService
+
+
+
+작업:
+
+
+
+[ ] follow logic
+
+
+
+[ ] block logic
+
+
+
+[ ] notification trigger
+
+
+
+완료 조건:
+
+
+
+SNS 관계 동작
+
+
+
+
+SECTION 06 : FEED SERVICE
+
+
+피드 핵심:
+
+
+
+FeedService
+FeedRankService
+FeedCacheService
+
+
+
+작업:
+
+
+
+[ ] feed query
+
+
+
+[ ] ranking logic
+
+
+
+[ ] seen filter
+
+
+
+[ ] region filter
+
+
+
+완료 조건:
+
+
+
+피드 로딩 가능
+
+
+
+
+SECTION 07 : MESSAGING SERVICE
+
+
+메시지:
+
+
+
+ConversationService
+MessageService
+
+
+
+작업:
+
+
+
+[ ] DM
+
+
+
+[ ] group chat
+
+
+
+[ ] read status
+
+
+
+완료 조건:
+
+
+
+채팅 동작
+
+
+
+
+SECTION 08 : MEDIA SERVICE
+
+
+이미지:
+
+
+
+MediaService
+
+
+
+작업:
+
+
+
+[ ] upload
+
+
+
+[ ] delete
+
+
+
+[ ] usage map
+
+
+
+[ ] avatar 연결
+
+
+
+[ ] post 연결
+
+
+
+완료 조건:
+
+
+
+이미지 정상
+
+
+
+
+SECTION 09 : SEARCH SERVICE
+
+
+검색:
+
+
+
+SearchService
+
+
+
+작업:
+
+
+
+[ ] index 생성
+
+
+
+[ ] search query
+
+
+
+[ ] channel search
+
+
+
+[ ] post search
+
+
+
+완료 조건:
+
+
+
+검색 가능
+
+
+
+
+SECTION 10 : ADMIN SERVICE
+
+
+운영:
+
+
+
+ModerationService
+ReportService
+AuditService
+
+
+
+작업:
+
+
+
+[ ] report 처리
+
+
+
+[ ] strike 처리
+
+
+
+[ ] admin action
+
+
+
+완료 조건:
+
+
+
+관리 기능 동작
+
+
+
+
+SECTION 11 : CONTROLLER LAYER
+
+
+목적:
+
+API route 연결
+
+
+
+작업:
+
+
+
+[ ] profiles controller
+
+
+
+[ ] posts controller
+
+
+
+[ ] follows controller
+
+
+
+[ ] messages controller
+
+
+
+[ ] media controller
+
+
+
+주의:
+
+
+
+Controller DB 접근 금지
+
+
+
+
+SECTION 12 : API ROUTE LAYER
+
+
+작업:
+
+
+
+[ ] REST endpoint 정의
+
+
+
+[ ] DTO 정의
+
+
+
+[ ] validation 추가
+
+
+
+[ ] error response 통일
+
+
+
+완료 조건:
+
+
+
+API 호출 가능
+
+
+
+
+SECTION 13 : CACHE LAYER
+
+
+작업:
+
+
+
+[ ] feed cache
+
+
+
+[ ] profile cache
+
+
+
+[ ] post cache
+
+
+
+완료 조건:
+
+
+
+성능 안정
+
+
+
+
+SECTION 14 : TASK SYSTEM
+
+
+background:
+
+
+
+Feed warmer
+
+Media cleaner
+
+Notification sender
+
+
+
+완료 조건:
+
+
+
+background task 정상
+
+
+
+
+SECTION 15 : FRONT INTEGRATION
+
+
+마지막:
+
+
+
+Front 연결
+
+
+
+작업:
+
+
+
+[ ] profile page
+
+
+
+[ ] feed page
+
+
+
+[ ] post create
+
+
+
+[ ] messaging
+
+
+
+[ ] search
+
+
+
+절대 금지:
+
+
+
+front 먼저 개발
+
+
+
+
+SECTION FINAL : DEVELOPMENT ORDER SUMMARY
+
+
+
+순서:
+
+
+
+1 DB 안정화
+
+2 DB access
+
+3 Base service
+
+4 Content service
+
+5 Social service
+
+6 Feed service
+
+7 Messaging
+
+8 Media
+
+9 Search
+
+10 Admin
+
+11 Controller
+
+12 API
+
+13 Cache
+
+14 Background task
+
+15 Front
+
+
+
+
+SECTION FINAL WARNING
+
+
+
+잘못된 순서:
+
+
+
+Front → DB
+
+API → DB
+
+Service 없이 Controller
+
+
+
+결과:
+
+
+
+구조 변경 반복
+
+개발 지연
+
+DB 수정 반복
+
+
+
+
+SAFE ORDER:
+
+
+
+DB → SERVICE → API → FRONT
+
+
+
+
+END OF ROADMAP
+=========================================
+FILE : docs/DB_RISK_RESPONSE_STRATEGY.txt
+ROOT : C:\Users\kjm\social-platform\docs\DB_RISK_RESPONSE_STRATEGY.txt
+STATUS : DB RISK 대응 전략 정의
+ROLE : PRODUCTION 장애 예방 구조 가이드
+PRIORITY : ARCHITECTURE SAFETY RULE
+
+
+
+SECTION 01 : CORE PRINCIPLE
+
+
+DB 위험 대응 기본 원칙:
+
+
+
+CORE TABLE 수정 금지
+
+컬럼 삭제 금지
+
+PK 변경 금지
+
+FK 변경 금지
+
+datatype 변경 금지
+
+
+
+허용:
+
+
+
+보조 테이블 추가
+
+nullable 컬럼 추가
+
+index 추가
+
+log 테이블 추가
+
+
+
+대응 공식:
+
+
+
+CORE TABLE
++
+SUPPORT TABLE
+=
+STABLE STRUCTURE
+
+
+
+
+SECTION 02 : MESSAGING RISK 대응
+
+
+위험:
+
+
+
+conversations 참여자 구조 없음
+
+messages 읽음 구조 없음
+
+attachment 없음
+
+
+
+발생 가능 문제:
+
+
+
+group chat 불가
+
+읽음 표시 불가
+
+파일 메시지 불가
+
+
+
+대응:
+
+
+
+conversations_participants 추가
+
+
+
+columns:
+
+id
+conversationId FK
+channelCode
+role
+isMuted
+joinedAt
+leftAt
+
+
+
+message_read_status 추가
+
+
+
+columns:
+
+id
+messageId FK
+channelCode
+readAt
+
+
+
+message_attachments 추가
+
+
+
+columns:
+
+id
+messageId FK
+imageAssetId FK
+
+
+
+결과:
+
+
+
+메시징 구조 완성
+
+UX 문제 제거
+
+확장 가능
+
+
+
+
+SECTION 03 : POST PERFORMANCE RISK 대응
+
+
+위험:
+
+
+
+post like/comment count 없음
+
+
+
+발생 문제:
+
+
+
+COUNT query 증가
+
+feed 성능 저하
+
+API 느려짐
+
+
+
+대응:
+
+
+
+post_counts 추가
+
+
+
+columns:
+
+postId FK
+
+likeCount
+
+commentCount
+
+viewCount
+
+updatedAt
+
+
+
+운영 방식:
+
+
+
+like 발생 → count +1
+
+comment 발생 → count +1
+
+
+
+결과:
+
+
+
+feed query 단순화
+
+성능 안정
+
+
+
+
+SECTION 04 : MEDIA INTEGRITY RISK 대응
+
+
+위험:
+
+
+
+image_assets 사용 위치 추적 불가
+
+
+
+발생 문제:
+
+
+
+orphan 파일 발생
+
+삭제 시 참조 오류
+
+media integrity 붕괴
+
+
+
+대응:
+
+
+
+media_usage_map 추가
+
+
+
+columns:
+
+id
+
+imageAssetId FK
+
+usageType
+
+referenceId
+
+channelCode
+
+createdAt
+
+
+
+usageType:
+
+
+
+avatar
+
+post
+
+hero
+
+message
+
+gallery
+
+
+
+결과:
+
+
+
+media 참조 안전
+
+삭제 안전
+
+운영 안정성 증가
+
+
+
+
+SECTION 05 : NOTIFICATION EXPANSION RISK 대응
+
+
+위험:
+
+
+
+notifications 확장성 부족
+
+
+
+문제:
+
+
+
+push 연동 어려움
+
+priority 처리 불가
+
+mute 기능 없음
+
+
+
+대응:
+
+
+
+notification_settings 추가
+
+
+
+columns:
+
+channelCode
+
+likeEnabled
+
+commentEnabled
+
+followEnabled
+
+messageEnabled
+
+systemEnabled
+
+
+
+notifications 컬럼 추가:
+
+
+
+actorChannelCode
+
+priority
+
+deliveryStatus
+
+readAt
+
+
+
+결과:
+
+
+
+notification 확장 가능
+
+push 구조 준비
+
+
+
+
+SECTION 06 : REGION FEED RISK 대응
+
+
+위험:
+
+
+
+지역 피드 성능 문제
+
+
+
+문제:
+
+
+
+distance 계산 느림
+
+nearby feed 느림
+
+
+
+대응:
+
+
+
+post_geo_index 추가
+
+
+
+columns:
+
+postId
+
+regionId
+
+latitude
+
+longitude
+
+gridKey
+
+
+
+gridKey:
+
+
+
+geo partition key
+
+
+
+결과:
+
+
+
+지역 feed query 최적화
+
+
+
+
+SECTION 07 : DATA RECOVERY RISK 대응
+
+
+위험:
+
+
+
+삭제 복구 불가
+
+
+
+문제:
+
+
+
+운영 사고
+
+관리자 대응 불가
+
+
+
+대응:
+
+
+
+soft_delete_logs 추가
+
+
+
+columns:
+
+entityType
+
+entityId
+
+channelCode
+
+reason
+
+deletedAt
+
+
+
+결과:
+
+
+
+복구 가능
+
+audit 가능
+
+
+
+
+SECTION 08 : MODERATION RISK 대응
+
+
+위험:
+
+
+
+게시물 상태 변경 기록 없음
+
+
+
+문제:
+
+
+
+신고 처리 추적 불가
+
+정책 대응 불가
+
+
+
+대응:
+
+
+
+post_status_history 추가
+
+
+
+columns:
+
+postId
+
+status
+
+reason
+
+changedAt
+
+
+
+결과:
+
+
+
+moderation trace 가능
+
+
+
+
+SECTION 09 : PRIVACY RISK 대응
+
+
+위험:
+
+
+
+privacy 설정 없음
+
+
+
+문제:
+
+
+
+DM 제한 불가
+
+프로필 공개 제한 불가
+
+
+
+대응:
+
+
+
+profile_privacy_settings 추가
+
+
+
+columns:
+
+channelCode
+
+profileVisibility
+
+messagePermission
+
+followPermission
+
+lastSeenVisible
+
+updatedAt
+
+
+
+결과:
+
+
+
+privacy 기능 확보
+
+
+
+
+SECTION 10 : PERFORMANCE SCALING 대응
+
+
+위험:
+
+
+
+follower count query 증가
+
+
+
+문제:
+
+
+
+COUNT query 증가
+
+profile page 느림
+
+
+
+대응:
+
+
+
+follow_counts 추가
+
+
+
+columns:
+
+channelCode
+
+followerCount
+
+followingCount
+
+updatedAt
+
+
+
+결과:
+
+
+
+profile 성능 안정
+
+
+
+
+SECTION 11 : SYSTEM SAFETY 대응
+
+
+위험:
+
+
+
+rate limit 없음
+
+
+
+문제:
+
+
+
+spam 발생
+
+API abuse 가능
+
+
+
+대응:
+
+
+
+rate_limits 추가
+
+
+
+columns:
+
+channelCode
+
+actionType
+
+requestCount
+
+windowStart
+
+
+
+결과:
+
+
+
+spam 방지
+
+API 보호
+
+
+
+
+SECTION 12 : FINAL RESPONSE STRATEGY
+
+
+위험 대응 전략 정리:
+
+
+
+문제 발생 →
+
+CORE 수정하지 않는다 →
+
+SUPPORT TABLE 추가 →
+
+구조 안정화
+
+
+
+절대 금지:
+
+
+
+CORE 수정
+
+테이블 병합
+
+구조 재작성
+
+
+
+권장:
+
+
+
+보조 구조 확장
+
+
+
+
+SECTION FINAL SUMMARY
+
+
+
+위험 대응 핵심:
+
+
+
+Messaging completeness
+
+Media integrity
+
+Performance cache
+
+Privacy control
+
+Moderation log
+
+Region performance
+
+Notification control
+
+
+
+안정화 결과:
+
+
+
+현재 DB 안정성:
+
+약 85%
+
+
+
+대응 적용 후:
+
+
+
+약 96%
+
+
+
+결론:
+
+
+
+구조 문제 없음
+
+운영 안정화 단계 필요
+
+
+
+END OF RISK RESPONSE STRATEGY
+===================================
+

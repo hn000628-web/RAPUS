@@ -1,0 +1,138 @@
+
+※모든 벡엔드API는  아래와 같은 API를 기본값으로
+backend/src/config/database.ts
+-> import db from'../../config/database'
+Controller → Service → DB
+
+
+================================
+※사용금지 경로※ 사용시 규칙위반
+@Injectable()
+export class PlaceService {
+  constructor(
+    @Inject('DB')
+    private readonly db: any
+  ) {}
+================================
+==================================================
+FILE : PROJECT_RULES/BACKEND_API_ABSOLUTE_RULE_SNAPSHOT.txt
+ROOT : PROJECT_RULES/BACKEND_API_ABSOLUTE_RULE_SNAPSHOT.txt
+STATUS : FINAL SNAPSHOT
+PRIORITY : ABSOLUTE LOCK
+ROLE : BACKEND API ACCESS / STRUCTURE RULE
+==================================================
+
+/* ==================================================
+SECTION 00 : CORE PRINCIPLE
+================================================== */
+
+// 모든 Backend API는 절대 기준 구조를 따라야 한다.
+// DB 접근 경계는 Service 단일 책임으로 제한됨
+// Controller 및 Frontend에서 DB 직접 접근 금지
+
+/* ==================================================
+SECTION 01 : DB ACCESS RULE
+================================================== */
+
+// 허용 방식
+import db from '../../config/database'   → Service 내부에서만 사용
+Controller → Service → DB 흐름 유지
+
+// 금지 방식
+@Controller() 또는 다른 Service에서 직접 DB 주입
+@Injectable()
+export class PlaceService {
+  constructor(
+    @Inject('DB')
+    private readonly db: any
+  ) {}
+}
+// 위 방식 사용 시 규칙 위반
+
+/* ==================================================
+SECTION 02 : CONTROLLER RULE
+================================================== */
+
+// Controller 역할
+- Request 수신
+- Service 호출
+- Response 반환
+
+// 금지
+- DB 직접 접근
+- 비즈니스 로직 포함
+- Service bypass
+
+/* ==================================================
+SECTION 03 : SERVICE RULE
+================================================== */
+
+// Service 역할
+- Business logic 수행
+- DB 접근 단일 책임
+- Transaction 처리
+- Validation 수행
+
+// 금지
+- Controller를 통한 DB 접근 bypass
+- Frontend에서 Service 호출 없이 DB 접근
+
+/* ==================================================
+SECTION 04 : FRONTEND RULE
+==================================================
+
+// Frontend 역할
+- API 호출
+- UI 렌더링
+- State 관리
+
+// 금지
+- DB 직접 접근
+- Service 호출 없이 데이터 처리
+- Controller bypass
+
+/* ==================================================
+SECTION 05 : API PATH / MODULE RULE
+==================================================
+
+// GENERAL API
+- /api/profile
+- /api/posts
+
+// BUSINESS API
+- /api/business/profile
+- /api/business/place
+- /api/business/posts
+
+// 금지
+- /api/general/* 경로 사용
+- General과 Business 혼합 기능 추가
+- cross import (business → general, general → business)
+
+/* ==================================================
+SECTION 06 : IMPORT / DEPENDENCY RULE
+==================================================
+
+// 허용
+- business → business import
+- general → general import
+
+// 금지
+- cross import
+- Controller / Service에서 직접 DB 경로 import (frontend 제외)
+
+==================================================
+SECTION FINAL : ENFORCEMENT
+==================================================
+
+// 모든 Backend API는 반드시 다음 사항 준수
+1. DB 접근은 Service만
+2. Controller → Service → DB
+3. Frontend → API 호출만
+4. DB 주입 또는 직접 접근 금지
+5. GENERAL / BUSINESS API 경계 유지
+6. 규칙 위반 시 Production 사용 금지
+
+==================================================
+END OF BACKEND API ABSOLUTE RULE SNAPSHOT
+==================================================

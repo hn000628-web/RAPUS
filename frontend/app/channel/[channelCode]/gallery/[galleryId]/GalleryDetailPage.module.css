@@ -1,0 +1,557 @@
+/* FILE : frontend/app/channel/[channelCode]/gallery/[galleryId]/GalleryDetailPage.module.css */
+/* ROOT : C:\Users\kjm\social-platform\frontend\app\channel\[channelCode]\gallery\[galleryId]\GalleryDetailPage.module.css */
+/* STATUS : FINAL MODIFIED */
+/* ROLE : PUBLIC GALLERY DETAIL PAGE STYLE */
+/* CHANGE SUMMARY :
+- 기존 UI 구조 유지
+- PC : 좌측 대표 이미지 / 썸네일, 우측 사진 정보
+- MOBILE : 사진 / 썸네일 / 정보 순서 유지
+- 대표 이미지 내부 좌우 슬라이딩 버튼 유지
+- 하단 다음 사진 버튼 제거 유지
+- 하단 채널로 돌아가기 버튼 제거
+- mediaActions / outlineButton / darkButton 스타일 제거
+- PC / Tablet / Mobile 반응형 구조 유지
+- 사진첩 상세 전용 UI 스타일 유지
+- API / DB / Service 영향 없음
+*/
+
+/* SECTION 01 : PAGE */
+
+.page {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #111827;
+  font-family:
+    Arial,
+    Helvetica,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 72px;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #eef0f4;
+  background: #ffffff;
+}
+
+.logo {
+  color: #000000;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #111827;
+  font-size: 14px;
+}
+
+.locationDot {
+  color: #ec407a;
+  font-size: 14px;
+}
+
+.locationText {
+  font-weight: 700;
+}
+
+.loginButton {
+  height: 34px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* SECTION 02 : LAYOUT */
+
+.shell {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 34px 24px 80px;
+  box-sizing: border-box;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(380px, 0.82fr);
+  gap: 34px;
+  align-items: start;
+}
+
+.mediaColumn {
+  min-width: 0;
+}
+
+.infoColumn {
+  min-width: 0;
+  padding-top: 6px;
+}
+
+/* SECTION 03 : MEDIA */
+
+.mediaFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f3f4f6;
+}
+
+.mainImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.mediaNavButton {
+  position: absolute;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.72);
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 32px;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.mediaNavButtonLeft {
+  left: 16px;
+}
+
+.mediaNavButtonRight {
+  right: 16px;
+}
+
+.mediaCount {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.82);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.thumbnailRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.thumbnailButton {
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: #f3f4f6;
+  cursor: pointer;
+}
+
+.thumbnailButtonActive {
+  border-color: #111827;
+}
+
+.thumbnailImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* SECTION 04 : GALLERY CONTENT */
+
+.galleryCard {
+  padding-top: 0;
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tag {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.categoryText {
+  margin: 0 0 8px;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.galleryTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.05em;
+}
+
+.galleryDescription {
+  margin: 16px 0 0;
+  color: #374151;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.65;
+}
+
+.divider {
+  height: 1px;
+  margin: 28px 0;
+  background: #edf0f5;
+}
+
+/* SECTION 05 : IMAGE INFO */
+
+.imageInfoSection {
+  margin-top: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.imageInfoBox {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fafafa;
+}
+
+.imageTitle {
+  color: #111827;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.imageDescription {
+  margin: 0;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.imageCreatedAt {
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* SECTION 06 : META */
+
+.galleryMetaSection {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metaBox {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.metaLabel {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.metaValue {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.noticeBox {
+  margin-top: 24px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+/* SECTION 07 : DEBUG */
+
+.debugBox {
+  margin-top: 18px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #edf0f5;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* SECTION 08 : TABLET */
+
+@media (max-width: 1023px) {
+  .shell {
+    max-width: 760px;
+    padding: 24px 18px 72px;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+
+  .mediaColumn {
+    order: 1;
+  }
+
+  .infoColumn {
+    order: 2;
+    padding-top: 0;
+  }
+
+  .mediaFrame {
+    aspect-ratio: 16 / 10;
+    border-radius: 14px;
+  }
+
+  .galleryTitle {
+    font-size: 32px;
+  }
+}
+
+/* SECTION 09 : MOBILE */
+
+@media (max-width: 767px) {
+  .header {
+    height: 60px;
+    padding: 0 16px;
+  }
+
+  .logo {
+    font-size: 16px;
+  }
+
+  .headerRight {
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .loginButton {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+
+  .shell {
+    max-width: none;
+    padding: 0 0 48px;
+  }
+
+  .layout {
+    gap: 0;
+  }
+
+  .mediaColumn {
+    order: 1;
+    width: 100%;
+  }
+
+  .infoColumn {
+    order: 2;
+    padding: 22px 18px 0;
+  }
+
+  .mediaFrame {
+    aspect-ratio: 16 / 9;
+    border: none;
+    border-radius: 0;
+  }
+
+  .mediaNavButton {
+    width: 36px;
+    height: 36px;
+    font-size: 28px;
+    line-height: 28px;
+  }
+
+  .mediaNavButtonLeft {
+    left: 12px;
+  }
+
+  .mediaNavButtonRight {
+    right: 12px;
+  }
+
+  .mediaCount {
+    right: 12px;
+    bottom: 12px;
+    font-size: 12px;
+  }
+
+  .thumbnailRow {
+    gap: 8px;
+    margin: 10px 14px 0;
+  }
+
+  .thumbnailButton {
+    border-radius: 9px;
+  }
+
+  .tagRow {
+    margin-bottom: 12px;
+  }
+
+  .tag {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .categoryText {
+    font-size: 13px;
+  }
+
+  .galleryTitle {
+    font-size: 30px;
+  }
+
+  .galleryDescription {
+    font-size: 15px;
+  }
+
+  .divider {
+    margin: 24px 0;
+  }
+
+  .galleryMetaSection {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .metaBox {
+    padding: 12px 10px;
+  }
+
+  .metaLabel {
+    font-size: 11px;
+  }
+
+  .metaValue {
+    font-size: 12px;
+  }
+
+  .debugBox {
+    display: none;
+  }
+}
+
+/* SECTION 10 : SMALL MOBILE */
+
+@media (max-width: 420px) {
+  .headerRight {
+    gap: 6px;
+  }
+
+  .locationText {
+    max-width: 54px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .thumbnailRow {
+    gap: 6px;
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+
+  .infoColumn {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .galleryTitle {
+    font-size: 28px;
+  }
+
+  .galleryMetaSection {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* SECTION 11 : VALIDATION */
+
+/*
+VALIDATION:
+- 단일 CSS 파일 통코드 출력
+- 기존 PC 좌측 사진 / 우측 정보 구조 유지 완료
+- Tablet / Mobile 에서는 사진 영역 order 1 적용 완료
+- Tablet / Mobile 에서는 정보 영역 order 2 적용 완료
+- 하단 다음 사진 버튼 제거 대응 완료
+- 하단 채널로 돌아가기 버튼 제거 대응 완료
+- mediaActions 스타일 제거 완료
+- outlineButton 스타일 제거 완료
+- darkButton 스타일 제거 완료
+- PC 2컬럼 구조 유지
+- Tablet 1컬럼 구조 유지
+- Mobile 1컬럼 구조 유지
+- Mobile hero image 16:9 적용
+- Mobile thumbnail 3칸 유지
+- 갤러리 상세 전용 UI 스타일 유지
+- API / DB / Service 영향 없음
+*/

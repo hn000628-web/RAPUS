@@ -1,0 +1,416 @@
+/* ==================================================
+
+SERVICE TEMPLATE
+
+STANDARD BACKEND SERVICE STRUCTURE
+
+================================================== */
+
+import db from '../config/database'
+
+/* ==================================================
+
+SERVICE DEFINITION
+
+DOMAIN :
+(POST / PROFILE / REGION / PHOTO / FEED)
+
+ROLE :
+
+(Service responsibility description)
+
+OWNED TABLE :
+
+(Table list)
+
+================================================== */
+
+export class ExampleService {
+
+/* ==================================================
+
+CREATE
+
+ROLE :
+Create entity
+
+FLOW :
+
+validate
+ownership check
+transaction
+insert
+dependent insert
+return
+
+================================================== */
+
+async create(data:any){
+
+try{
+
+/* =====================
+VALIDATION
+===================== */
+
+if(!data){
+
+throw new Error(
+'Invalid input'
+)
+
+}
+
+/* =====================
+FK VALIDATION
+===================== */
+
+// example:
+
+const profile =
+await db.get(
+`SELECT id
+ FROM profiles
+ WHERE id=?`,
+[data.profileId]
+)
+
+if(!profile){
+
+throw new Error(
+'Profile not found'
+)
+
+}
+
+/* =====================
+TRANSACTION START
+===================== */
+
+await db.run('BEGIN')
+
+/* =====================
+MAIN INSERT
+===================== */
+
+const result =
+await db.run(
+
+`INSERT INTO example_table(
+
+name,
+createdAt
+
+)
+
+VALUES(
+
+?,
+CURRENT_TIMESTAMP
+
+)`,
+
+[
+data.name
+]
+
+)
+
+/* =====================
+DEPENDENT INSERT
+(optional)
+===================== */
+
+// example:
+
+// engagement row
+
+/* =====================
+TRANSACTION COMMIT
+===================== */
+
+await db.run('COMMIT')
+
+return{
+
+success:true,
+
+id:result.lastID
+
+}
+
+}catch(error){
+
+/* =====================
+ROLLBACK
+===================== */
+
+await db.run('ROLLBACK')
+
+return{
+
+success:false,
+
+error:error.message
+
+}
+
+}
+
+}
+
+
+
+/* ==================================================
+
+GET BY ID
+
+ROLE :
+Fetch single entity
+
+================================================== */
+
+async getById(id:number){
+
+const row =
+await db.get(
+
+`SELECT *
+ FROM example_table
+ WHERE id=?`,
+
+[id]
+
+)
+
+if(!row){
+
+return{
+
+success:false,
+
+error:'Not found'
+
+}
+
+}
+
+return{
+
+success:true,
+
+data:row
+
+}
+
+}
+
+
+
+/* ==================================================
+
+LIST
+
+ROLE :
+Fetch list
+
+================================================== */
+
+async list(
+page:number=1,
+limit:number=20
+){
+
+const offset =
+(page-1)*limit
+
+const rows =
+await db.all(
+
+`SELECT *
+
+FROM example_table
+
+ORDER BY id DESC
+
+LIMIT ?
+OFFSET ?`,
+
+[
+limit,
+offset
+]
+
+)
+
+return{
+
+success:true,
+
+data:rows
+
+}
+
+}
+
+
+
+/* ==================================================
+
+UPDATE
+
+ROLE :
+Update entity
+
+================================================== */
+
+async update(
+id:number,
+data:any
+){
+
+/* =====================
+OWNERSHIP CHECK
+===================== */
+
+// example:
+
+const row =
+await db.get(
+
+`SELECT id
+ FROM example_table
+ WHERE id=?`,
+
+[id]
+
+)
+
+if(!row){
+
+return{
+
+success:false,
+error:'Not found'
+
+}
+
+}
+
+/* =====================
+UPDATE
+===================== */
+
+await db.run(
+
+`UPDATE example_table
+
+SET
+
+name=?,
+updatedAt=CURRENT_TIMESTAMP
+
+WHERE id=?`,
+
+[
+data.name,
+id
+]
+
+)
+
+return{
+
+success:true
+
+}
+
+}
+
+
+
+/* ==================================================
+
+DELETE (SOFT)
+
+ROLE :
+Deactivate entity
+
+================================================== */
+
+async delete(id:number){
+
+await db.run(
+
+`UPDATE example_table
+
+SET status='INACTIVE'
+
+WHERE id=?`,
+
+[id]
+
+)
+
+return{
+
+success:true
+
+}
+
+}
+
+
+
+/* ==================================================
+
+VALIDATION HELPERS
+
+================================================== */
+
+
+async validateProfile(profileId:number){
+
+const row =
+await db.get(
+
+`SELECT id
+ FROM profiles
+ WHERE id=?`,
+
+[profileId]
+
+)
+
+return !!row
+
+}
+
+
+
+/* ==================================================
+
+UTILITY METHODS
+
+================================================== */
+
+
+async exists(id:number){
+
+const row =
+await db.get(
+
+`SELECT id
+ FROM example_table
+ WHERE id=?`,
+
+[id]
+
+)
+
+return !!row
+
+}
+
+
+}

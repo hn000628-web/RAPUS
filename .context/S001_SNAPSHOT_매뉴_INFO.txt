@@ -1,0 +1,289 @@
+
+/* ==================================================
+FILE : docs/BUSINESS_MENU_INFO_HARDCODE_RULE_SNAPSHOT.txt
+ROOT : docs/BUSINESS_MENU_INFO_HARDCODE_RULE_SNAPSHOT.txt
+STATUS : PRODUCTION LOCK
+ROLE : BUSINESS MENU STRUCTURE / INFO FIXED RULE
+CHANGE SUMMARY :
+- INFO 메뉴 하드코딩 고정 구조 공식화
+- INFO = profile root 데이터로 재정의
+- dynamic category와 분리 규칙 명문화
+- 자동복구 문제 원인 및 차단 구조 정의
+================================================== */
+
+
+/* ==================================================
+SECTION 01 : PURPOSE
+================================================== */
+
+본 스냅샷의 목적은
+
+BUSINESS 메뉴 구조에서
+
+INFO(안내) 메뉴를
+하드코딩으로 고정해야 하는 이유와
+구조적 정당성을 명확히 정의하고
+
+자동 수정 / 자동 복구 / 구조 꼬임 문제를
+원천 차단하는 것이다.
+
+
+/* ==================================================
+SECTION 02 : CORE PRINCIPLE
+================================================== */
+
+핵심 원칙:
+
+INFO는 "메뉴"가 아니다.
+
+INFO는
+
+profiles 테이블 기반
+프로필 루트 데이터이다.
+
+즉:
+
+INFO
+=
+profile root view
+=
+bio / contact / region 등
+프로필 본체 정보
+
+따라서
+
+카테고리 시스템에 포함되면 안 된다.
+
+
+/* ==================================================
+SECTION 03 : DOMAIN SEPARATION RULE
+================================================== */
+
+도메인 분리 절대 규칙:
+
+INFO:
+
+- profiles 테이블
+- profile-summary-api.ts
+- 단일 row 구조
+- 삭제 불가
+- 항상 존재
+
+
+DYNAMIC MENU:
+
+- posts 기반
+- business posts API
+- category 기반
+- 생성/삭제 가능
+
+
+결론:
+
+INFO ≠ posts
+
+INFO ≠ category
+
+
+/* ==================================================
+SECTION 04 : MENU STRUCTURE RULE
+================================================== */
+
+최종 메뉴 구조:
+
+[고정 영역]
+
+1. INFO (안내)
+
+[동적 영역]
+
+2. EVENT
+3. PRODUCT
+4. GENERAL
+5. GALLERY
+6. REVIEW
+
+
+정렬 규칙:
+
+INFO는 항상 1번
+
+변경 불가
+
+삭제 불가
+
+
+/* ==================================================
+SECTION 05 : FRONTEND IMPLEMENTATION RULE
+================================================== */
+
+프론트엔드 구현 절대 규칙:
+
+STEP 1
+
+INFO 메뉴 하드코딩
+
+const FIXED_MENU = [
+  { type: 'INFO', label: '안내' }
+]
+
+
+STEP 2
+
+서버 카테고리에서 INFO 제거
+
+categories.filter(c => c.type !== 'INFO')
+
+
+STEP 3
+
+최종 메뉴 구성
+
+const menus = [
+  ...FIXED_MENU,
+  ...dynamicMenus
+]
+
+
+금지:
+
+- INFO를 API 응답에 포함
+- categories에 INFO 포함
+- INFO를 DB에서 생성
+
+
+/* ==================================================
+SECTION 06 : BACKEND RULE
+================================================== */
+
+백엔드 절대 규칙:
+
+1. category API에서 INFO 반환 금지
+
+2. INFO 관련 데이터는
+   profiles 조회 API에서만 제공
+
+3. INFO를 posts 구조로 처리 금지
+
+4. INFO를 category 테이블에 저장 금지
+
+
+/* ==================================================
+SECTION 07 : AUTO-RECOVERY ISSUE ROOT CAUSE
+================================================== */
+
+자동복구 발생 원인:
+
+CASE 1
+
+INFO가 category 데이터에 포함됨
+
+→ API 응답으로 다시 내려옴
+→ 프론트 자동 복구
+
+
+CASE 2
+
+프론트가 전체 메뉴를 map으로 렌더
+
+→ INFO도 dynamic으로 취급됨
+
+
+CASE 3
+
+AI 자동 수정 시
+"카테고리 통일" 로직 적용됨
+
+→ INFO가 다시 포함됨
+
+
+결론:
+
+INFO를 DB 기반으로 처리하는 순간
+자동복구 문제는 반드시 발생한다.
+
+
+/* ==================================================
+SECTION 08 : ABSOLUTE PROHIBITION
+================================================== */
+
+절대 금지:
+
+1. INFO를 category 테이블에 저장
+
+2. INFO를 posts 구조로 처리
+
+3. INFO를 dynamic 메뉴에 포함
+
+4. INFO를 API 응답으로 내려줌
+
+5. INFO 삭제 기능 구현
+
+6. INFO 순서 변경 허용
+
+7. INFO를 사용자 정의 메뉴로 처리
+
+
+/* ==================================================
+SECTION 09 : SAFE ARCHITECTURE MODEL
+================================================== */
+
+정상 구조:
+
+PROFILE DOMAIN:
+
+profiles
+→ INFO 데이터 제공
+
+
+POST DOMAIN:
+
+business/posts
+→ dynamic 메뉴 제공
+
+
+FRONT:
+
+INFO (hardcoded)
++
+dynamic categories
+
+
+핵심:
+
+"같은 UI, 다른 도메인"
+
+
+/* ==================================================
+SECTION 10 : FINAL DECLARATION
+================================================== */
+
+최종 기준:
+
+INFO는
+
+메뉴가 아니라
+
+프로필 루트 데이터이다.
+
+
+따라서:
+
+하드코딩 고정이 정답이며
+
+동적 처리 대상이 아니다.
+
+
+결론:
+
+INFO는 절대 변하지 않는다.
+
+나머지만 변한다.
+
+
+/* ==================================================
+END OF SNAPSHOT
+================================================== */
+인포를 하드코딩구조로 변경
+- INFO = bio
+

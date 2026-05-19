@@ -1,0 +1,333 @@
+==================================================
+FILE : API_PHYSICAL_SPLIT_ARCHITECTURE_UNIFIED_SNAPSHOT.txt
+STATUS : PRODUCTION LOCK / SINGLE SOURCE OF TRUTH
+ROLE : GENERAL + BUSINESS API ISOLATION (UNIFIED FINAL)
+PRIORITY : ABSOLUTE
+==================================================
+
+
+==================================================
+SECTION 01 : CORE PURPOSE
+==================================================
+
+본 구조의 목적:
+
+1. AI 코드 수정 시 안전성 확보
+2. GENERAL / BUSINESS 영향 범위 완전 격리
+3. 운영 장애 확산 방지
+4. 디버깅 속도 극대화
+
+핵심 정의:
+
+API 경로 = 책임 경계
+파일 구조 = API 경로 반영
+IMPORT = 경계 강제 장치
+
+
+--------------------------------------------------
+
+추가 원칙:
+
+IMPORT PATH = DOMAIN BOUNDARY
+
+
+==================================================
+SECTION 02 : CURRENT OPERATION MODE (LOCK)
+==================================================
+
+[현재 운영 상태 - 절대 고정]
+
+GENERAL API:
+
+/api/profile
+/api/posts
+
+
+BUSINESS API:
+
+/api/business/profile
+/api/business/place
+/api/business/posts
+
+
+--------------------------------------------------
+
+금지:
+
+/api/general/*
+
+(※ 해당 경로는 최종 단계에서만 사용)
+
+
+==================================================
+SECTION 03 : FRONTEND API STRUCTURE
+==================================================
+
+frontend/lib/
+
+api.ts          ← 공통 fetch (수정 금지)
+config.ts       ← base URL (수정 금지)
+
+profileApi.ts   ← GENERAL 전용 (기존 유지)
+postsApi.ts     ← GENERAL 전용 (기존 유지)
+
+
+business/
+  profileApi.ts
+  placeApi.ts
+  postsApi.ts
+
+
+--------------------------------------------------
+
+RULE:
+
+profileApi.ts / postsApi.ts
+
+= GENERAL ONLY
+= 신규 기능 추가 금지
+= BUSINESS 로직 절대 금지
+
+
+==================================================
+SECTION 04 : BACKEND STRUCTURE
+==================================================
+
+/modules
+
+profile.controller.ts     ← GENERAL 전용 (기존 유지)
+posts.controller.ts       ← GENERAL 전용 (기존 유지)
+
+
+modules/business/
+  business-profile.controller.ts
+  business-place.controller.ts
+  business-posts.controller.ts
+
+
+modules/core/
+  profile.repository.ts
+  post.repository.ts
+
+
+--------------------------------------------------
+
+RULE:
+
+GENERAL controller:
+
+- 이름 변경 금지
+- 위치 이동 금지
+- 신규 기능 추가 금지
+
+
+==================================================
+SECTION 05 : DOMAIN RESPONSIBILITY
+==================================================
+
+GENERAL:
+
+- 레거시 유지
+- 확장 금지
+
+
+BUSINESS:
+
+- 신규 기능 전용 영역
+- 모든 확장 business/*에서 처리
+
+
+--------------------------------------------------
+
+핵심:
+
+신규 기능 = 무조건 business/*
+
+
+==================================================
+SECTION 06 : IMPORT ISOLATION RULE
+==================================================
+
+[허용]
+
+business → business import
+general → general import
+
+
+--------------------------------------------------
+
+[금지]
+
+business → general import 금지
+general → business import 금지
+
+
+--------------------------------------------------
+
+예시:
+
+❌ import '@/lib/api/profileApi'  (business에서 사용)
+❌ import '@/lib/api/business/*' (general에서 사용)
+
+
+==================================================
+SECTION 07 : API DESIGN RULE
+==================================================
+
+WRITE API:
+
+완전 분리 (필수)
+
+POST / PATCH / DELETE
+
+
+--------------------------------------------------
+
+READ API:
+
+선택적 통합 허용
+
+예:
+
+GET /api/feed
+GET /api/profile/:id
+
+
+==================================================
+SECTION 08 : SERVICE FLOW RULE
+==================================================
+
+Controller → Service → Repository → DB
+
+
+--------------------------------------------------
+
+금지:
+
+Controller → Repository
+Controller → DB 직접 접근
+
+
+==================================================
+SECTION 09 : DTO RULE
+==================================================
+
+GeneralProfileDto
+BusinessProfileDto
+
+
+--------------------------------------------------
+
+금지:
+
+공용 DTO (ProfileDto)
+
+
+==================================================
+SECTION 10 : ABSOLUTE FORBIDDEN
+==================================================
+
+1. profileType 분기
+
+2. 공용 API 구조
+
+3. 기존 API에 BUSINESS 기능 추가
+
+4. cross import
+
+5. API 내부 우회 호출
+
+6. controller 구조 변경
+
+7. /api/general/* 사용
+
+
+==================================================
+SECTION 11 : EXECUTION FLOW
+==================================================
+
+GENERAL:
+
+Client
+→ /api/profile
+→ profile.controller
+→ service
+→ repository
+→ DB
+
+
+--------------------------------------------------
+
+BUSINESS:
+
+Client
+→ /api/business/*
+→ business controller
+→ service
+→ repository
+→ DB
+
+
+--------------------------------------------------
+
+핵심:
+
+DB = 공유
+Service = 분리
+
+
+==================================================
+SECTION 12 : AI SAFETY CHECK
+==================================================
+
+[ ] business에서 general import 했는가?
+[ ] general에 business 로직 추가했는가?
+[ ] profileType 분기 존재하는가?
+[ ] /api/general/* 사용했는가?
+[ ] controller 이름 변경했는가?
+[ ] API 내부에서 다른 API 호출했는가?
+
+→ 하나라도 YES = FAIL
+
+
+==================================================
+SECTION 13 : TRANSITION PLAN
+==================================================
+
+STEP 1 (현재)
+
+GENERAL → legacy 유지
+BUSINESS → 분리 완료
+
+
+STEP 2 (향후)
+
+GENERAL → /api/general/* 이동
+
+
+STEP 3 (최종)
+
+공용 API 완전 제거
+
+
+==================================================
+SECTION FINAL : CORE DECLARATION
+==================================================
+
+"같은 DB, 다른 API"
+
+"API 경로가 책임 경계"
+
+"GENERAL은 유지 대상, BUSINESS는 확장 대상"
+
+
+--------------------------------------------------
+
+FINAL LOCK RULE:
+
+현재는 /api/general/* 절대 사용하지 않는다
+
+
+==================================================
+END OF FILE
+==================================================

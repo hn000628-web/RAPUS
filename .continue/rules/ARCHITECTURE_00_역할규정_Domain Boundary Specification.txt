@@ -1,0 +1,374 @@
+/* ==================================================
+
+BACKEND DOMAIN RESPONSIBILITY SPECIFICATION
+
+DB 15 SECTION BASED DOMAIN RULE
+
+SNAPSHOT_BACKEND_DOMAIN_RULE_v1
+
+================================================== */
+
+
+/* ==================================================
+
+DOMAIN 01 : FEED DOMAIN
+
+TYPE :
+READ DOMAIN
+
+ROLE :
+
+플랫폼 데이터 조회 전용 domain
+
+RESPONSIBILITY :
+
+feed list 조회
+post join
+profile join
+region filter
+image join
+engagement join
+pagination
+sorting
+
+ALLOWED :
+
+SELECT
+JOIN
+FILTER
+
+FORBIDDEN :
+
+INSERT ❌
+UPDATE ❌
+DELETE ❌
+
+REGION WRITE ❌
+PROFILE WRITE ❌
+POST WRITE ❌
+IMAGE WRITE ❌
+
+STRICT RULE :
+
+Feed must never change DB state.
+
+Feed is aggregation only.
+
+Feed owns zero tables.
+
+DEPENDENCY :
+
+posts
+profiles
+regions
+post_images
+image_assets
+post_engagements
+
+SERVICE :
+
+feed.service.ts
+
+================================================== */
+
+
+/* ==================================================
+
+DOMAIN 02 : POST DOMAIN
+
+TYPE :
+
+CORE CONTENT DOMAIN
+
+ROLE :
+
+게시물 lifecycle 관리
+
+RESPONSIBILITY :
+
+post 생성
+post 수정
+post 삭제
+post status 변경
+post expire 처리
+
+engagement row 생성
+
+ALLOWED :
+
+INSERT posts
+UPDATE posts
+DELETE posts
+
+INSERT post_engagements
+
+FORBIDDEN :
+
+image 저장 ❌
+profile 수정 ❌
+region 수정 ❌
+feed 조회 ❌
+
+OWNED TABLE :
+
+posts
+post_engagements
+
+SERVICE :
+
+post.service.ts
+engagement.service.ts
+
+STRICT RULE :
+
+Post domain owns content lifecycle.
+
+================================================== */
+
+
+/* ==================================================
+
+DOMAIN 03 : REGION DOMAIN
+
+TYPE :
+
+FOUNDATION DOMAIN
+
+ROLE :
+
+플랫폼 지역 시스템 관리
+
+RESPONSIBILITY :
+
+region 생성
+region 조회
+region validation
+region hierarchy
+
+ALLOWED :
+
+INSERT regions
+UPDATE regions
+SELECT regions
+
+FORBIDDEN :
+
+post 생성 ❌
+feed 생성 ❌
+profile 생성 ❌
+image 생성 ❌
+
+OWNED TABLE :
+
+regions
+
+SERVICE :
+
+region.service.ts
+
+STRICT RULE :
+
+Region domain owns geographic data.
+
+Feed may only read regions.
+
+================================================== */
+
+
+/* ==================================================
+
+DOMAIN 04 : PHOTO DOMAIN
+
+TYPE :
+
+MEDIA DOMAIN
+
+ROLE :
+
+플랫폼 이미지 lifecycle 관리
+
+RESPONSIBILITY :
+
+image upload
+image metadata
+image storage path
+image mapping
+
+post image mapping
+profile image mapping
+
+ALLOWED :
+
+INSERT image_assets
+INSERT post_images
+INSERT photos
+
+UPDATE mapping
+
+DELETE mapping
+
+FORBIDDEN :
+
+post 생성 ❌
+profile 수정 ❌
+region 수정 ❌
+feed 조회 ❌
+
+OWNED TABLE :
+
+image_assets
+post_images
+photos
+profile_hero_slides
+
+SERVICE :
+
+image.service.ts
+postImage.service.ts
+photo.service.ts
+profileHero.service.ts
+
+STRICT RULE :
+
+All media lifecycle owned by Photo domain.
+
+================================================== */
+
+
+/* ==================================================
+
+DOMAIN 05 : PROFILE DOMAIN
+
+TYPE :
+
+IDENTITY DOMAIN
+
+ROLE :
+
+사용자 및 비즈니스 identity 관리
+
+RESPONSIBILITY :
+
+user 생성
+profile 생성
+profile 수정
+
+industry mapping
+
+profile blocks 관리
+
+ALLOWED :
+
+INSERT users
+UPDATE profiles
+UPDATE profile_blocks
+
+FORBIDDEN :
+
+post 생성 ❌
+image 저장 ❌
+region 수정 ❌
+feed 조회 ❌
+
+OWNED TABLE :
+
+users
+profiles
+profile_blocks
+industries
+industry_subtypes
+
+SERVICE :
+
+profile.service.ts
+profileBlock.service.ts
+industry.service.ts
+profileSession.service.ts
+
+STRICT RULE :
+
+Profile domain owns user identity.
+
+================================================== */
+
+
+/* ==================================================
+
+DOMAIN INTERACTION RULE
+
+================================================== */
+
+
+FEED → POST (READ ONLY)
+
+FEED → PROFILE (READ ONLY)
+
+FEED → REGION (READ ONLY)
+
+FEED → PHOTO (READ ONLY)
+
+
+
+POST → PROFILE (FK reference)
+
+POST → REGION (FK reference)
+
+
+
+PHOTO → POST (mapping only)
+
+
+
+PROFILE → INDUSTRY (mapping)
+
+
+
+REGION → NONE
+
+
+
+/* ==================================================
+
+ABSOLUTE VIOLATION RULE
+
+================================================== */
+
+
+Feed writing region = ERROR
+
+Feed writing profile = ERROR
+
+Feed writing post = ERROR
+
+Photo creating post = ERROR
+
+Profile creating post = ERROR
+
+Region modifying post = ERROR
+
+
+
+/* ==================================================
+
+FINAL DOMAIN STRUCTURE
+
+================================================== */
+
+
+REGION   = WHERE
+
+PROFILE  = WHO
+
+POST     = WHAT
+
+PHOTO    = MEDIA
+
+FEED     = VIEW
+
+
+
+/* ==================================================
+
+END OF DOMAIN SPECIFICATION
+
+================================================== */

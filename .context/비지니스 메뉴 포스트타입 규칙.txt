@@ -1,0 +1,28 @@
+INFO        → 정보 :  DB테이블/프로필/ 칼럼 : bio  : 기본값/삭제 불가
+GENERAL   → 일반 게시물(게시물)
+GALLERY   → 사진/이미지 중심(사진첩)
+PRODUCT   → 메뉴 / 서비스 / 가격
+EVENT     → 행사 / 이벤트 / 프로모션
+REVIEW    → 리뷰
+==========================================================
+frontend/app/(after-login)/profile/business/components/
+
+info/BusinessInfo.tsx                 → 정보 :  DB테이블/프로필/ 칼럼 : bio  : 기본값/삭제 불가
+posts/BusinessGeneralPosts.tsx    →GENERAL   → 일반 게시물
+photos/BusinessGallery.tsx         → 사진/이미지 중심
+product/BusinessProducts.tsx      → 메뉴 / 서비스 / 가격
+event/BusinessEvents.tsx           → 행사 / 이벤트 / 프로모션
+review/BusinessReviews.tsx       → 리뷰
+======================================================
+※메뉴추가방식
+메뉴추가 -> 포스트 타입 선택 -> 메뉴 추가
+예) 메뉴추가 -> GALLERY(사진첩) -> [번호] GALLERY(사진첩)
+
+======================================================
+※메뉴 정렬 순서
+1)정보 
+2)이벤트(행사)
+3)진료/메뉴/서비스/상품
+4)게시물
+5)사진첩
+6)리뷰 

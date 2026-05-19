@@ -1,0 +1,15968 @@
+1 ACCOUNT = 1 BASECODE
+1 ACCOUNT = GENERAL + BUSINESS
+GENERAL  = A + baseCode
+BUSINESS = B + baseCode
+users.baseCode = 계정 공통 원본
+profiles.baseCode = 프로필 검증/스냅샷
+profiles.channelCode = A/B + baseCode
+============
+// FILE : docs/CHANNEL_CODE_FINAL_SNAPSHOT.txt / 2026-04-19
+// ROOT : C:\Users\kjm\social-platform\docs\CHANNEL_CODE_FINAL_SNAPSHOT.txt
+// STATUS : PRODUCTION LOCK (FINAL)
+// ROLE : CHANNELCODE / BASECODE / PROFILE ROOT IDENTITY FINAL SNAPSHOT
+// CHANGE SUMMARY :
+// - 채널코드 규칙을 13자리 최종 구조로 단일화
+// - profiles 테이블을 예외 프로필 도메인으로 명시
+// - profiles.channelCode = owner root identity 해석을 최종 반영
+// - 일반 행위/관계 테이블은 role + ChannelCode 규칙 유지
+// - signup 생성 규칙 / DB 제약 / 네이밍 규칙 / 운영 규칙 통합
+
+/* ==================================================
+SECTION 01 : CORE CONCEPT
+================================================== */
+
+channelCode = 플랫폼 절대 식별자
+
+최종 구조:
+
+typePrefix (1자리)
++
+baseCode (12자리)
+
+= 총 13자리 고정
+
+
+예시:
+
+GENERAL
+→ AK3F9X2M7Q8Z1
+
+BUSINESS
+→ BK3F9X2M7Q8Z1
+
+
+정의:
+
+typePrefix
+
+A = GENERAL
+B = BUSINESS
+
+baseCode
+
+A-Z + 0-9 조합 12자리
+GENERAL / BUSINESS 공통 그룹 식별자
+
+
+/* ==================================================
+SECTION 02 : SOURCE OF TRUTH
+================================================== */
+
+절대 기준:
+
+1순위
+profileType
+
+2순위
+channelCode prefix
+
+3순위
+baseCode
+
+
+판단 규칙:
+
+profileType = SOURCE OF TRUTH
+
+channelCode prefix는
+검증용 / 보조 힌트
+
+baseCode는
+공통 그룹 식별자
+
+
+불일치 금지:
+
+GENERAL 인데 prefix = B
+BUSINESS 인데 prefix = A
+
+위 경우:
+
+DB 차단
+Service 차단
+
+
+/* ==================================================
+SECTION 03 : FINAL FORMAT RULE
+================================================== */
+
+baseCode 규칙:
+
+- 길이 12
+- 대문자만 허용
+- 숫자 허용
+- 소문자 금지
+- 특수문자 금지
+
+
+channelCode 규칙:
+
+- 길이 13
+- 첫 글자는 A 또는 B
+- 뒤 12자리는 baseCode와 동일
+
+
+정규식:
+
+baseCode
+
+^[A-Z0-9]{12}$
+
+channelCode
+
+^[A-Z][A-Z0-9]{12}$
+
+
+허용 문자셋:
+
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+0123456789
+
+
+/* ==================================================
+SECTION 04 : FINAL RELATION RULE
+================================================== */
+
+관계식:
+
+channelCode = prefix + baseCode
+
+
+즉:
+
+GENERAL
+→ channelCode = 'A' + baseCode
+
+BUSINESS
+→ channelCode = 'B' + baseCode
+
+
+예시:
+
+baseCode = K3F9X2M7Q8Z1
+
+GENERAL
+→ AK3F9X2M7Q8Z1
+
+BUSINESS
+→ BK3F9X2M7Q8Z1
+
+
+절대 금지:
+
+- channelCode와 baseCode를 각각 따로 랜덤 생성
+- prefix를 나중에 임의로 덧붙이는 구조
+- channelCode 직접 입력 허용
+
+
+/* ==================================================
+SECTION 05 : ACCOUNT / PROFILE LIMIT RULE
+================================================== */
+
+계정 구조:
+
+1 EMAIL = 1 ACCOUNT
+
+1 ACCOUNT = MAX 2 CHANNEL
+
+
+최대 허용:
+
+GENERAL 1
+BUSINESS 1
+
+
+즉:
+
+UNIQUE(userId, profileType)
+
+
+허용 예:
+
+userId = 7
+GENERAL 1개
+BUSINESS 1개
+
+
+금지 예:
+
+userId = 7
+GENERAL 2개
+
+또는
+
+BUSINESS 2개
+
+
+/* ==================================================
+SECTION 06 : PROFILES TABLE EXCEPTION RULE
+================================================== */
+
+profiles 테이블은
+일반 행위 테이블과 다르다.
+
+profiles는:
+
+- 채널 자산 본체
+- 채널 메타데이터
+- 채널 루트 엔티티
+
+
+따라서
+profiles.channelCode 는
+일반적인 의미의 단순 channelCode가 아니라
+
+채널 자산 자체의 루트 식별자이며
+의미상 ownerChannelCode 와 동일한 성격으로 해석한다.
+
+
+즉:
+
+profiles.channelCode
+=
+channel root identity
+=
+owner root key
+=
+ownerChannelCode 성격
+
+
+예외 규칙:
+
+profiles 테이블만은
+role prefix 없이
+channelCode 컬럼명을 직접 사용 가능하다.
+
+
+이유:
+
+profiles는 행위 기록 테이블이 아니라
+채널 본체 테이블이기 때문이다.
+
+
+/* ==================================================
+SECTION 07 : PROFILE ROOT IDENTITY RULE
+================================================== */
+
+profiles.channelCode 의 의미:
+
+- 채널 절대 식별자
+- 채널 자산 본체의 루트 키
+- 외부 노출용 공식 식별자
+- URL / 로그 / 관계 추적의 기준 키
+
+
+즉:
+
+profiles에서는
+
+channelCode = owner root identity
+
+
+주의:
+
+이 해석은
+profiles 도메인 한정 예외 규칙이다.
+
+다른 테이블에 그대로 확장 적용하면 안 된다.
+
+
+/* ==================================================
+SECTION 08 : GENERAL TABLE NAMING RULE
+================================================== */
+
+profiles 를 제외한
+모든 행위 / 관계 / 다자 구조 테이블은
+
+반드시:
+
+role + ChannelCode
+
+네이밍을 사용한다.
+
+
+단일 주체 예시:
+
+authorChannelCode
+ownerChannelCode
+actorChannelCode
+viewerChannelCode
+
+
+다자 관계 예시:
+
+buyerChannelCode
+sellerChannelCode
+payerChannelCode
+receiverChannelCode
+followerChannelCode
+followingChannelCode
+customerChannelCode
+providerChannelCode
+
+
+절대 금지:
+
+channelCode
+channelId
+authorId
+profileChannel
+ownerId
+
+
+즉:
+
+행위/관계 테이블에서
+의미 없는 단일 channelCode 컬럼명 금지
+
+
+/* ==================================================
+SECTION 09 : PROFILES vs ACTION TABLE DIFFERENCE
+================================================== */
+
+profiles
+
+= 채널 자체
+= 자산 본체
+= 루트 엔티티
+= 예외 허용
+
+
+posts
+
+= 채널이 수행한 작성 행위
+→ authorChannelCode
+
+
+post_comments
+
+= 채널이 수행한 댓글 행위
+→ authorChannelCode
+
+
+post_engagements
+
+= 채널이 수행한 액션
+→ actorChannelCode
+
+
+image_assets
+
+= 채널이 소유한 파일 자산
+→ ownerChannelCode
+
+
+orders
+
+= 다자 거래 관계
+→ buyerChannelCode
+→ sellerChannelCode
+
+
+payments
+
+= 다자 결제 관계
+→ payerChannelCode
+→ receiverChannelCode
+
+
+결론:
+
+profiles만 root identity 예외
+나머지는 role 기반 네이밍 고정
+
+
+/* ==================================================
+SECTION 10 : PROFILES TABLE FINAL RULE
+================================================== */
+
+TABLE :
+
+profiles
+
+
+필수 컬럼:
+
+id
+userId
+profileType
+baseCode
+channelCode
+createdAt
+
+
+권장 확장 컬럼:
+
+displayName
+bio
+channelURL
+contactPhone
+activityRegionId
+feedRegionId
+updatedAt
+
+
+핵심 제약:
+
+UNIQUE(channelCode)
+
+UNIQUE(baseCode, profileType)
+
+UNIQUE(userId, profileType)
+
+FOREIGN KEY(userId) REFERENCES users(id)
+
+
+핵심 해석:
+
+channelCode는
+profiles 내부에서
+owner root key 로 작동한다.
+
+
+/* ==================================================
+SECTION 11 : DB CONSTRAINT FINAL RULE
+================================================== */
+
+필수 제약:
+
+CHECK(length(baseCode)=12)
+
+CHECK(length(channelCode)=13)
+
+CHECK(substr(channelCode,2)=baseCode)
+
+CHECK(
+  (profileType='GENERAL' AND substr(channelCode,1,1)='A')
+  OR
+  (profileType='BUSINESS' AND substr(channelCode,1,1)='B')
+)
+
+
+DB 역할:
+
+- 길이 검증
+- 관계 검증
+- 중복 차단
+- prefix / profileType 일치 검증
+
+
+Service 역할:
+
+- 정규식 검증
+- forbidden pattern 검증
+- retry 처리
+- signup 생성 흐름 보장
+
+
+/* ==================================================
+SECTION 12 : POSTGRESQL / SQLITE SAFE SCHEMA
+================================================== */
+
+PostgreSQL 기준:
+
+CREATE TABLE profiles (
+
+  id BIGSERIAL PRIMARY KEY,
+
+  userId BIGINT NOT NULL,
+
+  profileType TEXT NOT NULL
+  CHECK(profileType IN ('GENERAL','BUSINESS')),
+
+  baseCode TEXT NOT NULL
+  CHECK(length(baseCode)=12),
+
+  channelCode TEXT NOT NULL
+  CHECK(length(channelCode)=13),
+
+  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(channelCode),
+  UNIQUE(baseCode, profileType),
+  UNIQUE(userId, profileType),
+
+  CHECK(
+    (profileType='GENERAL' AND substr(channelCode,1,1)='A')
+    OR
+    (profileType='BUSINESS' AND substr(channelCode,1,1)='B')
+  ),
+
+  CHECK(substr(channelCode,2)=baseCode),
+
+  FOREIGN KEY(userId) REFERENCES users(id)
+);
+
+
+SQLite 호환 기준:
+
+CREATE TABLE IF NOT EXISTS profiles (
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  userId INTEGER NOT NULL,
+
+  profileType TEXT NOT NULL
+  CHECK(profileType IN ('GENERAL','BUSINESS')),
+
+  baseCode TEXT NOT NULL
+  CHECK(length(baseCode)=12),
+
+  channelCode TEXT NOT NULL
+  CHECK(length(channelCode)=13),
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(channelCode),
+  UNIQUE(baseCode, profileType),
+  UNIQUE(userId, profileType),
+
+  CHECK(
+    (profileType='GENERAL' AND substr(channelCode,1,1)='A')
+    OR
+    (profileType='BUSINESS' AND substr(channelCode,1,1)='B')
+  ),
+
+  CHECK(substr(channelCode,2)=baseCode),
+
+  FOREIGN KEY(userId) REFERENCES users(id)
+);
+
+
+/* ==================================================
+SECTION 13 : SIGNUP GENERATION ABSOLUTE RULE
+================================================== */
+
+생성 위치:
+
+회원가입 백엔드 only
+
+
+허용:
+
+Backend Service
+
+
+금지:
+
+- Frontend 생성
+- Client 입력
+- API body에서 channelCode 전달
+- Admin 수동 입력
+- 다른 Service에서 임의 생성
+
+
+생성 순서:
+
+STEP 1
+baseCode 생성
+
+STEP 2
+profileType 확인
+
+STEP 3
+channelCode 파생 생성
+
+STEP 4
+DB INSERT 시도
+
+STEP 5
+UNIQUE 충돌 시 retry
+
+STEP 6
+성공 시 commit
+
+
+핵심 원칙:
+
+baseCode = 원본
+channelCode = 파생값
+
+
+/* ==================================================
+SECTION 14 : FINAL GENERATION CODE RULE
+================================================== */
+
+생성 공식:
+
+const baseCode = generateRandom(12)
+
+const channelCode =
+  profileType === 'GENERAL'
+    ? 'A' + baseCode
+    : 'B' + baseCode
+
+
+절대 금지:
+
+- baseCode 사전 exists 조회
+- channelCode 사전 exists 조회
+- SELECT precheck 기반 생성
+- channelCode 직접 입력 허용
+
+
+정답 방식:
+
+INSERT
+→ UNIQUE violation
+→ retry
+
+
+/* ==================================================
+SECTION 15 : RETRY / COLLISION RULE
+================================================== */
+
+충돌 처리 방식:
+
+INSERT 기반 충돌 처리
+
+
+허용:
+
+try insert
+→ 실패
+→ 재생성
+→ 재시도
+
+
+금지:
+
+SELECT 로 미리 중복 검사
+
+
+이유:
+
+race condition 방지
+
+
+권장:
+
+retry max 10
+
+10회 초과 시 fatal error
+
+
+/* ==================================================
+SECTION 16 : BACKEND ONLY RULE
+================================================== */
+
+channelCode 생성은 backend only
+
+허용:
+
+- signup service
+- profile create service
+
+
+금지:
+
+- frontend generate
+- browser random
+- form input
+- query param 입력
+- request body 입력
+
+
+즉:
+
+클라이언트는 profileType만 전달 가능
+channelCode / baseCode는 서버 내부 생성
+
+
+/* ==================================================
+SECTION 17 : IMMUTABLE RULE
+================================================== */
+
+channelCode 변경 금지
+
+baseCode 변경 금지
+
+
+허용:
+
+없음
+
+
+정책:
+
+channelCode immutable
+baseCode immutable
+
+
+변경 필요시 허용 방식:
+
+없음
+
+대신:
+
+new profile 생성
+data migrate
+old profile archive
+
+
+/* ==================================================
+SECTION 18 : DELETE / REUSE RULE
+================================================== */
+
+삭제 정책:
+
+soft delete only
+
+
+규칙:
+
+channelCode 삭제 후 재사용 금지
+
+
+즉:
+
+old channelCode revive 금지
+re-register 금지
+recycle 금지
+
+
+이유:
+
+- audit 안정성
+- ownership history 보존
+- 거래 / 로그 / 추적 데이터 무결성 보장
+
+
+/* ==================================================
+SECTION 19 : CHANNELCODE vs PROFILEID RULE
+================================================== */
+
+channelCode
+
+= 외부 조회 기준
+= 행위 주체 기준
+= URL / 로그 / 추적 기준
+= profiles 에서는 root identity
+
+
+profileId
+
+= 내부 JOIN 기준
+= relation 연결 보조 키
+
+
+원칙:
+
+외부 식별 = channelCode
+내부 연결 = profileId
+
+
+/* ==================================================
+SECTION 20 : URL / DISPLAY RULE
+================================================== */
+
+공식 URL 기준:
+
+xxx.com/@{channelCode}
+
+
+예:
+
+xxx.com/@AK3F9X2M7Q8Z1
+
+
+표시용 하이픈 포맷은 선택 사항
+
+예:
+
+AK3F-9X2M-7Q8Z-1
+
+하지만 시스템 내부 저장은:
+
+하이픈 없는 13자리 full code
+
+
+/* ==================================================
+SECTION 21 : OWNERSHIP RULE
+================================================== */
+
+ownership 변경 가능
+
+단:
+
+channelCode는 유지
+
+
+즉:
+
+owner user는 바뀔 수 있음
+channel identity는 바뀌지 않음
+
+
+허용:
+
+계정 승계
+사업장 인수
+채널 매매
+
+
+금지:
+
+ownership 변경하면서 channelCode 교체
+
+
+/* ==================================================
+SECTION 22 : VALIDATION RULE
+================================================== */
+
+Service Layer 필수 검증:
+
+1. profileType 유효성
+2. baseCode 길이 12
+3. baseCode regex 통과
+4. channelCode 길이 13
+5. prefix/profileType 일치
+6. channelCode.substr(1) == baseCode
+7. forbidden pattern 차단
+8. retry limit 보호
+
+
+DB Layer 필수 검증:
+
+1. length
+2. unique
+3. profileType 체크
+4. prefix 일치
+5. baseCode 연결 관계
+
+
+/* ==================================================
+SECTION 23 : FORBIDDEN PATTERN RULE
+================================================== */
+
+금지 예시:
+
+AAAAAAAAAAAA
+000000000000
+111111111111
+ABCABCABCABC
+
+
+권장 차단:
+
+반복 패턴
+의미 없는 고정 패턴
+예약 문자열
+
+
+baseCode 금지 대상은
+Service Layer에서 우선 차단
+
+
+/* ==================================================
+SECTION 24 : FINAL SIGNUP FLOW
+================================================== */
+
+최종 회원가입 흐름:
+
+Frontend
+→ email / password / profileType 전달
+
+Backend Controller
+→ request receive
+
+Service
+→ user 생성 또는 확인
+→ baseCode 생성
+→ channelCode 파생
+→ profile insert
+→ 성공 시 response
+
+
+절대 금지 흐름:
+
+Frontend
+→ channelCode 생성
+→ API 전달
+→ DB 저장
+
+
+/* ==================================================
+SECTION 25 : FINAL DECLARATION
+================================================== */
+
+최종 기준:
+
+baseCode = 12자리
+channelCode = 13자리
+
+GENERAL
+→ A + baseCode
+
+BUSINESS
+→ B + baseCode
+
+
+절대 기준:
+
+profileType = SOURCE OF TRUTH
+
+
+예외 프로필 규칙:
+
+profiles.channelCode
+=
+채널 자산 본체의 루트 키
+=
+owner root identity
+=
+ownerChannelCode 성격
+
+
+일반 규칙:
+
+행위 / 관계 테이블
+=
+role + ChannelCode
+
+
+생성 위치:
+
+회원가입 백엔드 only
+
+
+중복 처리:
+
+INSERT → UNIQUE 충돌 → retry
+
+
+삭제 정책:
+
+soft delete only
+reuse 금지
+
+
+변경 정책:
+
+immutable
+
+
+결론:
+
+channelCode는
+플랫폼의 고정 행위 식별자이며,
+
+profiles 도메인에서는
+채널 본체의 루트 식별자로 작동한다.
+
+baseCode는
+GENERAL / BUSINESS를 묶는 공통 그룹 식별자이다.
+
+/* ==================================================
+END OF SNAPSHOT
+================================================== */
+
+☆채널코드 생성규칙
+const baseCode = generateRandom(12)
+const channelCode =
+  profileType === 'GENERAL'
+    ? 'A' + baseCode
+    : 'B' + baseCode
+
+==================================================
+FILE : CHANNEL_CODE_ARCHITECTURE_SNAPSHOT.txt
+STATUS : PRODUCTION LOCK (FINAL / DB ENGINE SAFE)
+ROLE : CHANNELCODE / PROFILE TYPE / BASECODE STRUCTURE
+PRIORITY : ABSOLUTE
+==================================================
+
+==================================================
+SECTION 01 : CORE CONCEPT
+==================================================
+
+channelCode = 플랫폼 절대 식별자
+
+구성:
+
+typeCode (1자리) + baseCode (12자리)
+= 총 13자리 고정 구조
+
+예시:
+
+GENERAL  → A K3F9X2M7Q8Z1
+BUSINESS → B K3F9X2M7Q8Z1
+
+정의:
+
+typeCode:
+
+A = GENERAL
+B = BUSINESS
+
+baseCode:
+
+대문자 + 숫자 조합 (12자리)
+GENERAL / BUSINESS 공통 그룹 식별자
+
+==================================================
+SECTION 02 : KEY PRINCIPLE
+==================================================
+
+profileType = SOURCE OF TRUTH (절대 기준)
+
+channelCode prefix = Validation + Hint (보조 검증)
+
+판단 규칙:
+
+1순위 → profileType
+2순위 → channelCode prefix
+3순위 → baseCode
+
+예외:
+
+prefix ≠ profileType → DB 차단
+
+==================================================
+SECTION 03 : FORMAT RULE (ABSOLUTE)
+==================================================
+
+허용:
+
+A-Z
+0-9
+
+금지:
+
+소문자
+특수문자
+
+DB 역할:
+
+length만 검증
+
+Service 역할:
+
+정규식 강제
+
+regex:
+
+baseCode:
+
+^[A-Z0-9]{12}$
+
+channelCode:
+
+^[A-Z][A-Z0-9]{12}$
+
+==================================================
+SECTION 04 : BASECODE GROUP MODEL
+==================================================
+
+baseCode = 그룹 식별자
+
+구조:
+
+A123456789012
+B123456789012
+
+의미:
+
+GENERAL 1개
+BUSINESS 1개
+
+DB 제약:
+
+UNIQUE(baseCode, profileType)
+
+==================================================
+SECTION 05 : PROFILE TABLE DESIGN (FINAL)
+==================================================
+
+TABLE : profiles
+
+columns:
+
+id
+userId
+
+profileType
+baseCode
+channelCode
+
+createdAt
+
+CONSTRAINT:
+
+UNIQUE(channelCode)
+
+UNIQUE(baseCode, profileType)
+
+UNIQUE(userId, profileType)
+
+FK:
+
+FOREIGN KEY(userId) REFERENCES users(id)
+
+==================================================
+SECTION 06 : DB STRUCTURE (ENGINE SAFE)
+==================================================
+
+-- SQLite
+
+CREATE TABLE IF NOT EXISTS profiles(
+
+  id INTEGER PRIMARY KEY,
+
+  userId INTEGER NOT NULL,
+
+  profileType TEXT NOT NULL
+  CHECK(profileType IN ('GENERAL','BUSINESS')),
+
+  baseCode TEXT NOT NULL
+  CHECK(length(baseCode)=12),
+
+  channelCode TEXT NOT NULL
+  CHECK(length(channelCode)=13),
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(channelCode),
+  UNIQUE(baseCode, profileType),
+  UNIQUE(userId, profileType),
+
+  FOREIGN KEY(userId) REFERENCES users(id)
+
+);
+
+-- PostgreSQL
+
+CREATE TABLE profiles(
+
+  id BIGSERIAL PRIMARY KEY,
+
+  userId INTEGER NOT NULL,
+
+  profileType TEXT NOT NULL
+  CHECK(profileType IN ('GENERAL','BUSINESS')),
+
+  baseCode TEXT NOT NULL
+  CHECK(length(baseCode)=12),
+
+  channelCode TEXT NOT NULL
+  CHECK(length(channelCode)=13),
+
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(channelCode),
+  UNIQUE(baseCode, profileType),
+  UNIQUE(userId, profileType),
+
+  FOREIGN KEY(userId) REFERENCES users(id)
+
+);
+
+==================================================
+SECTION 07 : CORE CHECK CONSTRAINT (DB LEVEL)
+==================================================
+
+-- prefix + profileType 일치
+
+CHECK(
+  (profileType='GENERAL' AND substr(channelCode,1,1)='A')
+  OR
+  (profileType='BUSINESS' AND substr(channelCode,1,1)='B')
+)
+
+-- channelCode ↔ baseCode 일치
+
+CHECK(substr(channelCode,2)=baseCode)
+
+==================================================
+SECTION 08 : OPTIONAL TRIGGER (HARD BLOCK)
+==================================================
+
+-- SQLite only (강제 차단)
+
+CREATE TRIGGER IF NOT EXISTS trg_profiles_insert
+BEFORE INSERT ON profiles
+BEGIN
+
+SELECT
+CASE
+  WHEN substr(NEW.channelCode,2) != NEW.baseCode
+  THEN RAISE(ABORT,'channelCode mismatch')
+
+  WHEN NEW.profileType='GENERAL'
+   AND substr(NEW.channelCode,1,1)!='A'
+  THEN RAISE(ABORT,'invalid prefix')
+
+  WHEN NEW.profileType='BUSINESS'
+   AND substr(NEW.channelCode,1,1)!='B'
+  THEN RAISE(ABORT,'invalid prefix')
+END;
+
+END;
+
+==================================================
+SECTION 09 : SAFE GENERATION STRATEGY
+==================================================
+
+baseCode 생성:
+
+RANDOM(A-Z0-9, 12)
+
+생성 방식:
+
+INSERT → UNIQUE 충돌 → retry
+
+예시:
+
+try {
+  insert()
+} catch(e) {
+  retry()
+}
+
+금지:
+
+exists() 사전조회
+
+==================================================
+SECTION 10 : DESIGN ADVANTAGE
+==================================================
+
+1. channelCode만으로 타입 식별
+
+2. profileType으로 확정
+
+3. baseCode로 관계 추적
+
+4. DB 레벨 무결성 확보
+
+5. JOIN 최소화
+
+6. 로그 분석 최적화
+
+7. 포맷 일관성 유지
+
+==================================================
+SECTION 11 : FINAL DECLARATION
+==================================================
+
+channelCode = prefix + baseCode
+
+profileType = 절대 기준
+
+baseCode = 그룹 식별자
+
+중복 방지:
+
+UNIQUE + retry
+
+포맷 강제:
+
+Service Layer
+
+절대 금지:
+
+UNIQUE(baseCode)
+parentProfileId
+소문자/특수문자
+
+==================================================
+END OF SNAPSHOT
+==================================================
+==================================================
+FILE : CHANNEL_CODE_SIGNUP_GENERATION_SNAPSHOT.txt
+STATUS : PRODUCTION LOCK (SIGNUP CRITICAL CONTROL)
+ROLE : BASECODE / CHANNELCODE CREATION LOGIC
+PRIORITY : ABSOLUTE
+==================================================
+
+==================================================
+SECTION 01 : CURRENT STATE
+==================================================
+
+기존:
+
+channelCode = 12자리 (baseCode 역할)
+
+변경:
+
+baseCode    = 12자리 (공통 그룹 식별자)
+channelCode = 13자리 (prefix + baseCode)
+
+로그인:
+
+email + profileType 사용
+
+→ channelCode 영향 없음
+
+결론:
+
+리스크는 “회원가입 생성 단계에 집중됨”
+
+==================================================
+SECTION 02 : CORE RISK POINT
+==================================================
+
+문제 발생 지점:
+
+회원가입 (profile 생성 시점)
+
+발생 가능한 오류:
+
+1. baseCode 중복 생성
+2. prefix 오류 (A/B 불일치)
+3. channelCode/baseCode 불일치
+4. profileType ↔ prefix mismatch
+
+결론:
+
+회원가입 로직이 구조 안정성의 핵심
+
+==================================================
+SECTION 03 : GENERATION LOGIC (ABSOLUTE RULE)
+==================================================
+
+생성 순서:
+
+1. baseCode 생성
+2. channelCode 생성
+3. DB INSERT
+4. 실패 시 retry
+
+코드:
+
+const baseCode = generateRandom(12)
+
+const channelCode =
+  profileType === 'GENERAL'
+    ? 'A' + baseCode
+    : 'B' + baseCode
+
+==================================================
+SECTION 04 : DUPLICATION CONTROL (MANDATORY)
+==================================================
+
+절대 금지:
+
+exists(baseCode) 체크
+
+정답 방식:
+
+INSERT → UNIQUE 충돌 → retry
+
+예시:
+
+try {
+  insert(profile)
+} catch(e) {
+  retry()
+}
+
+==================================================
+SECTION 05 : DB CONSTRAINT (ABSOLUTE)
+==================================================
+
+필수 제약:
+
+CHECK(length(baseCode)=12)
+
+CHECK(length(channelCode)=13)
+
+CHECK(substr(channelCode,2)=baseCode)
+
+prefix 검증:
+
+CHECK(
+ (profileType='GENERAL' AND substr(channelCode,1,1)='A')
+ OR
+ (profileType='BUSINESS' AND substr(channelCode,1,1)='B')
+)
+
+UNIQUE:
+
+UNIQUE(channelCode)
+
+UNIQUE(baseCode, profileType)
+
+UNIQUE(userId, profileType)
+
+==================================================
+SECTION 06 : FORBIDDEN PATTERN
+==================================================
+
+절대 금지:
+
+1. baseCode와 channelCode 별도 생성
+
+2. prefix 나중에 붙이기
+
+3. channelCode 직접 입력 허용
+
+4. 회원가입 외 위치에서 channelCode 생성
+
+위반 시:
+
+데이터 무결성 붕괴
+
+==================================================
+SECTION 07 : SAFE DESIGN PRINCIPLE
+==================================================
+
+원칙:
+
+channelCode는 “파생값”
+
+baseCode가 “원본”
+
+관계:
+
+channelCode = prefix + baseCode
+
+생성 위치:
+
+회원가입 ONLY
+
+==================================================
+SECTION 08 : CURRENT PHASE STRATEGY
+==================================================
+
+현재 상태:
+
+회원가입 포맷 없음
+
+해석:
+
+구조 적용 최적 타이밍
+
+전략:
+
+회원가입 로직 먼저 고정
+→ 이후 전체 시스템 안정화
+
+==================================================
+SECTION 09 : FINAL DECLARATION
+==================================================
+
+리스크 위치:
+
+회원가입 ONLY
+
+보호 방법:
+
+DB CONSTRAINT + INSERT RETRY
+
+핵심 규칙:
+
+baseCode → 생성
+channelCode → 파생
+
+절대 금지:
+
+임의 생성
+중복 체크 기반 로직
+구조 분리 생성
+
+==================================================
+END OF SNAPSHOT
+==================================================
+
+1 EMAIL = 1 ACCOUNT /1 email = 2 channel
+
+1 ACCOUNT = MAX 2 CHANNEL
+
+CHANNEL TYPE :
+
+PERSONAL (mandatory 1)
+BUSINESS (optional 1)
+
+RULE : user channel max = 2
+
+CHECK : 
+create channel 시 count 검사
+
+PERSONAL count <=1
+BUSINESS count <=1
+================================================================
+※체널코드[ChannelCode]의 개념 : 프로필단위의 식별개념[건물번호/건물주소 개념] = URL개념
+-)channelCode 변경 = 금지 /channel delete = soft delete only
+※ 채널코드 생성규칙 : 12자리 코드 방식 : A1B2-C3D4-E5F6
+-) 기본 : 회원가입시 백엔드에서 자동생성 [회원가입] -> 자동 생성[충돌?->변경후 재생성]
+-) A~Z + 0~9 = [길이 : 12자리 코드] / 국가별 구분은 [피드 영역] 구분외에 필요가 없음
+CHARSET:
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+0123456789
+
+BASE36
+===============================================
+channelType TEXT NOT NULL
+
+VALUES :
+
+PERSONAL
+BUSINESS
+UNIQUE(ownerUserId, channelType)
+===============================================
+entropy bits = 72bit
+collision safe users ≈ 10^9 이상
+===============================================
+future:
+prefix reserved (optional)
+
+예:
+USxxxxxxxxxx
+KRxxxxxxxxxx
+===============================================
+channelCode 생성은 backend only
+
+frontend 생성 금지
+client 전달 금지
+API 입력 금지
+===============================================
+생성 알고리즘 :
+STEP 1 : crypto random 9 bytes (72bit)
+STEP 2 : base36 encode
+STEP 3 : 12자리 맞춤 (padding)
+STEP 4 : DB UNIQUE CHECK
+STEP 5 : 충돌시 재생성 (max 10)
+retry = 10
+failure = fatal error
+==================================================
+STEP 1 : crypto random 72bit
+STEP 2 : BASE36 encode
+STEP 3 : uppercase normalize
+STEP 4 : 12자리 맞춤
+STEP 5 : INSERT 시도
+STEP 6 : UNIQUE violation 발생시 retry
+STEP 7 : retry max 10
+STEP 8 : 실패시 fatal error
+SELECT precheck 금지
+INSERT 기반 충돌 처리
+====================================
+channelCode 컬럼 규칙 : channelCode TEXT NOT NULL UNIQUE
+추가 필수 :  CHECK(length(channelCode)=12)
+PostgreSQL : CHECK(channelCode ~ '^[A-Z0-9]{12}$')
+SQLite: CHECK(length(channelCode)=12)
+※ 채널코드[ChannelCode] 규칙 : A1B2-C3D4-E5F6(기본표기 : ChannelCode) / 사람이 인식하기 쉬운 표기법 4-4-4
+   -)시스템 내에서는 12자리 풀코드(유니코드 방식)로 사용 
+※ 채널주소[ChannelCode] 표시법(고정) : [xxx.com/@A1B2C3D4E5F6][여기까지가 QR코드 영역] = 프로필 공식URL 영역
+  -) [풀 주소 : xxx.com/@A1B2C3D4E5F6/(@알바트로스)(중요도 낮음)] 
+※ 1이메일 / 2 채널코드(프로필 :비지니스/제너럴) 까지만 허용 절대규칙
+※ 체널코드는 고정되기 때문에 계정승계및 매매시 [이메일] 번호만 변경가능
+ A : hn0628@naver.com/A1B2C3D4E5F6      ->    B : ars37921@naver.com/A1B2C3D4E5F6 로 변경가능함.
+  특히 오프라인 매장의 경우 [매장매매] 시 [판매채널]도 [승계]하는 경우 정보변경이 필요한 경우, 변경이 가능함/ 그 외에는 변경이 불가능함
+
+ ================================================================================
+RULE 1
+user당 channelCode 최대 2개
+RULE 2
+channelCode는 profile 단위로 생성
+RULE 3
+channelType 제한 (PERSONAL / BUSINESS)
+RULE 4
+channelCode는 삭제 후 재사용 금지
+===================================
+공식 표기법
+판매자 → sellChannelCode (행위 : sell + 주체 : ChannelCode)  
+구매자 → buyChannelCode (행위 : buy + 주체 :ChannelCode)
+===================================
+postId → WHAT (무엇)
+channelCode → WHO (누가)
+====================================
+RULE 1
+channelCode는 공통 개념
+RULE 2
+컬럼명은 역할 기반
+RULE 3
+단일 channelCode 컬럼 금지 (다자 관계)
+RULE 4
+모든 데이터는 channelCode로 추적 가능해야 함
+====================================
+RULE 1
+email = 인증
+RULE 2
+channelCode = 행위 주체
+RULE 3
+모든 데이터는 channelCode 기준
+====================================
+RULE 1
+단일 주체 → channelCode 1개
+RULE 2
+다중 주체 → 역할별 channelCode
+RULE 3
+컬럼명 = 역할 + ChannelCode
+RULE 4
+단일 channelCode로 다자 관계 표현 금지
+=====================================
+sellerChannelCode = 판매자
+buyerChannelCode = 구매자
+providerChannelCode = 서비스 제공자
+customerChannelCode = 예약자
+작성자 : authorChannelCode
+소유자 : ownerChannelCode
+판매자 : sellerChannelCode
+구매자 : buyerChannelCode
+행위자 : actorChannelCode
+수신자 :receiverChannelCode
+=====================================
+// FILE : docs/db-channelcode-role-mapping.txt
+// ROOT : C:\Users\kjm\social-platform\docs\db-channelcode-role-mapping.txt
+// STATUS : CHANNELCODE ROLE MAPPING (ABSOLUTE DESIGN)
+
+/* ================================================== */
+// SECTION 01 : CORE
+/* ================================================== */
+
+TABLE : profiles
+CHANNEL TYPE : SINGLE
+
+ownerChannelCode
+: 채널 자산 자체 (ROOT)
+
+/* -------------------------------------------------- */
+
+TABLE : regions
+CHANNEL TYPE : NONE
+
+: channelCode 사용 금지 (독립 도메인)
+
+/* ================================================== */
+// SECTION 02 : CONTENT
+/* ================================================== */
+
+TABLE : posts
+CHANNEL TYPE : SINGLE
+
+authorChannelCode
+: 포스트 생성 주체
+
+/* -------------------------------------------------- */
+
+TABLE : post_comments
+CHANNEL TYPE : SINGLE
+
+authorChannelCode
+: 댓글 작성자
+
+/* -------------------------------------------------- */
+
+TABLE : post_engagements
+CHANNEL TYPE : SINGLE
+
+actorChannelCode
+: 좋아요/액션 수행자
+
+/* ================================================== */
+// SECTION 03 : MEDIA
+/* ================================================== */
+
+TABLE : image_assets
+CHANNEL TYPE : SINGLE
+
+ownerChannelCode
+: 파일 소유 채널
+
+/* -------------------------------------------------- */
+
+TABLE : profile_avatars
+CHANNEL TYPE : SINGLE
+
+ownerChannelCode
+: 프로필 이미지 소유자
+
+/* ================================================== */
+// SECTION 04 : SOCIAL
+/* ================================================== */
+
+TABLE : follows
+CHANNEL TYPE : MULTI
+
+followerChannelCode
+: 팔로우 하는 주체
+
+followingChannelCode
+: 팔로우 대상
+
+/* -------------------------------------------------- */
+
+TABLE : blocks
+CHANNEL TYPE : MULTI
+
+blockerChannelCode
+: 차단 주체
+
+blockedChannelCode
+: 차단 대상
+
+/* ================================================== */
+// SECTION 05 : FEED / AI
+/* ================================================== */
+
+TABLE : feed_seen
+CHANNEL TYPE : SINGLE
+
+viewerChannelCode
+: 피드를 소비한 채널
+
+/* -------------------------------------------------- */
+
+TABLE : feed_hide_filter
+CHANNEL TYPE : SINGLE
+
+actorChannelCode
+: 숨김 설정 주체
+
+/* ================================================== */
+// SECTION 06 : ASSET / TRANSACTION (핵심)
+/* ================================================== */
+
+TABLE : profile_ownerships
+CHANNEL TYPE : MULTI
+
+ownerChannelCode
+: 현재 소유자
+
+targetChannelCode
+: 대상 채널
+
+/* -------------------------------------------------- */
+
+TABLE : profile_transactions
+CHANNEL TYPE : MULTI
+
+sellerChannelCode
+: 판매자
+
+buyerChannelCode
+: 구매자
+
+/* -------------------------------------------------- */
+
+TABLE : profile_permissions
+CHANNEL TYPE : MULTI
+
+ownerChannelCode
+: 권한 소유자
+
+targetChannelCode
+: 권한 대상
+
+/* ================================================== */
+// SECTION 07 : BUSINESS / PAYMENT
+/* ================================================== */
+
+TABLE : orders
+CHANNEL TYPE : MULTI
+
+buyerChannelCode
+: 구매자
+
+sellerChannelCode
+: 판매자
+
+/* -------------------------------------------------- */
+
+TABLE : payments
+CHANNEL TYPE : MULTI
+
+payerChannelCode
+: 결제 주체
+
+receiverChannelCode
+: 수신자
+
+/* -------------------------------------------------- */
+
+TABLE : reservations
+CHANNEL TYPE : MULTI
+
+customerChannelCode
+: 예약자
+
+providerChannelCode
+: 서비스 제공자
+
+/* ================================================== */
+// SECTION 08 : SYSTEM
+/* ================================================== */
+
+TABLE : notifications
+CHANNEL TYPE : MULTI
+
+senderChannelCode
+: 발신자
+
+receiverChannelCode
+: 수신자
+
+/* -------------------------------------------------- */
+
+TABLE : reports
+CHANNEL TYPE : MULTI
+
+reporterChannelCode
+: 신고자
+
+targetChannelCode
+: 대상
+
+/* -------------------------------------------------- */
+
+TABLE : audit_logs
+CHANNEL TYPE : SINGLE
+
+actorChannelCode
+: 시스템 행위 주체
+
+==================================================
+END OF MAPPING
+==================================================
+==================================================
+FILE : docs/channelcode-backend-absolute-rule.txt
+ROOT : C:\Users\kjm\social-platform\docs\channelcode-backend-absolute-rule.txt
+STATUS : CHANNELCODE BACKEND ABSOLUTE RULE (PRODUCTION SAFE)
+ROLE : CHANNEL IDENTITY / GENERATION / OPERATION STANDARD
+==================================================
+
+
+/* ==================================================
+SECTION 09 : CHANNELCODE GENERATION ABSOLUTE RULE
+================================================== */
+
+RULE 01
+channelCode 생성은 backend only
+
+허용:
+backend service
+
+금지:
+frontend 생성
+client 입력
+API 전달값 사용
+
+
+RULE 02
+생성 방식 절대값
+
+허용:
+
+crypto random only
+
+금지:
+
+uuid v1
+timestamp 기반
+sequential id
+email hash
+userId hash
+
+
+RULE 03
+생성 알고리즘 절대 순서
+
+STEP 1
+crypto random 72bit 생성
+
+STEP 2
+BASE36 encode
+
+STEP 3
+uppercase normalize
+
+STEP 4
+12자리 맞춤
+
+STEP 5
+DB INSERT 시도
+
+STEP 6
+UNIQUE violation 발생시 retry
+
+STEP 7
+retry max 10
+
+STEP 8
+실패시 fatal error
+
+
+RULE 04
+충돌 처리 방식
+
+허용:
+
+INSERT 기반 충돌 처리
+
+금지:
+
+SELECT precheck
+
+이유:
+
+race condition 방지
+
+
+/* ==================================================
+SECTION 10 : CHANNELCODE DB RULE
+================================================== */
+
+RULE 05
+channel registry table 필수
+
+TABLE:
+
+channels
+
+필수 컬럼:
+
+channelCode PK
+channelType
+status
+createdAt
+deletedAt
+
+
+RULE 06
+channel 상태 필수
+
+channelStatus 값:
+
+ACTIVE
+SUSPENDED
+BANNED
+DELETED
+
+
+RULE 07
+channelCode 컬럼 DB 규칙
+
+필수:
+
+TEXT NOT NULL UNIQUE
+
+CHECK:
+
+length(channelCode)=12
+
+PostgreSQL:
+
+CHECK(channelCode ~ '^[A-Z0-9]{12}$')
+
+
+RULE 08
+channelCode reuse 금지
+
+삭제시:
+
+soft delete only
+
+재사용:
+
+절대 금지
+
+
+RULE 09
+channelCode index mandatory
+
+모든 channelCode 컬럼:
+
+INDEX 필수
+
+예:
+
+authorChannelCode index
+buyerChannelCode index
+sellerChannelCode index
+
+
+/* ==================================================
+SECTION 11 : CHANNELCODE SECURITY RULE
+================================================== */
+
+RULE 10
+금지 코드 패턴
+
+AAAAAAAAAAAA
+000000000000
+111111111111
+ABCABCABCABC
+
+
+RULE 11
+reserved prefix 금지
+
+ADMIN
+SYSTEM
+ROOT
+STAFF
+OFFICIAL
+SUPPORT
+API
+NULL
+TEST
+
+
+RULE 12
+외부 노출 ID 규칙
+
+허용:
+
+channelCode
+
+금지:
+
+userId
+profileId
+internalId
+
+
+RULE 13
+URL routing 기준
+
+lookup key:
+
+channelCode only
+
+금지:
+
+username lookup
+email lookup
+numeric id lookup
+
+
+/* ==================================================
+SECTION 12 : CHANNELCODE OPERATION RULE
+================================================== */
+
+RULE 14
+ownership 변경 규칙
+
+channelCode 유지
+
+변경 가능:
+
+owner user only
+
+
+RULE 15
+ownership history 필수
+
+TABLE:
+
+profile_ownerships
+
+필수:
+
+channelCode
+ownerUserId
+validFrom
+validTo
+
+
+RULE 16
+audit log 기준
+
+모든 로그:
+
+actorChannelCode 사용
+
+userId 사용 금지
+
+
+RULE 17
+migration rule
+
+channelCode 변경 필요시:
+
+허용:
+
+없음
+
+대신:
+
+new channel 생성
+data migrate
+old channel archive
+
+
+RULE 18
+cache 기준
+
+feed cache key:
+
+viewerChannelCode
+
+
+RULE 19
+데이터 추적 규칙
+
+모든 데이터:
+
+channelCode 기준 추적 가능해야 함
+
+
+==================================================
+CHANNELCODE BACKEND ABSOLUTE RULE END
+==================================================
+==================================================
+FILE : docs/channelcode-db-core-schema.txt
+ROOT : C:\Users\kjm\social-platform\docs\channelcode-db-core-schema.txt
+STATUS : CHANNELCODE DB CORE STRUCTURE
+ROLE : CHANNEL IDENTITY MASTER TABLE DESIGN
+==================================================
+
+
+/* ==================================================
+SECTION 01 : CHANNEL REGISTRY (IDENTITY ROOT)
+================================================== */
+
+TABLE : channels
+
+ROLE :
+
+모든 channel identity root
+profile 삭제와 독립
+ownership 변경과 독립
+transaction과 독립
+
+필수 원칙:
+
+channelCode = 플랫폼 절대 ID
+
+
+COLUMNS :
+
+channelCode TEXT PRIMARY KEY
+
+channelType TEXT NOT NULL
+
+CHECK(channelType IN ('PERSONAL','BUSINESS'))
+
+status TEXT NOT NULL DEFAULT 'ACTIVE'
+
+CHECK(status IN(
+'ACTIVE',
+'SUSPENDED',
+'BANNED',
+'DELETED'
+))
+
+createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+deletedAt TIMESTAMP
+
+
+INDEX :
+
+PRIMARY KEY(channelCode)
+
+INDEX idx_channels_status(status)
+
+
+
+RULE :
+
+channelCode 변경 금지
+
+channelCode reuse 금지
+
+soft delete only
+
+
+
+/* ==================================================
+SECTION 02 : CHANNEL OWNERSHIP
+================================================== */
+
+TABLE : profile_ownerships
+
+ROLE :
+
+채널 소유자 관리
+
+채널 매매 대응
+
+법적 분쟁 대응
+
+ownership history 보존
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+channelCode TEXT NOT NULL
+
+userId INTEGER NOT NULL
+
+validFrom TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+validTo TIMESTAMP
+
+
+FK :
+
+channelCode → channels(channelCode)
+
+
+INDEX :
+
+INDEX idx_ownership_channel(channelCode)
+
+INDEX idx_ownership_user(userId)
+
+
+
+RULE :
+
+현재 owner:
+
+validTo IS NULL
+
+ownership 변경시:
+
+기존 validTo update
+새 row insert
+
+
+
+/* ==================================================
+SECTION 03 : CHANNEL UNIQUE VALIDATION
+================================================== */
+
+RULE :
+
+channelCode format validation
+
+PostgreSQL:
+
+CHECK(channelCode ~ '^[A-Z0-9]{12}$')
+
+SQLite:
+
+CHECK(length(channelCode)=12)
+
+
+
+RULE :
+
+uppercase only
+
+RULE :
+
+whitespace 금지
+
+RULE :
+
+special char 금지
+
+
+
+/* ==================================================
+SECTION 04 : CHANNEL ROLE INDEX RULE
+================================================== */
+
+모든 테이블:
+
+channelCode 사용시 index 필수
+
+
+예 :
+
+posts:
+
+authorChannelCode INDEX
+
+
+orders:
+
+buyerChannelCode INDEX
+
+sellerChannelCode INDEX
+
+
+follows:
+
+followerChannelCode INDEX
+
+followingChannelCode INDEX
+
+
+payments:
+
+payerChannelCode INDEX
+
+receiverChannelCode INDEX
+
+
+
+RULE :
+
+channelCode FK 사용
+
+userId FK 사용 금지 (행위자 기준)
+
+
+
+/* ==================================================
+SECTION 05 : CHANNEL SECURITY RULE
+================================================== */
+
+FORBIDDEN CODE :
+
+AAAAAAAAAAAA
+
+000000000000
+
+111111111111
+
+ABCABCABCABC
+
+
+
+RESERVED PREFIX :
+
+ADMIN
+SYSTEM
+ROOT
+STAFF
+OFFICIAL
+SUPPORT
+API
+NULL
+TEST
+
+
+
+RULE :
+
+reserved code 생성 금지
+
+
+
+/* ==================================================
+SECTION 06 : CHANNEL OPERATION RULE
+================================================== */
+
+RULE :
+
+channelCode immutable
+
+RULE :
+
+channel ownership transferable
+
+RULE :
+
+channel identity permanent
+
+
+
+RULE :
+
+profile delete ≠ channel delete
+
+RULE :
+
+channel delete = soft delete only
+
+
+
+/* ==================================================
+SECTION 07 : PERFORMANCE RULE
+================================================== */
+
+RULE :
+
+channelCode length = 12 고정
+
+RULE :
+
+TEXT type 유지
+
+RULE :
+
+varchar 사용 금지 (SQLite 호환성)
+
+RULE :
+
+index mandatory
+
+
+
+RULE :
+
+모든 feed query:
+
+channelCode index 사용
+
+
+
+/* ==================================================
+SECTION 08 : FUTURE EXTENSION SAFE DESIGN
+================================================== */
+
+확장 가능:
+
+channel verification
+
+channel badge
+
+channel trust score
+
+channel risk score
+
+channel reputation
+
+
+
+추가 가능 컬럼:
+
+verifiedAt TIMESTAMP
+
+trustScore INTEGER
+
+riskScore INTEGER
+
+
+
+RULE :
+
+identity table 확장 가능 구조 유지
+
+
+
+==================================================
+CHANNELCODE DB CORE STRUCTURE END
+==================================================
+==================================================
+FILE : docs/channelcode-generator-service-rule.txt
+ROOT : C:\Users\kjm\social-platform\docs\channelcode-generator-service-rule.txt
+STATUS : CHANNELCODE GENERATOR SERVICE RULE
+ROLE : CHANNELCODE CREATION / VALIDATION / COLLISION CONTROL
+==================================================
+
+
+/* ==================================================
+SECTION 01 : GENERATOR SERVICE ROLE
+================================================== */
+
+SERVICE :
+
+ChannelCodeGeneratorService
+
+ROLE :
+
+channelCode 생성 전용 서비스
+
+금지:
+
+다른 service에서 직접 생성 금지
+
+허용:
+
+ChannelCodeGeneratorService only
+
+
+
+RULE :
+
+single entry generation
+
+
+
+/* ==================================================
+SECTION 02 : GENERATION FLOW
+================================================== */
+
+FLOW :
+
+STEP 1
+
+generate candidate code
+
+
+STEP 2
+
+format validation
+
+
+STEP 3
+
+forbidden pattern check
+
+
+STEP 4
+
+reserved prefix check
+
+
+STEP 5
+
+DB insert attempt
+
+
+STEP 6
+
+UNIQUE violation 발생시 retry
+
+
+STEP 7
+
+retry limit 초과시 error
+
+
+
+RULE :
+
+SELECT pre-check 금지
+
+INSERT 기반 충돌 처리
+
+
+
+/* ==================================================
+SECTION 03 : GENERATION FUNCTION RULE
+================================================== */
+
+FUNCTION :
+
+generateChannelCode()
+
+ROLE :
+
+12자리 BASE36 생성
+
+
+
+CHARSET :
+
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+
+0123456789
+
+
+
+RULE :
+
+uppercase only
+
+RULE :
+
+length = 12
+
+
+
+RANDOM SOURCE :
+
+crypto.randomBytes only
+
+
+
+금지:
+
+Math.random
+
+
+
+/* ==================================================
+SECTION 04 : VALIDATION FUNCTION
+================================================== */
+
+FUNCTION :
+
+validateChannelCodeFormat(code)
+
+
+
+CHECK :
+
+length = 12
+
+regex :
+
+^[A-Z0-9]{12}$
+
+
+
+RETURN :
+
+boolean
+
+
+
+/* ==================================================
+SECTION 05 : SECURITY FILTER FUNCTION
+================================================== */
+
+FUNCTION :
+
+isForbiddenChannelCode(code)
+
+
+
+CHECK :
+
+repeated chars
+
+reserved prefix
+
+reserved words
+
+
+
+FORBIDDEN LIST :
+
+AAAAAAAAAAAA
+
+000000000000
+
+111111111111
+
+
+
+RESERVED PREFIX :
+
+ADMIN
+
+SYSTEM
+
+ROOT
+
+STAFF
+
+OFFICIAL
+
+SUPPORT
+
+
+
+RETURN :
+
+boolean
+
+
+
+/* ==================================================
+SECTION 06 : COLLISION HANDLING RULE
+================================================== */
+
+RULE :
+
+retry max 10
+
+
+
+FLOW :
+
+INSERT attempt
+
+success → return code
+
+fail → retry
+
+
+
+RULE :
+
+retry counter mandatory
+
+
+
+RULE :
+
+retry failure:
+
+throw fatal error
+
+
+
+/* ==================================================
+SECTION 07 : TRANSACTION SAFETY RULE
+================================================== */
+
+RULE :
+
+channel 생성은 transaction 내부
+
+
+
+FLOW :
+
+BEGIN
+
+generate
+
+insert channel
+
+insert ownership
+
+COMMIT
+
+
+
+FAIL :
+
+ROLLBACK
+
+
+
+RULE :
+
+channel orphan record 금지
+
+
+
+/* ==================================================
+SECTION 08 : SERVICE INTERFACE RULE
+================================================== */
+
+SERVICE METHOD :
+
+createChannelForProfile(userId,channelType)
+
+
+
+PROCESS :
+
+generate channelCode
+
+insert channels
+
+insert ownership
+
+return channelCode
+
+
+
+RETURN :
+
+channelCode only
+
+
+
+금지:
+
+internal id 반환
+
+
+
+/* ==================================================
+SECTION 09 : CHANNEL CREATION POLICY
+================================================== */
+
+RULE :
+
+user당 최대 2개
+
+
+
+CHECK :
+
+existing channel count
+
+
+
+LIMIT :
+
+PERSONAL 1
+
+BUSINESS 1
+
+
+
+FAIL :
+
+exception
+
+
+
+/* ==================================================
+SECTION 10 : CHANNEL TYPE RULE
+================================================== */
+
+channelType:
+
+PERSONAL
+
+BUSINESS
+
+
+
+RULE :
+
+ENUM only
+
+
+
+금지:
+
+dynamic type
+
+
+
+/* ==================================================
+SECTION 11 : LOGGING RULE
+================================================== */
+
+LOG :
+
+channel creation event
+
+
+
+DATA :
+
+channelCode
+
+userId
+
+timestamp
+
+
+
+FAIL LOG :
+
+retry failure
+
+validation failure
+
+
+
+/* ==================================================
+SECTION 12 : MONITORING RULE
+================================================== */
+
+TRACK :
+
+generation attempts
+
+collision count
+
+retry count
+
+
+
+ALERT :
+
+collision spike 발생시 alert
+
+
+
+RULE :
+
+generator health monitoring
+
+
+
+/* ==================================================
+SECTION 13 : FUTURE SAFETY RULE
+================================================== */
+
+EXTENSION SAFE :
+
+
+
+future shard 가능
+
+future distributed generation 가능
+
+future prefix 추가 가능
+
+
+
+RULE :
+
+generator logic centralize
+
+
+
+/* ==================================================
+SECTION 14 : ABSOLUTE PROHIBITIONS
+================================================== */
+
+금지 :
+
+frontend 생성
+
+manual 입력
+
+admin 직접 생성
+
+channelCode 수정
+
+channelCode reuse
+
+
+
+RULE :
+
+channelCode immutable
+
+
+
+==================================================
+CHANNELCODE GENERATOR SERVICE RULE END
+==================================================
+==================================================
+FILE : docs/channel-user-relation-absolute-rule.txt
+ROOT : C:\Users\kjm\social-platform\docs\channel-user-relation-absolute-rule.txt
+STATUS : CHANNEL USER RELATION ABSOLUTE RULE
+ROLE : ACCOUNT / CHANNEL / PERMISSION / ACCESS CONTROL
+==================================================
+
+
+/* ==================================================
+SECTION 01 : CORE IDENTITY MODEL
+================================================== */
+
+IDENTITY 구조 :
+
+USER = 인증 주체
+
+CHANNEL = 행위 주체
+
+PROFILE = 채널 메타데이터
+
+
+
+RULE :
+
+USER ≠ CHANNEL
+
+
+
+USER:
+
+login entity
+
+CHANNEL:
+
+action entity
+
+
+
+RULE :
+
+모든 행위는 channelCode 기준
+
+
+
+금지 :
+
+userId 기반 행위 처리
+
+
+
+/* ==================================================
+SECTION 02 : RELATION MODEL
+================================================== */
+
+구조 :
+
+users
+
+↓
+
+profile_ownerships
+
+↓
+
+channels
+
+↓
+
+profiles
+
+
+
+RULE :
+
+USER → OWNER
+
+CHANNEL → ASSET
+
+
+
+즉 :
+
+user owns channel
+
+channel owns data
+
+
+
+/* ==================================================
+SECTION 03 : ABSOLUTE PERMISSION RULE
+================================================== */
+
+접근 조건 :
+
+channel action 가능 조건 :
+
+ownership 존재
+
+
+
+CHECK :
+
+profile_ownerships
+
+WHERE:
+
+userId = ?
+channelCode = ?
+validTo IS NULL
+
+
+
+없으면 :
+
+접근 금지
+
+
+
+RULE :
+
+ownership 기반 권한
+
+
+
+/* ==================================================
+SECTION 04 : ACCESS CONTROL FLOW
+================================================== */
+
+API 호출 :
+
+client:
+
+channelCode 전달
+
+
+
+server:
+
+userId 확인
+
+ownership 확인
+
+permission 확인
+
+
+
+FLOW :
+
+JWT userId
+
+↓
+
+ownership lookup
+
+↓
+
+channel match
+
+↓
+
+허용
+
+
+
+RULE :
+
+client userId 전달 금지
+
+
+
+/* ==================================================
+SECTION 05 : CHANNEL CONTEXT RULE
+================================================== */
+
+로그인 후 :
+
+active channel 선택 필요
+
+
+
+예 :
+
+user:
+
+PERSONAL channel
+
+BUSINESS channel
+
+
+
+선택 :
+
+activeChannelCode
+
+
+
+RULE :
+
+모든 action:
+
+activeChannelCode 기준
+
+
+
+금지 :
+
+default channel 자동 선택
+
+
+
+/* ==================================================
+SECTION 06 : MULTI CHANNEL USER RULE
+================================================== */
+
+USER:
+
+max 2 channels
+
+
+
+PERSONAL:
+
+1
+
+BUSINESS:
+
+1
+
+
+
+RULE :
+
+channelType 중복 금지
+
+
+
+CHECK :
+
+user existing channel count
+
+
+
+/* ==================================================
+SECTION 07 : DATA OWNERSHIP RULE
+================================================== */
+
+DATA ownership:
+
+
+
+posts:
+
+authorChannelCode
+
+
+
+images:
+
+ownerChannelCode
+
+
+
+orders:
+
+buyerChannelCode
+
+sellerChannelCode
+
+
+
+RULE :
+
+DATA owner = channel
+
+
+
+금지 :
+
+DATA owner = user
+
+
+
+/* ==================================================
+SECTION 08 : SECURITY RULE
+================================================== */
+
+금지 :
+
+userId 기반 접근 허용
+
+
+
+반드시 :
+
+channel ownership 확인
+
+
+
+RULE :
+
+모든 write action:
+
+ownership validation 필요
+
+
+
+예 :
+
+post create
+
+post edit
+
+image upload
+
+order create
+
+payment
+
+
+
+/* ==================================================
+SECTION 09 : CHANNEL TRANSFER RULE
+================================================== */
+
+ownership 변경 가능
+
+
+
+변경:
+
+owner user only
+
+
+
+channelCode 유지
+
+
+
+RULE :
+
+identity immutable
+
+ownership mutable
+
+
+
+FLOW :
+
+old owner validTo update
+
+new owner insert
+
+
+
+/* ==================================================
+SECTION 10 : ADMIN ACCESS RULE
+================================================== */
+
+admin channel 없음
+
+
+
+admin:
+
+user 기반
+
+
+
+admin action:
+
+override permission
+
+
+
+RULE :
+
+admin channel 생성 금지
+
+
+
+/* ==================================================
+SECTION 11 : SESSION RULE
+================================================== */
+
+session data:
+
+
+
+userId
+
+activeChannelCode
+
+
+
+RULE :
+
+모든 요청:
+
+activeChannelCode 필요
+
+
+
+금지 :
+
+channel 없이 action
+
+
+
+/* ==================================================
+SECTION 12 : API STRUCTURE RULE
+================================================== */
+
+API 요청:
+
+
+
+허용:
+
+channelCode
+
+
+
+금지:
+
+userId
+
+
+
+예 :
+
+POST /posts
+
+body:
+
+channelCode
+
+content
+
+
+
+server:
+
+JWT userId 확인
+
+ownership 확인
+
+
+
+/* ==================================================
+SECTION 13 : AUDIT RULE
+================================================== */
+
+audit log:
+
+
+
+actorChannelCode
+
+actorUserId
+
+
+
+둘 다 저장
+
+
+
+이유 :
+
+법적 대응
+
+fraud 대응
+
+
+
+/* ==================================================
+SECTION 14 : DATA ISOLATION RULE
+================================================== */
+
+USER 데이터:
+
+private
+
+
+
+CHANNEL 데이터:
+
+public entity
+
+
+
+RULE :
+
+channel 독립 entity
+
+
+
+USER 삭제:
+
+channel 유지 가능
+
+
+
+RULE :
+
+account delete ≠ channel delete
+
+
+
+/* ==================================================
+SECTION 15 : FAILURE PREVENTION RULE
+================================================== */
+
+절대 금지 :
+
+
+
+userId로 posts 조회
+
+userId로 media 조회
+
+userId로 orders 조회
+
+
+
+반드시 :
+
+
+
+channelCode 기준
+
+
+
+이유 :
+
+multi channel user 오류 방지
+
+
+
+/* ==================================================
+SECTION 16 : FUTURE SAFE DESIGN
+================================================== */
+
+가능 확장:
+
+
+
+multi owner channel
+
+team channel
+
+organization channel
+
+channel permission role
+
+
+
+구조 준비:
+
+
+
+profile_permissions table
+
+
+
+RULE :
+
+channel 중심 설계 유지
+
+
+
+==================================================
+CHANNEL USER RELATION ABSOLUTE RULE END
+==================================================
+==================================================
+FILE : docs/channelcode-fk-naming-absolute-rule.txt
+ROOT : C:\Users\kjm\social-platform\docs\channelcode-fk-naming-absolute-rule.txt
+STATUS : CHANNELCODE FK NAMING STANDARD
+ROLE : DATABASE CONSISTENCY / FK NAMING / RELATION STANDARD
+==================================================
+
+
+/* ==================================================
+SECTION 01 : CORE FK RULE
+================================================== */
+
+RULE 01
+
+모든 행위 주체는 channelCode FK 사용
+
+
+
+금지 :
+
+userId FK (행위 기준)
+
+
+
+허용 :
+
+userId = 인증
+
+channelCode = 행위
+
+
+
+RULE :
+
+WHO = channelCode
+
+AUTH = userId
+
+
+
+/* ==================================================
+SECTION 02 : COLUMN NAMING RULE
+================================================== */
+
+RULE :
+
+column name = ROLE + ChannelCode
+
+
+
+예 :
+
+authorChannelCode
+
+ownerChannelCode
+
+buyerChannelCode
+
+sellerChannelCode
+
+actorChannelCode
+
+
+
+금지 :
+
+channelCode 단일 컬럼
+
+
+
+이유 :
+
+다자 관계 표현 불가능
+
+
+
+/* ==================================================
+SECTION 03 : SINGLE ACTOR RULE
+================================================== */
+
+단일 주체:
+
+
+
+authorChannelCode
+
+
+
+actorChannelCode
+
+
+
+ownerChannelCode
+
+
+
+RULE :
+
+단일 actor는 하나의 FK
+
+
+
+/* ==================================================
+SECTION 04 : MULTI ACTOR RULE
+================================================== */
+
+다자 관계:
+
+
+
+follows
+
+buyer/seller
+
+payer/receiver
+
+
+
+RULE :
+
+각 역할별 channelCode 필요
+
+
+
+예 :
+
+
+
+followerChannelCode
+
+followingChannelCode
+
+
+
+buyerChannelCode
+
+sellerChannelCode
+
+
+
+payerChannelCode
+
+receiverChannelCode
+
+
+
+RULE :
+
+단일 channelCode 금지
+
+
+
+/* ==================================================
+SECTION 05 : FK CONSTRAINT RULE
+================================================== */
+
+FK 대상:
+
+
+
+channels(channelCode)
+
+
+
+RULE :
+
+profiles FK 금지
+
+
+
+이유 :
+
+identity root는 channels
+
+
+
+RULE :
+
+channelCode FK → channels only
+
+
+
+/* ==================================================
+SECTION 06 : INDEX RULE
+================================================== */
+
+모든 FK channelCode:
+
+
+
+INDEX mandatory
+
+
+
+예 :
+
+
+
+INDEX idx_posts_author
+
+INDEX idx_orders_buyer
+
+INDEX idx_orders_seller
+
+
+
+RULE :
+
+FK + INDEX 세트
+
+
+
+/* ==================================================
+SECTION 07 : NULL RULE
+================================================== */
+
+actor FK:
+
+
+
+NOT NULL
+
+
+
+optional 관계:
+
+
+
+NULL 허용
+
+
+
+예 :
+
+
+
+parentChannelCode nullable
+
+
+
+RULE :
+
+actor FK null 금지
+
+
+
+/* ==================================================
+SECTION 08 : CASCADE RULE
+================================================== */
+
+ON DELETE:
+
+
+
+RESTRICT
+
+
+
+금지 :
+
+
+
+CASCADE DELETE
+
+
+
+이유 :
+
+channel 삭제시 데이터 삭제 금지
+
+
+
+RULE :
+
+channel은 soft delete
+
+
+
+/* ==================================================
+SECTION 09 : QUERY RULE
+================================================== */
+
+조회 기준:
+
+
+
+channelCode
+
+
+
+금지:
+
+
+
+userId 조회
+
+
+
+예 :
+
+SELECT * FROM posts
+WHERE authorChannelCode = ?
+
+
+
+RULE :
+
+feed query channel 기반
+
+
+
+/* ==================================================
+SECTION 10 : JOIN RULE
+================================================== */
+
+JOIN 대상:
+
+
+
+channels
+
+profiles
+
+
+
+FLOW :
+
+posts
+
+JOIN channels
+
+JOIN profiles
+
+
+
+RULE :
+
+channel identity → channels
+
+profile metadata → profiles
+
+
+
+/* ==================================================
+SECTION 11 : AUDIT RULE
+================================================== */
+
+audit 필수:
+
+
+
+actorChannelCode
+
+actorUserId
+
+
+
+둘 다 저장
+
+
+
+RULE :
+
+행위 = channel
+
+로그인 = user
+
+
+
+/* ==================================================
+SECTION 12 : TABLE STANDARD EXAMPLES
+================================================== */
+
+posts:
+
+
+
+postId
+
+authorChannelCode
+
+content
+
+createdAt
+
+
+
+post_comments:
+
+
+
+commentId
+
+authorChannelCode
+
+postId
+
+content
+
+
+
+orders:
+
+
+
+orderId
+
+buyerChannelCode
+
+sellerChannelCode
+
+
+
+payments:
+
+
+
+paymentId
+
+payerChannelCode
+
+receiverChannelCode
+
+
+
+follows:
+
+
+
+followerChannelCode
+
+followingChannelCode
+
+
+
+RULE :
+
+모든 관계:
+
+role + ChannelCode
+
+
+
+/* ==================================================
+SECTION 13 : ABSOLUTE PROHIBITIONS
+================================================== */
+
+금지 :
+
+
+
+channelCode
+
+channelId
+
+profileChannel
+
+authorId
+
+
+
+허용 :
+
+
+
+authorChannelCode
+
+
+
+RULE :
+
+role prefix mandatory
+
+
+
+/* ==================================================
+SECTION 14 : FUTURE SAFE RULE
+================================================== */
+
+확장 가능:
+
+
+
+teamChannelCode
+
+organizationChannelCode
+
+parentChannelCode
+
+childChannelCode
+
+
+
+RULE :
+
+role naming 유지
+
+
+
+/* ==================================================
+SECTION 15 : MIGRATION SAFETY RULE
+================================================== */
+
+DB 변경시:
+
+
+
+column rename 금지
+
+
+
+새 컬럼 추가
+
+
+
+이유 :
+
+data integrity
+
+
+
+RULE :
+
+schema backward compatible
+
+
+
+==================================================
+CHANNELCODE FK NAMING STANDARD END
+==================================================
+
+==================================================
+FILE : docs/follow-system-db-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\follow-system-db-absolute-structure.txt
+STATUS : FOLLOW SYSTEM CORE STRUCTURE
+ROLE : SOCIAL GRAPH / FOLLOW RELATION / SNS CORE
+==================================================
+
+
+/* ==================================================
+SECTION 01 : FOLLOW CORE CONCEPT
+================================================== */
+
+FOLLOW 정의 :
+
+channel → channel 관계
+
+
+
+USER 관계 아님
+
+
+
+RULE :
+
+FOLLOW actor = channel
+
+
+
+즉 :
+
+A channel → B channel
+
+
+
+금지 :
+
+user follow user
+
+
+
+이유 :
+
+multi channel user 구조
+
+
+
+/* ==================================================
+SECTION 02 : FOLLOWS TABLE
+================================================== */
+
+TABLE :
+
+follows
+
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+
+
+followerChannelCode TEXT NOT NULL
+
+followingChannelCode TEXT NOT NULL
+
+
+
+status TEXT NOT NULL DEFAULT 'ACTIVE'
+
+
+
+CHECK(status IN(
+
+ACTIVE
+BLOCKED
+REMOVED
+
+))
+
+
+
+createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+
+
+FK :
+
+followerChannelCode → channels(channelCode)
+
+followingChannelCode → channels(channelCode)
+
+
+
+INDEX :
+
+INDEX idx_follow_follower(followerChannelCode)
+
+INDEX idx_follow_following(followingChannelCode)
+
+
+
+UNIQUE :
+
+UNIQUE(followerChannelCode,followingChannelCode)
+
+
+
+RULE :
+
+중복 follow 금지
+
+
+
+/* ==================================================
+SECTION 03 : SELF FOLLOW PROHIBITION
+================================================== */
+
+RULE :
+
+자기 자신 follow 금지
+
+
+
+CHECK :
+
+followerChannelCode ≠ followingChannelCode
+
+
+
+/* ==================================================
+SECTION 04 : FOLLOW STATE RULE
+================================================== */
+
+상태:
+
+
+
+ACTIVE = 정상 팔로우
+
+REMOVED = 언팔
+
+BLOCKED = 차단
+
+
+
+RULE :
+
+삭제하지 않음
+
+
+
+soft state 관리
+
+
+
+이유 :
+
+history 유지
+
+
+
+/* ==================================================
+SECTION 05 : FOLLOW PERFORMANCE RULE
+================================================== */
+
+필수 index:
+
+
+
+followerChannelCode
+
+followingChannelCode
+
+
+
+이유 :
+
+
+
+following 조회
+
+followers 조회
+
+
+
+예 :
+
+followers list:
+
+SELECT followerChannelCode
+FROM follows
+WHERE followingChannelCode=?
+
+
+
+following list:
+
+SELECT followingChannelCode
+FROM follows
+WHERE followerChannelCode=?
+
+
+
+/* ==================================================
+SECTION 06 : FOLLOW COUNT CACHE RULE
+================================================== */
+
+성능 이유:
+
+
+
+count query 금지
+
+
+
+별도 cache 필요
+
+
+
+profiles table:
+
+
+
+followersCount
+
+followingCount
+
+
+
+RULE :
+
+follow 생성:
+
+count +1
+
+
+
+unfollow:
+
+count -1
+
+
+
+/* ==================================================
+SECTION 07 : BLOCK SYSTEM RELATION
+================================================== */
+
+TABLE :
+
+blocks
+
+
+
+COLUMNS :
+
+
+
+blockerChannelCode
+
+blockedChannelCode
+
+
+
+RULE :
+
+
+
+block 존재시 follow 금지
+
+
+
+CHECK :
+
+block relation exists → reject follow
+
+
+
+/* ==================================================
+SECTION 08 : MUTUAL FOLLOW RULE
+================================================== */
+
+상호 팔로우:
+
+
+
+양방향 존재
+
+
+
+CHECK :
+
+
+
+A → B
+
+B → A
+
+
+
+RULE :
+
+mutualFollow boolean 계산 가능
+
+
+
+TABLE 필요 없음
+
+
+
+/* ==================================================
+SECTION 09 : FOLLOW VISIBILITY RULE
+================================================== */
+
+private channel 가능
+
+
+
+profiles:
+
+
+
+isPrivate BOOLEAN
+
+
+
+RULE :
+
+
+
+private channel:
+
+
+
+follow request 필요
+
+
+
+TABLE 필요:
+
+
+
+follow_requests
+
+
+
+/* ==================================================
+SECTION 10 : FOLLOW REQUEST TABLE
+================================================== */
+
+TABLE :
+
+follow_requests
+
+
+
+COLUMNS :
+
+
+
+requesterChannelCode
+
+targetChannelCode
+
+status
+
+createdAt
+
+
+
+status:
+
+
+
+PENDING
+
+APPROVED
+
+REJECTED
+
+
+
+RULE :
+
+승인시 follows 생성
+
+
+
+/* ==================================================
+SECTION 11 : FOLLOW FEED RULE
+================================================== */
+
+feed source:
+
+
+
+following channels
+
+
+
+QUERY:
+
+
+
+SELECT posts
+
+WHERE authorChannelCode IN (following)
+
+
+
+RULE :
+
+feed graph = follow graph
+
+
+
+/* ==================================================
+SECTION 12 : FOLLOW DELETE RULE
+================================================== */
+
+삭제 금지
+
+
+
+status update
+
+
+
+REMOVED
+
+
+
+이유 :
+
+
+
+analytics
+
+fraud detection
+
+
+
+/* ==================================================
+SECTION 13 : NOTIFICATION RULE
+================================================== */
+
+follow event:
+
+
+
+notification 생성
+
+
+
+예 :
+
+
+
+A followed B
+
+
+
+receiver:
+
+followingChannelCode
+
+
+
+/* ==================================================
+SECTION 14 : FOLLOW SECURITY RULE
+================================================== */
+
+금지 :
+
+
+
+self follow
+
+duplicate follow
+
+blocked follow
+
+
+
+RULE :
+
+
+
+validation mandatory
+
+
+
+/* ==================================================
+SECTION 15 : FUTURE EXTENSION SAFE DESIGN
+================================================== */
+
+확장 가능:
+
+
+
+close friends
+
+favorite channels
+
+mute channels
+
+priority follow
+
+
+
+가능 컬럼:
+
+
+
+followType
+
+priorityScore
+
+muteFlag
+
+
+
+RULE :
+
+확장 가능 구조 유지
+
+
+
+==================================================
+FOLLOW SYSTEM CORE STRUCTURE END
+==================================================
+==================================================
+FILE : docs/feed-system-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\feed-system-absolute-structure.txt
+STATUS : FEED SYSTEM CORE STRUCTURE
+ROLE : SNS FEED / DISCOVERY / RANKING / VISIBILITY
+==================================================
+
+
+/* ==================================================
+SECTION 01 : FEED CORE CONCEPT
+================================================== */
+
+FEED 정의 :
+
+channel 기준 content discovery
+
+
+
+RULE :
+
+feed = channel 기반
+
+
+
+user 기반 아님
+
+
+
+VIEWER :
+
+viewerChannelCode
+
+
+
+CONTENT OWNER :
+
+authorChannelCode
+
+
+
+RULE :
+
+viewer와 author 분리
+
+
+
+/* ==================================================
+SECTION 02 : POSTS TABLE ROLE
+================================================== */
+
+posts:
+
+
+
+content source
+
+
+
+feed source table
+
+
+
+필수 컬럼 :
+
+
+
+postId
+
+authorChannelCode
+
+visibility
+
+createdAt
+
+status
+
+
+
+visibility:
+
+
+
+PUBLIC
+
+FOLLOWERS
+
+PRIVATE
+
+
+
+status:
+
+
+
+ACTIVE
+
+REMOVED
+
+BLOCKED
+
+
+
+RULE :
+
+feed 대상은 ACTIVE only
+
+
+
+/* ==================================================
+SECTION 03 : FEED VISIBILITY RULE
+================================================== */
+
+PUBLIC:
+
+
+
+모든 channel 가능
+
+
+
+FOLLOWERS:
+
+
+
+follow 관계 필요
+
+
+
+PRIVATE:
+
+
+
+author only
+
+
+
+RULE :
+
+visibility filter mandatory
+
+
+
+/* ==================================================
+SECTION 04 : FEED REGION RULE
+================================================== */
+
+region = feed filter
+
+
+
+identity 아님
+
+
+
+posts:
+
+
+
+regionCode optional
+
+
+
+예:
+
+
+
+GLOBAL
+
+KR
+
+US
+
+
+
+RULE :
+
+region filtering 가능
+
+
+
+RULE :
+
+channel region 독립
+
+
+
+/* ==================================================
+SECTION 05 : FEED SEEN TABLE
+================================================== */
+
+TABLE :
+
+feed_seen
+
+
+
+ROLE :
+
+이미 본 피드 관리
+
+
+
+COLUMNS :
+
+
+
+viewerChannelCode
+
+postId
+
+seenAt
+
+
+
+INDEX :
+
+
+
+viewerChannelCode
+
+postId
+
+
+
+RULE :
+
+중복 노출 방지
+
+
+
+/* ==================================================
+SECTION 06 : FEED HIDE FILTER
+================================================== */
+
+TABLE :
+
+feed_hide_filter
+
+
+
+ROLE :
+
+숨김 채널 관리
+
+
+
+COLUMNS :
+
+
+
+actorChannelCode
+
+targetChannelCode
+
+
+
+RULE :
+
+hidden channel 제외
+
+
+
+/* ==================================================
+SECTION 07 : FEED RANK SIGNAL TABLE
+================================================== */
+
+TABLE :
+
+post_engagements
+
+
+
+ROLE :
+
+ranking signal
+
+
+
+COLUMNS :
+
+
+
+actorChannelCode
+
+postId
+
+actionType
+
+createdAt
+
+
+
+actionType:
+
+
+
+LIKE
+
+COMMENT
+
+SAVE
+
+SHARE
+
+
+
+RULE :
+
+ranking source
+
+
+
+/* ==================================================
+SECTION 08 : FEED QUERY BASE RULE
+================================================== */
+
+기본 feed query:
+
+
+
+following posts
+
+public posts
+
+
+
+FLOW :
+
+
+
+SELECT posts
+
+FROM posts
+
+JOIN follows
+
+
+
+WHERE:
+
+visibility 조건
+
+status ACTIVE
+
+
+
+/* ==================================================
+SECTION 09 : FEED PERFORMANCE RULE
+================================================== */
+
+필수 index:
+
+
+
+posts.authorChannelCode
+
+posts.createdAt
+
+posts.visibility
+
+
+
+post_engagements.postId
+
+
+
+follows.followingChannelCode
+
+
+
+RULE :
+
+composite index 필요
+
+
+
+예:
+
+
+
+INDEX(authorChannelCode,createdAt)
+
+
+
+/* ==================================================
+SECTION 10 : FEED CACHE RULE
+================================================== */
+
+필수 cache:
+
+
+
+viewerChannelCode feed cache
+
+
+
+RULE :
+
+feed cache key:
+
+
+
+viewerChannelCode
+
+
+
+RULE :
+
+user cache 금지
+
+
+
+/* ==================================================
+SECTION 11 : FEED RANKING MODEL
+================================================== */
+
+rank 요소:
+
+
+
+follow 관계
+
+engagement score
+
+recency
+
+mutual interaction
+
+hide filter
+
+
+
+future:
+
+
+
+AI score
+
+
+
+RULE :
+
+ranking layer 분리
+
+
+
+/* ==================================================
+SECTION 12 : FEED GENERATION STRATEGY
+================================================== */
+
+2가지 방식:
+
+
+
+fanout on write
+
+fanout on read
+
+
+
+추천:
+
+
+
+hybrid
+
+
+
+RULE :
+
+초기:
+
+fanout on read
+
+
+
+scale:
+
+hybrid
+
+
+
+/* ==================================================
+SECTION 13 : TRENDING SYSTEM
+================================================== */
+
+TABLE 필요:
+
+
+
+post_trending_score
+
+
+
+COLUMNS :
+
+
+
+postId
+
+score
+
+calculatedAt
+
+
+
+RULE :
+
+periodic job 계산
+
+
+
+/* ==================================================
+SECTION 14 : FEED SECURITY RULE
+================================================== */
+
+제외 대상:
+
+
+
+blocked channels
+
+hidden channels
+
+reported posts
+
+
+
+RULE :
+
+filter layer mandatory
+
+
+
+/* ==================================================
+SECTION 15 : FEED EXTENSION SAFE DESIGN
+================================================== */
+
+확장 가능:
+
+
+
+AI feed
+
+interest feed
+
+geo feed
+
+business feed
+
+ads feed
+
+
+
+RULE :
+
+feed source 분리
+
+
+
+/* ==================================================
+SECTION 16 : FUTURE AI READY STRUCTURE
+================================================== */
+
+AI signals:
+
+
+
+engagement rate
+
+view duration
+
+repeat interaction
+
+profile similarity
+
+
+
+future table:
+
+
+
+feed_rank_signals
+
+
+
+RULE :
+
+AI feature 확장 가능
+
+
+
+==================================================
+FEED SYSTEM CORE STRUCTURE END
+==================================================
+
+==================================================
+FILE : docs/post-visibility-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\post-visibility-absolute-structure.txt
+STATUS : POST VISIBILITY CORE STRUCTURE
+ROLE : CONTENT PERMISSION / ACCESS CONTROL / FEED FILTER
+==================================================
+
+
+/* ==================================================
+SECTION 01 : VISIBILITY CORE CONCEPT
+================================================== */
+
+visibility 정의 :
+
+누가 post를 볼 수 있는가
+
+
+
+RULE :
+
+visibility = post 속성
+
+
+
+channel 속성 아님
+
+
+
+RULE :
+
+viewerChannelCode 기준 판단
+
+
+
+/* ==================================================
+SECTION 02 : POSTS VISIBILITY COLUMN
+================================================== */
+
+posts table:
+
+
+
+visibility TEXT NOT NULL
+
+
+
+CHECK:
+
+PUBLIC
+FOLLOWERS
+PRIVATE
+
+
+
+RULE :
+
+visibility mandatory
+
+
+
+금지 :
+
+NULL
+
+
+
+/* ==================================================
+SECTION 03 : VISIBILITY TYPES
+================================================== */
+
+PUBLIC:
+
+
+
+모든 channel 가능
+
+
+
+FOLLOWERS:
+
+
+
+follow 관계 필요
+
+
+
+PRIVATE:
+
+
+
+author only
+
+
+
+RULE :
+
+visibility filter 필수
+
+
+
+/* ==================================================
+SECTION 04 : FOLLOWER VISIBILITY CHECK
+================================================== */
+
+FOLLOWERS post:
+
+
+
+조건:
+
+
+
+viewer follows author
+
+
+
+CHECK:
+
+
+
+follows table:
+
+
+
+viewerChannelCode → authorChannelCode
+
+
+
+RULE :
+
+follow 존재시 허용
+
+
+
+/* ==================================================
+SECTION 05 : PRIVATE VISIBILITY RULE
+================================================== */
+
+PRIVATE post:
+
+
+
+허용:
+
+
+
+author only
+
+
+
+future:
+
+
+
+permission channels 가능
+
+
+
+RULE :
+
+strict filter
+
+
+
+/* ==================================================
+SECTION 06 : BLOCK FILTER RULE
+================================================== */
+
+차단 존재시:
+
+
+
+visibility regardless deny
+
+
+
+CHECK:
+
+
+
+blocks table
+
+
+
+RULE :
+
+block override visibility
+
+
+
+/* ==================================================
+SECTION 07 : POST STATUS RULE
+================================================== */
+
+posts.status:
+
+
+
+ACTIVE
+
+REMOVED
+
+BLOCKED
+
+ARCHIVED
+
+
+
+RULE :
+
+ACTIVE only visible
+
+
+
+/* ==================================================
+SECTION 08 : COMMENT VISIBILITY RULE
+================================================== */
+
+댓글 허용 조건:
+
+
+
+visibility match
+
+
+
+RULE :
+
+PRIVATE post:
+
+
+
+댓글 제한 가능
+
+
+
+future:
+
+
+
+commentPermission column 가능
+
+
+
+/* ==================================================
+SECTION 09 : SHARE VISIBILITY RULE
+================================================== */
+
+share 가능:
+
+
+
+PUBLIC only
+
+
+
+FOLLOWERS:
+
+
+
+optional
+
+
+
+PRIVATE:
+
+
+
+금지
+
+
+
+RULE :
+
+share permission 분리 가능
+
+
+
+/* ==================================================
+SECTION 10 : SEARCH VISIBILITY RULE
+================================================== */
+
+검색 대상:
+
+
+
+PUBLIC only
+
+
+
+FOLLOWERS:
+
+
+
+optional
+
+
+
+PRIVATE:
+
+
+
+제외
+
+
+
+RULE :
+
+search filter visibility
+
+
+
+/* ==================================================
+SECTION 11 : FEED VISIBILITY FILTER
+================================================== */
+
+feed 조건:
+
+
+
+visibility check
+
+block check
+
+hide filter check
+
+
+
+RULE :
+
+feed query:
+
+visibility layer 포함
+
+
+
+/* ==================================================
+SECTION 12 : INDEX RULE
+================================================== */
+
+필수 index:
+
+
+
+posts.visibility
+
+posts.status
+
+posts.createdAt
+
+
+
+composite:
+
+
+
+visibility + createdAt
+
+
+
+RULE :
+
+feed performance 필수
+
+
+
+/* ==================================================
+SECTION 13 : FUTURE VISIBILITY EXTENSION
+================================================== */
+
+확장 가능:
+
+
+
+CLOSE_FRIENDS
+
+BUSINESS_ONLY
+
+SUBSCRIBERS
+
+PAID
+
+
+
+RULE :
+
+ENUM 확장 가능
+
+
+
+/* ==================================================
+SECTION 14 : VISIBILITY OVERRIDE RULE
+================================================== */
+
+admin:
+
+
+
+override 가능
+
+
+
+author:
+
+
+
+always access
+
+
+
+RULE :
+
+owner access override
+
+
+
+/* ==================================================
+SECTION 15 : SECURITY RULE
+================================================== */
+
+금지 :
+
+
+
+visibility check 없이 조회
+
+
+
+RULE :
+
+모든 post query:
+
+
+
+visibility validation mandatory
+
+
+
+/* ==================================================
+SECTION 16 : VISIBILITY QUERY PATTERN
+================================================== */
+
+허용 query 구조:
+
+
+
+WHERE:
+
+status='ACTIVE'
+
+AND visibility 조건
+
+AND block filter
+
+
+
+금지:
+
+
+
+visibility 없이 SELECT
+
+
+
+/* ==================================================
+SECTION 17 : FUTURE SAFE DESIGN
+================================================== */
+
+가능 추가:
+
+
+
+post permission table
+
+
+
+예:
+
+
+
+post_permissions
+
+
+
+postId
+
+allowedChannelCode
+
+
+
+RULE :
+
+permission 확장 구조 유지
+
+
+
+==================================================
+POST VISIBILITY CORE STRUCTURE END
+==================================================
+
+==================================================
+FILE : docs/notification-system-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\notification-system-absolute-structure.txt
+STATUS : NOTIFICATION SYSTEM CORE STRUCTURE
+ROLE : EVENT DELIVERY / SNS ALERT ENGINE / USER FEEDBACK
+==================================================
+
+
+/* ==================================================
+SECTION 01 : NOTIFICATION CORE CONCEPT
+================================================== */
+
+notification 정의 :
+
+event 발생 → channel 전달
+
+
+
+RULE :
+
+notification receiver = channel
+
+
+
+USER 아님
+
+
+
+RULE :
+
+event actor = channel
+
+event receiver = channel
+
+
+
+/* ==================================================
+SECTION 02 : NOTIFICATIONS TABLE
+================================================== */
+
+TABLE :
+
+notifications
+
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+
+
+receiverChannelCode TEXT NOT NULL
+
+senderChannelCode TEXT
+
+
+
+type TEXT NOT NULL
+
+
+
+referenceId TEXT
+
+
+
+referenceType TEXT
+
+
+
+status TEXT NOT NULL DEFAULT 'UNREAD'
+
+
+
+createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+readAt TIMESTAMP
+
+
+
+FK :
+
+receiverChannelCode → channels(channelCode)
+
+senderChannelCode → channels(channelCode)
+
+
+
+INDEX :
+
+INDEX idx_notification_receiver(receiverChannelCode)
+
+INDEX idx_notification_created(createdAt)
+
+
+
+/* ==================================================
+SECTION 03 : NOTIFICATION TYPE RULE
+================================================== */
+
+type:
+
+
+
+FOLLOW
+
+COMMENT
+
+LIKE
+
+MENTION
+
+ORDER
+
+PAYMENT
+
+RESERVATION
+
+SYSTEM
+
+
+
+RULE :
+
+ENUM 관리
+
+
+
+/* ==================================================
+SECTION 04 : NOTIFICATION STATUS RULE
+================================================== */
+
+status:
+
+
+
+UNREAD
+
+READ
+
+HIDDEN
+
+
+
+RULE :
+
+삭제 금지
+
+
+
+soft 상태 관리
+
+
+
+/* ==================================================
+SECTION 05 : REFERENCE STRUCTURE
+================================================== */
+
+referenceId:
+
+관련 객체 id
+
+
+
+referenceType:
+
+
+
+POST
+
+COMMENT
+
+ORDER
+
+PAYMENT
+
+PROFILE
+
+
+
+RULE :
+
+generic reference 구조
+
+
+
+/* ==================================================
+SECTION 06 : NOTIFICATION FLOW
+================================================== */
+
+EVENT 발생:
+
+
+
+follow
+
+like
+
+comment
+
+order
+
+
+
+FLOW:
+
+
+
+event 발생
+
+↓
+
+notification insert
+
+↓
+
+receiver channel 전달
+
+
+
+RULE :
+
+event driven 구조
+
+
+
+/* ==================================================
+SECTION 07 : DUPLICATE PREVENTION RULE
+================================================== */
+
+중복 알림 방지:
+
+
+
+예:
+
+
+
+LIKE spam
+
+
+
+RULE :
+
+같은 actor + 같은 target:
+
+중복 제한 가능
+
+
+
+future:
+
+
+
+unique event key
+
+
+
+/* ==================================================
+SECTION 08 : PERFORMANCE RULE
+================================================== */
+
+조회 기준:
+
+
+
+receiverChannelCode
+
+
+
+ORDER:
+
+createdAt DESC
+
+
+
+RULE :
+
+receiver index mandatory
+
+
+
+RULE :
+
+pagination 필수
+
+
+
+/* ==================================================
+SECTION 09 : NOTIFICATION READ RULE
+================================================== */
+
+읽음 처리:
+
+
+
+readAt timestamp
+
+
+
+RULE :
+
+boolean 대신 timestamp
+
+
+
+이유 :
+
+
+
+analytics 가능
+
+
+
+/* ==================================================
+SECTION 10 : NOTIFICATION GROUP RULE
+================================================== */
+
+future grouping:
+
+
+
+A liked your post
+
+B liked your post
+
+
+
+→
+
+3명이 좋아함
+
+
+
+RULE :
+
+aggregation 가능 구조
+
+
+
+/* ==================================================
+SECTION 11 : PUSH EXTENSION RULE
+================================================== */
+
+future:
+
+
+
+push notification
+
+
+
+email notification
+
+
+
+sms notification
+
+
+
+RULE :
+
+delivery channel 분리
+
+
+
+future table:
+
+
+
+notification_deliveries
+
+
+
+/* ==================================================
+SECTION 12 : SECURITY RULE
+================================================== */
+
+금지 :
+
+
+
+receiver 없이 생성
+
+
+
+RULE :
+
+
+
+receiver mandatory
+
+
+
+RULE :
+
+sender optional (system)
+
+
+
+/* ==================================================
+SECTION 13 : BLOCK FILTER RULE
+================================================== */
+
+block 존재시:
+
+
+
+notification 생성 금지
+
+
+
+CHECK:
+
+
+
+blocks table
+
+
+
+RULE :
+
+blocked sender 제외
+
+
+
+/* ==================================================
+SECTION 14 : SYSTEM NOTIFICATION RULE
+================================================== */
+
+system notification:
+
+
+
+senderChannelCode NULL
+
+
+
+type:
+
+
+
+SYSTEM
+
+
+
+RULE :
+
+system sender 허용
+
+
+
+/* ==================================================
+SECTION 15 : CLEANUP RULE
+================================================== */
+
+notification 삭제 금지
+
+
+
+archive 가능
+
+
+
+future:
+
+
+
+archiveAt
+
+
+
+RULE :
+
+audit 유지
+
+
+
+/* ==================================================
+SECTION 16 : FUTURE EXTENSION SAFE DESIGN
+================================================== */
+
+확장 가능:
+
+
+
+notification priority
+
+notification category
+
+notification mute
+
+notification settings
+
+
+
+예:
+
+
+
+priority INTEGER
+
+category TEXT
+
+
+
+RULE :
+
+확장 가능 구조 유지
+
+
+
+==================================================
+NOTIFICATION SYSTEM CORE STRUCTURE END
+==================================================
+==================================================
+FILE : docs/media-storage-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\media-storage-absolute-structure.txt
+STATUS : MEDIA STORAGE CORE STRUCTURE
+ROLE : FILE OWNERSHIP / IMAGE / VIDEO / CDN READY DESIGN
+==================================================
+
+
+/* ==================================================
+SECTION 01 : MEDIA CORE CONCEPT
+================================================== */
+
+media 정의 :
+
+플랫폼 내 모든 파일 자산
+
+
+
+예 :
+
+profile avatar
+
+post image
+
+post video
+
+business image
+
+
+
+RULE :
+
+media owner = channel
+
+
+
+user 아님
+
+
+
+/* ==================================================
+SECTION 02 : IMAGE ASSETS TABLE
+================================================== */
+
+TABLE :
+
+image_assets
+
+
+
+ROLE :
+
+모든 이미지 master table
+
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+
+
+ownerChannelCode TEXT NOT NULL
+
+
+
+filePath TEXT NOT NULL
+
+
+
+fileName TEXT
+
+
+
+mimeType TEXT
+
+
+
+fileSize INTEGER
+
+
+
+width INTEGER
+
+height INTEGER
+
+
+
+status TEXT NOT NULL DEFAULT 'ACTIVE'
+
+
+
+createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+
+
+deletedAt TIMESTAMP
+
+
+
+FK :
+
+ownerChannelCode → channels(channelCode)
+
+
+
+INDEX :
+
+INDEX idx_image_owner(ownerChannelCode)
+
+INDEX idx_image_created(createdAt)
+
+
+
+/* ==================================================
+SECTION 03 : MEDIA STATUS RULE
+================================================== */
+
+status:
+
+
+
+ACTIVE
+
+DELETED
+
+BLOCKED
+
+ARCHIVED
+
+
+
+RULE :
+
+삭제시 soft delete
+
+
+
+physical delete 금지
+
+
+
+/* ==================================================
+SECTION 04 : FILE PATH RULE
+================================================== */
+
+filePath:
+
+
+
+relative path only
+
+
+
+금지 :
+
+absolute path
+
+
+
+이유 :
+
+환경 독립성
+
+
+
+예 :
+
+/media/images/2026/03/abc.jpg
+
+
+
+RULE :
+
+storage abstraction 가능
+
+
+
+/* ==================================================
+SECTION 05 : PROFILE AVATAR STRUCTURE
+================================================== */
+
+TABLE :
+
+profile_avatars
+
+
+
+ROLE :
+
+프로필 이미지 매핑
+
+
+
+COLUMNS :
+
+
+
+ownerChannelCode
+
+imageAssetId
+
+isActive
+
+
+
+RULE :
+
+현재 avatar:
+
+isActive=TRUE
+
+
+
+old avatar:
+
+inactive
+
+
+
+삭제 금지
+
+
+
+/* ==================================================
+SECTION 06 : POST MEDIA STRUCTURE
+================================================== */
+
+TABLE :
+
+post_media
+
+
+
+ROLE :
+
+post 이미지 연결
+
+
+
+COLUMNS :
+
+
+
+postId
+
+imageAssetId
+
+sortOrder
+
+
+
+RULE :
+
+post 여러 이미지 가능
+
+
+
+ORDER 유지
+
+
+
+/* ==================================================
+SECTION 07 : MEDIA OWNERSHIP RULE
+================================================== */
+
+RULE :
+
+file owner = channel
+
+
+
+channel 삭제시:
+
+
+
+media 유지
+
+
+
+RULE :
+
+ownership 유지
+
+
+
+이유 :
+
+legal evidence
+
+
+
+/* ==================================================
+SECTION 08 : MEDIA DELETE RULE
+================================================== */
+
+삭제:
+
+
+
+soft delete
+
+
+
+physical delete:
+
+
+
+background job
+
+
+
+조건 :
+
+
+
+no reference
+
+
+
+RULE :
+
+reference check 필요
+
+
+
+/* ==================================================
+SECTION 09 : ORPHAN PREVENTION RULE
+================================================== */
+
+orphan file 금지
+
+
+
+CHECK :
+
+post_media
+
+profile_avatars
+
+
+
+참조 없으면:
+
+
+
+archive 가능
+
+
+
+RULE :
+
+reference count 관리
+
+
+
+/* ==================================================
+SECTION 10 : CDN READY DESIGN
+================================================== */
+
+filePath:
+
+
+
+logical path
+
+
+
+future:
+
+
+
+cdnUrl column 가능
+
+
+
+예 :
+
+
+
+cdnUrl TEXT
+
+
+
+RULE :
+
+storage provider 독립
+
+
+
+/* ==================================================
+SECTION 11 : IMAGE PROCESS RULE
+================================================== */
+
+future:
+
+
+
+thumbnail
+
+compressed image
+
+webp version
+
+
+
+TABLE 가능:
+
+
+
+image_variants
+
+
+
+COLUMNS :
+
+
+
+imageAssetId
+
+variantType
+
+filePath
+
+
+
+RULE :
+
+variant 구조 분리
+
+
+
+/* ==================================================
+SECTION 12 : SECURITY RULE
+================================================== */
+
+금지 :
+
+
+
+client file path 지정
+
+
+
+RULE :
+
+
+
+server path 결정
+
+
+
+RULE :
+
+mime validation 필수
+
+
+
+RULE :
+
+file size 제한
+
+
+
+/* ==================================================
+SECTION 13 : UPLOAD FLOW RULE
+================================================== */
+
+FLOW :
+
+
+
+upload request
+
+↓
+
+temp storage
+
+↓
+
+validation
+
+↓
+
+image_assets insert
+
+↓
+
+media link
+
+
+
+RULE :
+
+upload transaction 필요
+
+
+
+/* ==================================================
+SECTION 14 : MEDIA ACCESS RULE
+================================================== */
+
+access 조건:
+
+
+
+visibility match
+
+
+
+post visibility
+
+
+
+RULE :
+
+private media 보호
+
+
+
+/* ==================================================
+SECTION 15 : FUTURE EXTENSION SAFE DESIGN
+================================================== */
+
+확장 가능:
+
+
+
+video_assets
+
+audio_assets
+
+document_assets
+
+
+
+가능 컬럼:
+
+
+
+duration
+
+bitrate
+
+codec
+
+
+
+RULE :
+
+asset 구조 통합 가능
+
+
+
+/* ==================================================
+SECTION 16 : STORAGE SAFETY RULE
+================================================== */
+
+RULE :
+
+
+
+file rename 금지
+
+
+
+RULE :
+
+file overwrite 금지
+
+
+
+RULE :
+
+hash 기반 파일명 가능
+
+
+
+예 :
+
+
+
+sha256 filename
+
+
+
+RULE :
+
+collision 방지
+
+
+
+==================================================
+MEDIA STORAGE CORE STRUCTURE END
+==================================================
+==================================================
+FILE : docs/engagement-system-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\engagement-system-absolute-structure.txt
+STATUS : ENGAGEMENT SYSTEM CORE STRUCTURE
+ROLE : LIKE / SAVE / SHARE / VIEW / RANK SIGNAL
+==================================================
+
+
+/* ==================================================
+SECTION 01 : ENGAGEMENT CORE CONCEPT
+================================================== */
+
+engagement 정의 :
+
+channel이 content에 대해 수행하는 action
+
+
+
+RULE :
+
+actor = channel
+
+target = post
+
+
+
+USER 아님
+
+
+
+RULE :
+
+행동 데이터 = channel 기준
+
+
+
+/* ==================================================
+SECTION 02 : POST ENGAGEMENT TABLE
+================================================== */
+
+TABLE :
+
+post_engagements
+
+
+
+ROLE :
+
+모든 상호작용 기록
+
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+
+
+actorChannelCode TEXT NOT NULL
+
+
+
+postId TEXT NOT NULL
+
+
+
+actionType TEXT NOT NULL
+
+
+
+createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+
+
+FK :
+
+actorChannelCode → channels(channelCode)
+
+
+
+INDEX :
+
+INDEX idx_engagement_actor(actorChannelCode)
+
+INDEX idx_engagement_post(postId)
+
+
+
+UNIQUE :
+
+UNIQUE(actorChannelCode,postId,actionType)
+
+
+
+/* ==================================================
+SECTION 03 : ENGAGEMENT TYPES
+================================================== */
+
+actionType:
+
+
+
+LIKE
+
+SAVE
+
+SHARE
+
+VIEW
+
+CLICK
+
+
+
+future:
+
+
+
+BOOKMARK
+
+REPORT
+
+HIDE
+
+
+
+RULE :
+
+ENUM 관리
+
+
+
+/* ==================================================
+SECTION 04 : LIKE RULE
+================================================== */
+
+LIKE:
+
+
+
+중복 금지
+
+
+
+CHECK :
+
+existing like 존재시:
+
+
+
+toggle 가능
+
+
+
+RULE :
+
+UNLIKE:
+
+삭제 대신 상태 변경 가능
+
+
+
+/* ==================================================
+SECTION 05 : VIEW TRACK RULE
+================================================== */
+
+VIEW:
+
+
+
+중복 허용 가능
+
+
+
+하지만:
+
+
+
+future dedup 가능
+
+
+
+예:
+
+
+
+1시간 내 1회
+
+
+
+RULE :
+
+VIEW 별도 정책 가능
+
+
+
+/* ==================================================
+SECTION 06 : SAVE RULE
+================================================== */
+
+SAVE:
+
+
+
+private action
+
+
+
+feed 영향 없음
+
+
+
+RULE :
+
+bookmark 구조 가능
+
+
+
+/* ==================================================
+SECTION 07 : SHARE RULE
+================================================== */
+
+SHARE:
+
+
+
+feed signal
+
+
+
+ranking 영향 큼
+
+
+
+RULE :
+
+high weight action
+
+
+
+/* ==================================================
+SECTION 08 : ENGAGEMENT COUNT CACHE
+================================================== */
+
+posts table:
+
+
+
+likeCount
+
+commentCount
+
+shareCount
+
+viewCount
+
+
+
+RULE :
+
+aggregate query 금지
+
+
+
+counter update 방식
+
+
+
+/* ==================================================
+SECTION 09 : RANK SIGNAL RULE
+================================================== */
+
+ranking 요소:
+
+
+
+LIKE
+
+COMMENT
+
+SAVE
+
+SHARE
+
+VIEW
+
+
+
+weight 가능
+
+
+
+예 :
+
+
+
+LIKE = 1
+
+COMMENT = 3
+
+SHARE = 5
+
+
+
+RULE :
+
+ranking layer 분리
+
+
+
+/* ==================================================
+SECTION 10 : ANTI SPAM RULE
+================================================== */
+
+spam 방지:
+
+
+
+rate limit
+
+
+
+예:
+
+
+
+LIKE 1초 1회
+
+
+
+RULE :
+
+engagement throttle 필요
+
+
+
+/* ==================================================
+SECTION 11 : ENGAGEMENT QUERY RULE
+================================================== */
+
+feed ranking:
+
+
+
+engagement join
+
+
+
+예:
+
+
+
+SELECT posts
+
+JOIN post_engagements
+
+
+
+RULE :
+
+signal table 사용
+
+
+
+/* ==================================================
+SECTION 12 : SOFT DELETE RULE
+================================================== */
+
+삭제:
+
+
+
+physical delete 가능
+
+
+
+LIKE 취소:
+
+
+
+delete record 가능
+
+
+
+RULE :
+
+action 성격별 다름
+
+
+
+/* ==================================================
+SECTION 13 : ENGAGEMENT SECURITY RULE
+================================================== */
+
+금지:
+
+
+
+self engagement 제한 가능
+
+
+
+예 :
+
+
+
+self like 허용 여부 정책 필요
+
+
+
+RULE :
+
+fraud detection 가능
+
+
+
+/* ==================================================
+SECTION 14 : FUTURE AI SIGNAL
+================================================== */
+
+추가 가능:
+
+
+
+view duration
+
+scroll stop
+
+repeat view
+
+profile visit
+
+
+
+future table:
+
+
+
+engagement_signals
+
+
+
+RULE :
+
+AI input 준비
+
+
+
+/* ==================================================
+SECTION 15 : PERFORMANCE RULE
+================================================== */
+
+필수 index:
+
+
+
+postId
+
+actorChannelCode
+
+actionType
+
+
+
+composite:
+
+
+
+postId + actionType
+
+
+
+RULE :
+
+feed ranking 필수
+
+
+
+/* ==================================================
+SECTION 16 : FUTURE EXTENSION SAFE DESIGN
+================================================== */
+
+확장 가능:
+
+
+
+reaction type
+
+emoji reaction
+
+weighted engagement
+
+
+
+예:
+
+
+
+reactionType column
+
+
+
+RULE :
+
+확장 가능 구조 유지
+
+
+
+==================================================
+ENGAGEMENT SYSTEM CORE STRUCTURE END
+==================================================
+==================================================
+FILE : docs/search-system-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\search-system-absolute-structure.txt
+STATUS : SEARCH SYSTEM CORE STRUCTURE
+ROLE : DISCOVERY ENGINE / PROFILE SEARCH / CONTENT SEARCH
+==================================================
+
+
+/* ==================================================
+SECTION 01 : SEARCH CORE CONCEPT
+================================================== */
+
+search 정의 :
+
+channel 기반 discovery
+
+
+
+RULE :
+
+search 대상:
+
+channels
+profiles
+posts
+business
+
+
+
+RULE :
+
+user 검색 아님
+
+
+
+identity = channel
+
+
+
+/* ==================================================
+SECTION 02 : CHANNEL SEARCH RULE
+================================================== */
+
+검색 대상:
+
+
+
+channelCode
+
+displayName
+
+username (future)
+
+
+
+RULE :
+
+channelCode exact search 가능
+
+
+
+예 :
+
+
+
+@A1B2C3D4E5F6
+
+
+
+INDEX 필요:
+
+
+
+channels(channelCode)
+
+
+
+/* ==================================================
+SECTION 03 : PROFILE SEARCH STRUCTURE
+================================================== */
+
+profiles:
+
+
+
+displayName
+
+bio
+
+keywords
+
+
+
+INDEX:
+
+
+
+displayName
+
+
+
+future:
+
+
+
+FULLTEXT index
+
+
+
+RULE :
+
+prefix search 지원
+
+
+
+/* ==================================================
+SECTION 04 : POSTS SEARCH RULE
+================================================== */
+
+검색 대상:
+
+
+
+content
+
+hashtags
+
+mentions
+
+
+
+INDEX:
+
+
+
+posts.createdAt
+
+posts.authorChannelCode
+
+
+
+future:
+
+
+
+FULLTEXT index 필요
+
+
+
+RULE :
+
+visibility filter 포함
+
+
+
+/* ==================================================
+SECTION 05 : HASHTAG TABLE
+================================================== */
+
+TABLE :
+
+hashtags
+
+
+
+COLUMNS :
+
+
+
+id
+
+tag TEXT UNIQUE
+
+usageCount
+
+
+
+INDEX :
+
+tag
+
+
+
+RULE :
+
+#tag 검색 가능
+
+
+
+/* ==================================================
+SECTION 06 : POST HASHTAG MAP
+================================================== */
+
+TABLE :
+
+post_hashtags
+
+
+
+COLUMNS :
+
+
+
+postId
+
+hashtagId
+
+
+
+INDEX :
+
+
+
+postId
+
+hashtagId
+
+
+
+RULE :
+
+many to many
+
+
+
+/* ==================================================
+SECTION 07 : SEARCH KEYWORD CACHE
+================================================== */
+
+TABLE :
+
+search_keywords
+
+
+
+ROLE :
+
+검색어 기록
+
+
+
+COLUMNS :
+
+
+
+keyword
+
+searchCount
+
+lastSearchedAt
+
+
+
+RULE :
+
+trending search 가능
+
+
+
+/* ==================================================
+SECTION 08 : SEARCH LOG TABLE
+================================================== */
+
+TABLE :
+
+search_logs
+
+
+
+COLUMNS :
+
+
+
+actorChannelCode
+
+keyword
+
+createdAt
+
+
+
+RULE :
+
+개인 search history 가능
+
+
+
+privacy 고려 필요
+
+
+
+/* ==================================================
+SECTION 09 : SEARCH VISIBILITY RULE
+================================================== */
+
+posts search:
+
+
+
+PUBLIC only
+
+
+
+FOLLOWERS:
+
+
+
+optional
+
+
+
+PRIVATE:
+
+
+
+금지
+
+
+
+RULE :
+
+visibility filter mandatory
+
+
+
+/* ==================================================
+SECTION 10 : SEARCH PERFORMANCE RULE
+================================================== */
+
+금지 :
+
+
+
+LIKE '%keyword%'
+
+
+
+허용 :
+
+
+
+prefix search
+
+
+
+LIKE 'keyword%'
+
+
+
+이유 :
+
+index 사용
+
+
+
+future:
+
+
+
+search engine 필요
+
+
+
+예 :
+
+Elastic
+
+Meilisearch
+
+
+
+RULE :
+
+scale시 external search 가능
+
+
+
+/* ==================================================
+SECTION 11 : SEARCH RESULT RANK RULE
+================================================== */
+
+ranking 기준:
+
+
+
+exact match
+
+prefix match
+
+engagement
+
+followers count
+
+recency
+
+
+
+RULE :
+
+scoring layer 분리
+
+
+
+/* ==================================================
+SECTION 12 : SEARCH SUGGEST RULE
+================================================== */
+
+자동완성:
+
+
+
+displayName
+
+hashtags
+
+
+
+RULE :
+
+prefix index 필요
+
+
+
+예:
+
+
+
+displayName LIKE 'kim%'
+
+
+
+/* ==================================================
+SECTION 13 : SEARCH FILTER RULE
+================================================== */
+
+필터 가능:
+
+
+
+channel
+
+post
+
+business
+
+tag
+
+
+
+RULE :
+
+search type parameter
+
+
+
+예:
+
+
+
+type=channel
+
+type=post
+
+
+
+/* ==================================================
+SECTION 14 : SEARCH SECURITY RULE
+================================================== */
+
+금지:
+
+
+
+visibility bypass
+
+
+
+RULE :
+
+검색 결과:
+
+
+
+visibility filter 포함
+
+
+
+/* ==================================================
+SECTION 15 : FUTURE SEARCH EXTENSION
+================================================== */
+
+확장 가능:
+
+
+
+AI search
+
+semantic search
+
+image search
+
+location search
+
+
+
+future table:
+
+
+
+search_vectors
+
+
+
+RULE :
+
+AI 확장 가능 구조
+
+
+
+/* ==================================================
+SECTION 16 : SEARCH INDEX STRATEGY
+================================================== */
+
+필수 index:
+
+
+
+channels(channelCode)
+
+profiles(displayName)
+
+hashtags(tag)
+
+
+
+composite:
+
+
+
+posts(visibility,createdAt)
+
+
+
+RULE :
+
+search index 필수
+
+
+
+==================================================
+SEARCH SYSTEM CORE STRUCTURE END
+==================================================
+==================================================
+FILE : docs/report-moderation-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\report-moderation-absolute-structure.txt
+STATUS : TRUST & SAFETY CORE STRUCTURE
+ROLE : REPORT / MODERATION / PLATFORM SAFETY
+==================================================
+
+
+/* ==================================================
+SECTION 01 : REPORT CORE CONCEPT
+================================================== */
+
+report 정의 :
+
+channel → target 신고
+
+
+
+RULE :
+
+report actor = channel
+
+
+
+RULE :
+
+신고 대상:
+
+post
+
+channel
+
+comment
+
+business
+
+
+
+RULE :
+
+user 기준 아님
+
+
+
+identity = channel
+
+
+
+/* ==================================================
+SECTION 02 : REPORTS TABLE
+================================================== */
+
+TABLE :
+
+reports
+
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+
+
+reporterChannelCode TEXT NOT NULL
+
+
+
+targetId TEXT NOT NULL
+
+
+
+targetType TEXT NOT NULL
+
+
+
+reason TEXT
+
+
+
+status TEXT NOT NULL DEFAULT 'PENDING'
+
+
+
+createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+
+
+
+reviewedAt TIMESTAMP
+
+
+
+reviewedByChannelCode TEXT
+
+
+
+FK :
+
+reporterChannelCode → channels(channelCode)
+
+reviewedByChannelCode → channels(channelCode)
+
+
+
+INDEX :
+
+INDEX idx_reports_target(targetId)
+
+INDEX idx_reports_status(status)
+
+
+
+/* ==================================================
+SECTION 03 : REPORT TARGET TYPES
+================================================== */
+
+targetType:
+
+
+
+POST
+
+CHANNEL
+
+COMMENT
+
+BUSINESS
+
+
+
+future:
+
+
+
+MESSAGE
+
+PRODUCT
+
+ORDER
+
+
+
+RULE :
+
+ENUM 관리
+
+
+
+/* ==================================================
+SECTION 04 : REPORT STATUS RULE
+================================================== */
+
+status:
+
+
+
+PENDING
+
+REVIEWING
+
+RESOLVED
+
+REJECTED
+
+
+
+RULE :
+
+삭제 금지
+
+
+
+audit 유지
+
+
+
+/* ==================================================
+SECTION 05 : REPORT REASON STRUCTURE
+================================================== */
+
+reason 예:
+
+
+
+SPAM
+
+HARASSMENT
+
+SCAM
+
+FAKE
+
+COPYRIGHT
+
+ILLEGAL
+
+
+
+future:
+
+
+
+reasonCode table 가능
+
+
+
+RULE :
+
+standard reason 유지
+
+
+
+/* ==================================================
+SECTION 06 : MODERATION ACTION TABLE
+================================================== */
+
+TABLE :
+
+moderation_actions
+
+
+
+ROLE :
+
+조치 기록
+
+
+
+COLUMNS :
+
+
+
+targetId
+
+targetType
+
+actionType
+
+actorChannelCode
+
+reason
+
+createdAt
+
+
+
+actionType:
+
+
+
+WARN
+
+HIDE
+
+REMOVE
+
+SUSPEND
+
+BAN
+
+
+
+RULE :
+
+audit trail 유지
+
+
+
+/* ==================================================
+SECTION 07 : CONTENT HIDE RULE
+================================================== */
+
+post hide:
+
+
+
+status 변경
+
+
+
+예:
+
+
+
+posts.status = BLOCKED
+
+
+
+RULE :
+
+physical delete 금지
+
+
+
+/* ==================================================
+SECTION 08 : CHANNEL MODERATION RULE
+================================================== */
+
+channel 제재:
+
+
+
+channels.status
+
+
+
+예:
+
+
+
+ACTIVE
+
+SUSPENDED
+
+BANNED
+
+
+
+RULE :
+
+account 삭제 대신 상태 관리
+
+
+
+/* ==================================================
+SECTION 09 : AUTO MODERATION RULE
+================================================== */
+
+future:
+
+
+
+AI moderation
+
+
+
+예:
+
+
+
+spam score
+
+toxicity score
+
+
+
+future table:
+
+
+
+moderation_scores
+
+
+
+RULE :
+
+AI integration 가능
+
+
+
+/* ==================================================
+SECTION 10 : REPORT DUPLICATE RULE
+================================================== */
+
+중복 신고 제한:
+
+
+
+same channel
+
+same target
+
+
+
+UNIQUE 가능:
+
+
+
+reporterChannelCode + targetId
+
+
+
+RULE :
+
+spam report 방지
+
+
+
+/* ==================================================
+SECTION 11 : REVIEW WORKFLOW
+================================================== */
+
+FLOW :
+
+
+
+report 생성
+
+↓
+
+status PENDING
+
+↓
+
+review
+
+↓
+
+RESOLVED / REJECTED
+
+
+
+RULE :
+
+workflow 상태 필요
+
+
+
+/* ==================================================
+SECTION 12 : NOTIFICATION RULE
+================================================== */
+
+report 결과:
+
+
+
+reporter notification 가능
+
+
+
+예 :
+
+
+
+"신고가 처리되었습니다"
+
+
+
+RULE :
+
+notification integration
+
+
+
+/* ==================================================
+SECTION 13 : SECURITY RULE
+================================================== */
+
+금지 :
+
+
+
+익명 신고 남용
+
+
+
+RULE :
+
+
+
+channel only report
+
+
+
+RULE :
+
+self report 금지
+
+
+
+/* ==================================================
+SECTION 14 : MODERATION PERMISSION RULE
+================================================== */
+
+admin only:
+
+
+
+review 가능
+
+
+
+future:
+
+
+
+moderator roles
+
+
+
+TABLE 가능:
+
+
+
+channel_roles
+
+
+
+RULE :
+
+권한 기반 moderation
+
+
+
+/* ==================================================
+SECTION 15 : FUTURE EXTENSION SAFE DESIGN
+================================================== */
+
+확장 가능:
+
+
+
+strike system
+
+reputation score
+
+trust score
+
+fraud score
+
+
+
+future table:
+
+
+
+channel_trust_scores
+
+
+
+RULE :
+
+trust layer 확장 가능
+
+
+
+==================================================
+REPORT & MODERATION CORE STRUCTURE END
+==================================================
+==================================================
+FILE : docs/region-feed-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\region-feed-absolute-structure.txt
+STATUS : REGION DISCOVERY SYSTEM
+ROLE : GEO FEED / LOCAL DISCOVERY / GLOBAL EXPANSION
+==================================================
+
+
+/* ==================================================
+SECTION 01 : REGION CORE CONCEPT
+================================================== */
+
+region 정의 :
+
+feed partition
+
+
+
+identity 아님
+
+
+
+RULE :
+
+channel region 독립
+
+
+
+RULE :
+
+post region optional
+
+
+
+RULE :
+
+viewer region context 존재
+
+
+
+즉:
+
+
+
+viewer context region
+
+content region
+
+separate
+
+
+
+/* ==================================================
+SECTION 02 : REGION MASTER TABLE
+================================================== */
+
+TABLE :
+
+regions
+
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+
+
+code TEXT UNIQUE
+
+
+
+name TEXT
+
+
+
+parentCode TEXT
+
+
+
+level INTEGER
+
+
+
+type TEXT
+
+
+
+예:
+
+
+
+COUNTRY
+
+STATE
+
+CITY
+
+
+
+RULE :
+
+tree 구조
+
+
+
+예:
+
+
+
+KR
+
+KR-11
+
+KR-11-SEOUL
+
+
+
+/* ==================================================
+SECTION 03 : CHANNEL REGION CONTEXT
+================================================== */
+
+TABLE :
+
+channel_region_settings
+
+
+
+ROLE :
+
+사용자 기본 지역
+
+
+
+COLUMNS :
+
+
+
+channelCode
+
+regionCode
+
+isPrimary
+
+
+
+RULE :
+
+primary region 1개
+
+
+
+RULE :
+
+multiple region 가능
+
+
+
+예:
+
+
+
+living region
+
+activity region
+
+
+
+/* ==================================================
+SECTION 04 : POST REGION STRUCTURE
+================================================== */
+
+posts:
+
+
+
+regionCode optional
+
+
+
+예:
+
+
+
+GLOBAL
+
+KR
+
+US
+
+KR-11
+
+
+
+RULE :
+
+GLOBAL 허용
+
+
+
+RULE :
+
+region 없는 post = global
+
+
+
+/* ==================================================
+SECTION 05 : REGION FEED QUERY
+================================================== */
+
+조건:
+
+
+
+viewer region match
+
+
+
+GLOBAL 포함
+
+
+
+예:
+
+
+
+WHERE:
+
+regionCode = viewerRegion
+
+OR regionCode='GLOBAL'
+
+
+
+RULE :
+
+region filter feed layer
+
+
+
+/* ==================================================
+SECTION 06 : MULTI REGION POST
+================================================== */
+
+확장:
+
+
+
+post_regions table
+
+
+
+COLUMNS :
+
+
+
+postId
+
+regionCode
+
+
+
+RULE :
+
+many region 가능
+
+
+
+예:
+
+
+
+KR + US
+
+
+
+/* ==================================================
+SECTION 07 : REGION RANK SIGNAL
+================================================== */
+
+지역 ranking:
+
+
+
+local engagement weight
+
+
+
+예:
+
+
+
+local like weight 2x
+
+
+
+RULE :
+
+geo relevance 가능
+
+
+
+/* ==================================================
+SECTION 08 : REGION TRENDING TABLE
+================================================== */
+
+TABLE :
+
+region_trending
+
+
+
+COLUMNS :
+
+
+
+regionCode
+
+postId
+
+score
+
+calculatedAt
+
+
+
+RULE :
+
+지역 인기글 가능
+
+
+
+/* ==================================================
+SECTION 09 : REGION FOLLOW DISCOVERY
+================================================== */
+
+추천:
+
+
+
+same region channels
+
+
+
+QUERY :
+
+
+
+channels
+
+WHERE region match
+
+
+
+RULE :
+
+local network 강화
+
+
+
+/* ==================================================
+SECTION 10 : REGION CHANGE RULE
+================================================== */
+
+channel region 변경:
+
+
+
+허용
+
+
+
+history optional
+
+
+
+future table:
+
+
+
+channel_region_history
+
+
+
+RULE :
+
+이동 가능
+
+
+
+/* ==================================================
+SECTION 11 : REGION SECURITY RULE
+================================================== */
+
+금지 :
+
+
+
+region identity 사용
+
+
+
+RULE :
+
+region filter only
+
+
+
+RULE :
+
+channel ownership independent
+
+
+
+/* ==================================================
+SECTION 12 : REGION PERFORMANCE RULE
+================================================== */
+
+필수 index:
+
+
+
+posts.regionCode
+
+channel_region_settings.regionCode
+
+
+
+RULE :
+
+geo query index 필요
+
+
+
+/* ==================================================
+SECTION 13 : REGION FUTURE EXTENSION
+================================================== */
+
+확장 가능:
+
+
+
+geo radius search
+
+nearby feed
+
+location tags
+
+
+
+future:
+
+
+
+latitude
+
+longitude
+
+
+
+RULE :
+
+geo coordinate 확장 가능
+
+
+
+/* ==================================================
+SECTION 14 : REGION CACHE RULE
+================================================== */
+
+지역 feed cache:
+
+
+
+regionCode key
+
+
+
+예:
+
+
+
+feed:region:KR
+
+
+
+RULE :
+
+region cache 가능
+
+
+
+/* ==================================================
+SECTION 15 : FUTURE AI REGION MODEL
+================================================== */
+
+AI region signals:
+
+
+
+viewer travel pattern
+
+interest region
+
+interaction region
+
+
+
+future:
+
+
+
+region_interest_score
+
+
+
+RULE :
+
+AI geo expansion 가능
+
+
+
+==================================================
+REGION FEED SYSTEM END
+==================================================
+==================================================
+FILE : docs/business-account-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\business-account-absolute-structure.txt
+STATUS : BUSINESS PLATFORM CORE STRUCTURE
+ROLE : BUSINESS CHANNEL / STORE / BRAND / SERVICE PROVIDER
+==================================================
+
+
+/* ==================================================
+SECTION 01 : BUSINESS CORE CONCEPT
+================================================== */
+
+business 정의 :
+
+channel 확장 entity
+
+
+
+RULE :
+
+business owner = channel
+
+
+
+USER 아님
+
+
+
+즉:
+
+
+
+channel → business 생성
+
+
+
+RULE :
+
+한 channel 여러 business 가능
+
+
+
+/* ==================================================
+SECTION 02 : BUSINESS TABLE
+================================================== */
+
+TABLE :
+
+businesses
+
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+
+
+ownerChannelCode TEXT NOT NULL
+
+
+
+name TEXT NOT NULL
+
+
+
+description TEXT
+
+
+
+industryId INTEGER
+
+
+
+regionCode TEXT
+
+
+
+status TEXT DEFAULT 'ACTIVE'
+
+
+
+createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+
+
+FK :
+
+ownerChannelCode → channels(channelCode)
+
+
+
+INDEX :
+
+INDEX idx_business_owner(ownerChannelCode)
+
+INDEX idx_business_region(regionCode)
+
+
+
+/* ==================================================
+SECTION 03 : BUSINESS STATUS RULE
+================================================== */
+
+status:
+
+
+
+ACTIVE
+
+SUSPENDED
+
+CLOSED
+
+
+
+RULE :
+
+삭제 대신 상태 변경
+
+
+
+audit 유지
+
+
+
+/* ==================================================
+SECTION 04 : BUSINESS PROFILE EXTENSION
+================================================== */
+
+확장 가능:
+
+
+
+logoImageId
+
+coverImageId
+
+contactPhone
+
+website
+
+
+
+RULE :
+
+media 연결 가능
+
+
+
+FK :
+
+
+
+image_assets
+
+
+
+/* ==================================================
+SECTION 05 : BUSINESS MEMBERS TABLE
+================================================== */
+
+TABLE :
+
+business_members
+
+
+
+ROLE :
+
+팀 운영
+
+
+
+COLUMNS :
+
+
+
+businessId
+
+memberChannelCode
+
+role
+
+createdAt
+
+
+
+role:
+
+
+
+OWNER
+
+ADMIN
+
+STAFF
+
+
+
+RULE :
+
+multi operator 가능
+
+
+
+/* ==================================================
+SECTION 06 : BUSINESS INDUSTRY STRUCTURE
+================================================== */
+
+TABLE :
+
+
+
+business_industries
+
+
+
+ROLE :
+
+
+
+업종 분류
+
+
+
+COLUMNS :
+
+
+
+id
+
+code
+
+name
+
+
+
+예:
+
+
+
+RESTAURANT
+
+BEAUTY
+
+FITNESS
+
+RETAIL
+
+
+
+RULE :
+
+industry taxonomy 유지
+
+
+
+/* ==================================================
+SECTION 07 : BUSINESS SERVICES STRUCTURE
+================================================== */
+
+TABLE :
+
+
+
+business_services
+
+
+
+ROLE :
+
+
+
+제공 서비스
+
+
+
+COLUMNS :
+
+
+
+businessId
+
+name
+
+description
+
+price
+
+duration
+
+
+
+RULE :
+
+예약 연결 가능
+
+
+
+/* ==================================================
+SECTION 08 : BUSINESS LOCATION STRUCTURE
+================================================== */
+
+TABLE :
+
+business_locations
+
+
+
+COLUMNS :
+
+
+
+businessId
+
+regionCode
+
+address
+
+latitude
+
+longitude
+
+
+
+RULE :
+
+지도 연결 가능
+
+
+
+/* ==================================================
+SECTION 09 : BUSINESS FOLLOW RULE
+================================================== */
+
+business follow:
+
+
+
+channel follow
+
+
+
+즉:
+
+
+
+business channel 존재
+
+
+
+RULE :
+
+business = channel 연결 가능
+
+
+
+future:
+
+
+
+businessChannelCode
+
+
+
+/* ==================================================
+SECTION 10 : BUSINESS MEDIA RULE
+================================================== */
+
+business images:
+
+
+
+image_assets 사용
+
+
+
+TABLE 가능:
+
+
+
+business_media
+
+
+
+COLUMNS :
+
+
+
+businessId
+
+imageAssetId
+
+
+
+RULE :
+
+media reuse 가능
+
+
+
+/* ==================================================
+SECTION 11 : BUSINESS REVIEW STRUCTURE
+================================================== */
+
+future:
+
+
+
+business_reviews
+
+
+
+COLUMNS :
+
+
+
+businessId
+
+authorChannelCode
+
+rating
+
+content
+
+
+
+RULE :
+
+reputation layer 가능
+
+
+
+/* ==================================================
+SECTION 12 : BUSINESS SECURITY RULE
+================================================== */
+
+금지 :
+
+
+
+business owner NULL
+
+
+
+RULE :
+
+
+
+ownerChannelCode mandatory
+
+
+
+RULE :
+
+owner 변경 audit 필요
+
+
+
+/* ==================================================
+SECTION 13 : BUSINESS DISCOVERY RULE
+================================================== */
+
+검색 가능:
+
+
+
+name
+
+industry
+
+region
+
+
+
+RULE :
+
+search integration
+
+
+
+/* ==================================================
+SECTION 14 : BUSINESS PERFORMANCE RULE
+================================================== */
+
+필수 index:
+
+
+
+industryId
+
+regionCode
+
+ownerChannelCode
+
+
+
+RULE :
+
+discovery query 최적화
+
+
+
+/* ==================================================
+SECTION 15 : FUTURE PLATFORM EXPANSION
+================================================== */
+
+확장 가능:
+
+
+
+reservation system
+
+order system
+
+payment system
+
+ads system
+
+
+
+RULE :
+
+commerce ready 구조
+
+
+
+==================================================
+BUSINESS ACCOUNT SYSTEM END
+==================================================
+
+==================================================
+FILE : docs/payment-system-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\payment-system-absolute-structure.txt
+STATUS : PAYMENT PLATFORM CORE STRUCTURE
+ROLE : TRANSACTION / ORDER / PAYMENT / SETTLEMENT
+==================================================
+
+
+/* ==================================================
+SECTION 01 : PAYMENT CORE CONCEPT
+================================================== */
+
+payment 정의 :
+
+channel → channel 거래
+
+
+
+RULE :
+
+payer = channel
+
+receiver = channel
+
+
+
+USER 아님
+
+
+
+RULE :
+
+transaction identity = paymentId
+
+
+
+/* ==================================================
+SECTION 02 : ORDERS TABLE
+================================================== */
+
+TABLE :
+
+orders
+
+
+
+ROLE :
+
+거래 단위
+
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+
+
+buyerChannelCode TEXT NOT NULL
+
+
+
+sellerChannelCode TEXT NOT NULL
+
+
+
+amount INTEGER NOT NULL
+
+
+
+currency TEXT DEFAULT 'KRW'
+
+
+
+status TEXT
+
+
+
+createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+
+
+status:
+
+
+
+PENDING
+
+PAID
+
+CANCELLED
+
+REFUNDED
+
+
+
+FK :
+
+buyerChannelCode → channels(channelCode)
+
+sellerChannelCode → channels(channelCode)
+
+
+
+INDEX :
+
+INDEX idx_orders_buyer(buyerChannelCode)
+
+INDEX idx_orders_seller(sellerChannelCode)
+
+
+
+/* ==================================================
+SECTION 03 : PAYMENTS TABLE
+================================================== */
+
+TABLE :
+
+payments
+
+
+
+ROLE :
+
+결제 기록
+
+
+
+COLUMNS :
+
+
+
+id INTEGER PRIMARY KEY
+
+
+
+orderId INTEGER
+
+
+
+payerChannelCode
+
+
+
+amount
+
+
+
+provider
+
+
+
+providerPaymentId
+
+
+
+status
+
+
+
+createdAt
+
+
+
+status:
+
+
+
+INIT
+
+SUCCESS
+
+FAILED
+
+REFUNDED
+
+
+
+provider:
+
+
+
+STRIPE
+
+KAKAO
+
+NAVER
+
+TOSS
+
+
+
+RULE :
+
+외부 PG 분리
+
+
+
+/* ==================================================
+SECTION 04 : PAYMENT PROVIDER RULE
+================================================== */
+
+외부 결제:
+
+
+
+PG 사용
+
+
+
+RULE :
+
+providerPaymentId 저장
+
+
+
+RULE :
+
+webhook validation 필요
+
+
+
+/* ==================================================
+SECTION 05 : TRANSACTION LEDGER TABLE
+================================================== */
+
+TABLE :
+
+payment_ledger
+
+
+
+ROLE :
+
+회계 기록
+
+
+
+COLUMNS :
+
+
+
+paymentId
+
+entryType
+
+amount
+
+channelCode
+
+createdAt
+
+
+
+entryType:
+
+
+
+DEBIT
+
+CREDIT
+
+FEE
+
+
+
+RULE :
+
+double entry 가능
+
+
+
+/* ==================================================
+SECTION 06 : PLATFORM FEE RULE
+================================================== */
+
+수수료:
+
+
+
+platform fee
+
+
+
+예:
+
+
+
+payment 10000
+
+seller 9500
+
+platform 500
+
+
+
+ledger:
+
+
+
+CREDIT seller
+
+CREDIT platform
+
+
+
+RULE :
+
+fee 분리 기록
+
+
+
+/* ==================================================
+SECTION 07 : REFUND STRUCTURE
+================================================== */
+
+TABLE :
+
+refunds
+
+
+
+COLUMNS :
+
+
+
+paymentId
+
+amount
+
+reason
+
+status
+
+createdAt
+
+
+
+status:
+
+
+
+REQUESTED
+
+APPROVED
+
+REJECTED
+
+DONE
+
+
+
+RULE :
+
+refund payment 연결
+
+
+
+/* ==================================================
+SECTION 08 : PAYMENT STATUS FLOW
+================================================== */
+
+FLOW :
+
+
+
+order created
+
+↓
+
+payment INIT
+
+↓
+
+payment SUCCESS
+
+↓
+
+order PAID
+
+
+
+RULE :
+
+state machine 유지
+
+
+
+/* ==================================================
+SECTION 09 : SECURITY RULE
+================================================== */
+
+금지 :
+
+
+
+payment amount 변경
+
+
+
+RULE :
+
+order amount immutable
+
+
+
+RULE :
+
+payment validation mandatory
+
+
+
+/* ==================================================
+SECTION 10 : PAYMENT INDEX RULE
+================================================== */
+
+필수 index:
+
+
+
+orderId
+
+payerChannelCode
+
+providerPaymentId
+
+
+
+RULE :
+
+reconciliation 필요
+
+
+
+/* ==================================================
+SECTION 11 : PAYMENT AUDIT RULE
+================================================== */
+
+삭제 금지
+
+
+
+payment history 유지
+
+
+
+RULE :
+
+financial audit 대응
+
+
+
+/* ==================================================
+SECTION 12 : SETTLEMENT STRUCTURE
+================================================== */
+
+future:
+
+
+
+settlements table
+
+
+
+COLUMNS :
+
+
+
+sellerChannelCode
+
+amount
+
+periodStart
+
+periodEnd
+
+status
+
+
+
+RULE :
+
+정산 가능
+
+
+
+/* ==================================================
+SECTION 13 : PAYMENT DISPUTE RULE
+================================================== */
+
+future:
+
+
+
+payment_disputes
+
+
+
+COLUMNS :
+
+
+
+paymentId
+
+reason
+
+status
+
+
+
+RULE :
+
+chargeback 대응
+
+
+
+/* ==================================================
+SECTION 14 : FUTURE EXTENSION
+================================================== */
+
+확장 가능:
+
+
+
+subscription
+
+wallet
+
+credits
+
+points
+
+
+
+future tables:
+
+
+
+channel_wallets
+
+wallet_transactions
+
+
+
+RULE :
+
+wallet layer 가능
+
+
+
+/* ==================================================
+SECTION 15 : FRAUD PREVENTION RULE
+================================================== */
+
+future:
+
+
+
+fraud score
+
+
+
+예:
+
+
+
+payment_risk_scores
+
+
+
+RULE :
+
+fraud detection 가능
+
+
+
+==================================================
+PAYMENT SYSTEM CORE STRUCTURE END
+==================================================
+==================================================
+FILE : docs/reservation-system-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\reservation-system-absolute-structure.txt
+STATUS : SERVICE RESERVATION CORE STRUCTURE
+ROLE : BOOKING / SERVICE ORDER / SCHEDULE MANAGEMENT
+==================================================
+
+
+/* ==================================================
+SECTION 01 : RESERVATION CORE CONCEPT
+================================================== */
+
+reservation 정의 :
+
+channel → business service 예약
+
+
+
+RULE :
+
+customer = channel
+
+service owner = business
+
+
+
+RULE :
+
+reservation identity = reservationId
+
+
+
+/* ==================================================
+SECTION 02 : RESERVATIONS TABLE
+================================================== */
+
+TABLE :
+
+reservations
+
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+
+
+customerChannelCode TEXT NOT NULL
+
+
+
+businessId INTEGER NOT NULL
+
+
+
+serviceId INTEGER
+
+
+
+reservationDate DATE
+
+
+
+startTime TIME
+
+
+
+endTime TIME
+
+
+
+status TEXT
+
+
+
+createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+
+
+status:
+
+
+
+PENDING
+
+CONFIRMED
+
+CANCELLED
+
+COMPLETED
+
+NO_SHOW
+
+
+
+FK :
+
+customerChannelCode → channels(channelCode)
+
+businessId → businesses(id)
+
+
+
+INDEX :
+
+INDEX idx_reservation_customer(customerChannelCode)
+
+INDEX idx_reservation_business(businessId)
+
+
+
+/* ==================================================
+SECTION 03 : RESERVATION STATUS FLOW
+================================================== */
+
+FLOW :
+
+
+
+예약 생성
+
+↓
+
+PENDING
+
+↓
+
+CONFIRMED
+
+↓
+
+COMPLETED
+
+
+
+취소:
+
+
+
+CANCELLED
+
+
+
+미방문:
+
+
+
+NO_SHOW
+
+
+
+RULE :
+
+state machine 유지
+
+
+
+/* ==================================================
+SECTION 04 : BUSINESS SERVICE LINK
+================================================== */
+
+service:
+
+
+
+business_services 연결
+
+
+
+reservation:
+
+
+
+serviceId FK
+
+
+
+RULE :
+
+service 기반 예약
+
+
+
+/* ==================================================
+SECTION 05 : TIME SLOT STRUCTURE
+================================================== */
+
+TABLE :
+
+business_time_slots
+
+
+
+ROLE :
+
+예약 가능 시간
+
+
+
+COLUMNS :
+
+
+
+businessId
+
+dayOfWeek
+
+startTime
+
+endTime
+
+slotDuration
+
+
+
+RULE :
+
+schedule 기반 예약
+
+
+
+/* ==================================================
+SECTION 06 : RESERVATION CONFLICT RULE
+================================================== */
+
+중복 예약 금지:
+
+
+
+same time slot
+
+
+
+CHECK :
+
+
+
+businessId
+
+date
+
+time overlap
+
+
+
+RULE :
+
+double booking 금지
+
+
+
+/* ==================================================
+SECTION 07 : RESERVATION PAYMENT LINK
+================================================== */
+
+예약 결제:
+
+
+
+orders 연결
+
+
+
+예 :
+
+
+
+reservationId
+
+orderId
+
+
+
+RULE :
+
+예약 ↔ 결제 연결
+
+
+
+/* ==================================================
+SECTION 08 : RESERVATION NOTE STRUCTURE
+================================================== */
+
+COLUMNS 가능:
+
+
+
+customerNote
+
+businessNote
+
+
+
+RULE :
+
+요청사항 저장 가능
+
+
+
+/* ==================================================
+SECTION 09 : RESERVATION HISTORY RULE
+================================================== */
+
+삭제 금지
+
+
+
+status 변경
+
+
+
+RULE :
+
+reservation audit 필요
+
+
+
+/* ==================================================
+SECTION 10 : BUSINESS CALENDAR RULE
+================================================== */
+
+TABLE 가능:
+
+
+
+business_closures
+
+
+
+ROLE :
+
+
+
+휴무일
+
+
+
+COLUMNS :
+
+
+
+businessId
+
+date
+
+reason
+
+
+
+RULE :
+
+예약 차단
+
+
+
+/* ==================================================
+SECTION 11 : NOTIFICATION RULE
+================================================== */
+
+예약 이벤트:
+
+
+
+notification 생성
+
+
+
+예:
+
+
+
+예약 확인
+
+예약 취소
+
+예약 완료
+
+
+
+RULE :
+
+notification integration
+
+
+
+/* ==================================================
+SECTION 12 : RESERVATION SECURITY RULE
+================================================== */
+
+금지 :
+
+
+
+다른 channel 예약 수정
+
+
+
+RULE :
+
+
+
+customer only cancel
+
+
+
+business only confirm
+
+
+
+/* ==================================================
+SECTION 13 : RESERVATION PERFORMANCE RULE
+================================================== */
+
+필수 index:
+
+
+
+businessId
+
+reservationDate
+
+startTime
+
+
+
+RULE :
+
+calendar query 최적화
+
+
+
+/* ==================================================
+SECTION 14 : FUTURE EXTENSION
+================================================== */
+
+확장 가능:
+
+
+
+group booking
+
+recurring booking
+
+waitlist
+
+capacity booking
+
+
+
+future tables:
+
+
+
+reservation_waitlist
+
+
+
+RULE :
+
+확장 가능 구조 유지
+
+
+
+/* ==================================================
+SECTION 15 : REVIEW LINK RULE
+================================================== */
+
+예약 완료:
+
+
+
+review 가능
+
+
+
+조건 :
+
+
+
+COMPLETED only
+
+
+
+RULE :
+
+review integrity 유지
+
+
+
+==================================================
+RESERVATION SYSTEM END
+==================================================
+
+==================================================
+FILE : docs/ad-system-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs/ad-system-absolute-structure.txt
+STATUS : ADVERTISEMENT PLATFORM CORE STRUCTURE
+ROLE : ADS / PROMOTION / REVENUE ENGINE
+==================================================
+
+
+/* ==================================================
+SECTION 01 : AD CORE CONCEPT
+================================================== */
+
+ad 정의 :
+
+channel 또는 business promotion content
+
+
+
+RULE :
+
+advertiser = channel
+
+
+
+business optional
+
+
+
+RULE :
+
+광고도 content
+
+
+
+post 기반 가능
+
+
+
+/* ==================================================
+SECTION 02 : ADS TABLE
+================================================== */
+
+TABLE :
+
+ads
+
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+
+
+advertiserChannelCode TEXT NOT NULL
+
+
+
+businessId INTEGER
+
+
+
+title TEXT
+
+
+
+description TEXT
+
+
+
+imageAssetId
+
+
+
+targetUrl TEXT
+
+
+
+status TEXT
+
+
+
+createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+
+
+
+status:
+
+
+
+DRAFT
+
+ACTIVE
+
+PAUSED
+
+ENDED
+
+
+
+FK :
+
+advertiserChannelCode → channels(channelCode)
+
+businessId → businesses(id)
+
+
+
+INDEX :
+
+INDEX idx_ads_advertiser(advertiserChannelCode)
+
+
+
+/* ==================================================
+SECTION 03 : AD CAMPAIGN STRUCTURE
+================================================== */
+
+TABLE :
+
+ad_campaigns
+
+
+
+ROLE :
+
+campaign grouping
+
+
+
+COLUMNS :
+
+
+
+id
+
+advertiserChannelCode
+
+name
+
+budget
+
+startDate
+
+endDate
+
+status
+
+
+
+RULE :
+
+ads campaign 소속
+
+
+
+/* ==================================================
+SECTION 04 : AD TARGETING RULE
+================================================== */
+
+TABLE :
+
+ad_targeting
+
+
+
+COLUMNS :
+
+
+
+adId
+
+regionCode
+
+industryId
+
+ageRange
+
+gender
+
+
+
+RULE :
+
+target filtering
+
+
+
+future:
+
+
+
+interest targeting
+
+
+
+/* ==================================================
+SECTION 05 : AD DELIVERY STRUCTURE
+================================================== */
+
+ad placement:
+
+
+
+feed
+
+search
+
+profile
+
+business page
+
+
+
+COLUMN 가능:
+
+
+
+placementType
+
+
+
+예:
+
+
+
+FEED
+
+SEARCH
+
+DISCOVERY
+
+
+
+RULE :
+
+placement 확장 가능
+
+
+
+/* ==================================================
+SECTION 06 : AD IMPRESSION TABLE
+================================================== */
+
+TABLE :
+
+ad_impressions
+
+
+
+ROLE :
+
+노출 기록
+
+
+
+COLUMNS :
+
+
+
+adId
+
+viewerChannelCode
+
+createdAt
+
+
+
+INDEX :
+
+
+
+adId
+
+viewerChannelCode
+
+
+
+RULE :
+
+노출 count 가능
+
+
+
+/* ==================================================
+SECTION 07 : AD CLICK TABLE
+================================================== */
+
+TABLE :
+
+ad_clicks
+
+
+
+COLUMNS :
+
+
+
+adId
+
+viewerChannelCode
+
+createdAt
+
+
+
+RULE :
+
+CTR 계산 가능
+
+
+
+/* ==================================================
+SECTION 08 : BILLING MODEL
+================================================== */
+
+가능 모델:
+
+
+
+CPM
+
+CPC
+
+CPA
+
+
+
+COLUMN :
+
+
+
+billingType
+
+
+
+RULE :
+
+billing flexibility
+
+
+
+/* ==================================================
+SECTION 09 : AD BUDGET CONTROL
+================================================== */
+
+campaign:
+
+
+
+budget control
+
+
+
+COLUMN :
+
+
+
+dailyBudget
+
+totalBudget
+
+
+
+RULE :
+
+budget 초과시 stop
+
+
+
+/* ==================================================
+SECTION 10 : AD PAYMENT LINK
+================================================== */
+
+ads:
+
+
+
+orders 연결
+
+
+
+예:
+
+
+
+adCampaignId
+
+orderId
+
+
+
+RULE :
+
+광고 결제 연결
+
+
+
+/* ==================================================
+SECTION 11 : AD RANK RULE
+================================================== */
+
+ad ranking:
+
+
+
+bid amount
+
+CTR
+
+relevance
+
+engagement
+
+
+
+RULE :
+
+ad score 계산 가능
+
+
+
+/* ==================================================
+SECTION 12 : AD SECURITY RULE
+================================================== */
+
+금지 :
+
+
+
+inactive ad delivery
+
+
+
+RULE :
+
+
+
+status ACTIVE only
+
+
+
+RULE :
+
+policy violation block 가능
+
+
+
+/* ==================================================
+SECTION 13 : AD PERFORMANCE RULE
+================================================== */
+
+필수 index:
+
+
+
+adId
+
+advertiserChannelCode
+
+status
+
+
+
+RULE :
+
+delivery query 최적화
+
+
+
+/* ==================================================
+SECTION 14 : FUTURE AD EXTENSION
+================================================== */
+
+확장 가능:
+
+
+
+video ads
+
+story ads
+
+sponsored posts
+
+influencer ads
+
+
+
+future tables:
+
+
+
+ad_creatives
+
+
+
+RULE :
+
+creative 분리 가능
+
+
+
+/* ==================================================
+SECTION 15 : ANALYTICS STRUCTURE
+================================================== */
+
+가능 metrics:
+
+
+
+impressions
+
+clicks
+
+CTR
+
+conversion
+
+
+
+future table:
+
+
+
+ad_metrics_daily
+
+
+
+RULE :
+
+analytics 분리
+
+
+
+==================================================
+AD SYSTEM END
+==================================================
+==================================================
+FILE : docs/recommendation-system-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\recommendation-system-absolute-structure.txt
+STATUS : AI DISCOVERY ENGINE STRUCTURE
+ROLE : RECOMMENDATION / DISCOVERY / GROWTH ENGINE
+==================================================
+
+
+/* ==================================================
+SECTION 01 : RECOMMENDATION CORE CONCEPT
+================================================== */
+
+recommendation 정의 :
+
+viewer channel 기준 content discovery
+
+
+
+RULE :
+
+viewer = channel
+
+
+
+추천 대상:
+
+
+
+posts
+
+channels
+
+business
+
+
+
+RULE :
+
+identity 기반 아님
+
+
+
+behavior 기반
+
+
+
+/* ==================================================
+SECTION 02 : RECOMMENDATION SIGNAL TABLE
+================================================== */
+
+TABLE :
+
+recommendation_signals
+
+
+
+ROLE :
+
+AI 입력 데이터
+
+
+
+COLUMNS :
+
+id INTEGER PRIMARY KEY
+
+
+
+actorChannelCode
+
+
+
+targetId
+
+
+
+targetType
+
+
+
+signalType
+
+
+
+weight
+
+
+
+createdAt
+
+
+
+signalType:
+
+
+
+LIKE
+
+COMMENT
+
+VIEW
+
+SAVE
+
+FOLLOW
+
+SHARE
+
+
+
+targetType:
+
+
+
+POST
+
+CHANNEL
+
+BUSINESS
+
+
+
+RULE :
+
+behavior signal 기록
+
+
+
+/* ==================================================
+SECTION 03 : VIEW DURATION SIGNAL
+================================================== */
+
+future:
+
+
+
+view duration
+
+
+
+TABLE 가능:
+
+
+
+content_view_metrics
+
+
+
+COLUMNS :
+
+
+
+viewerChannelCode
+
+postId
+
+viewDuration
+
+completionRate
+
+
+
+RULE :
+
+AI 핵심 signal
+
+
+
+/* ==================================================
+SECTION 04 : CHANNEL INTEREST PROFILE
+================================================== */
+
+TABLE :
+
+channel_interest_profiles
+
+
+
+ROLE :
+
+관심사 벡터
+
+
+
+COLUMNS :
+
+
+
+channelCode
+
+interestKey
+
+score
+
+updatedAt
+
+
+
+예 :
+
+
+
+BEAUTY
+
+FOOD
+
+FITNESS
+
+
+
+RULE :
+
+interest modeling 가능
+
+
+
+/* ==================================================
+SECTION 05 : CONTENT SCORE TABLE
+================================================== */
+
+TABLE :
+
+content_scores
+
+
+
+ROLE :
+
+post 추천 점수
+
+
+
+COLUMNS :
+
+
+
+postId
+
+score
+
+engagementScore
+
+recencyScore
+
+qualityScore
+
+updatedAt
+
+
+
+RULE :
+
+ranking source
+
+
+
+/* ==================================================
+SECTION 06 : CHANNEL SIMILARITY TABLE
+================================================== */
+
+TABLE :
+
+channel_similarity
+
+
+
+ROLE :
+
+유사 채널
+
+
+
+COLUMNS :
+
+
+
+channelCodeA
+
+channelCodeB
+
+similarityScore
+
+
+
+RULE :
+
+follow 추천 가능
+
+
+
+/* ==================================================
+SECTION 07 : RECOMMENDATION CACHE
+================================================== */
+
+TABLE :
+
+recommendation_cache
+
+
+
+ROLE :
+
+추천 결과 cache
+
+
+
+COLUMNS :
+
+
+
+viewerChannelCode
+
+targetId
+
+targetType
+
+score
+
+generatedAt
+
+
+
+RULE :
+
+fast feed 제공
+
+
+
+/* ==================================================
+SECTION 08 : RECOMMENDATION QUERY FLOW
+================================================== */
+
+FLOW :
+
+
+
+engagement signals
+
+↓
+
+interest profile
+
+↓
+
+content scoring
+
+↓
+
+candidate generation
+
+↓
+
+ranking
+
+↓
+
+cache
+
+
+
+RULE :
+
+pipeline 구조
+
+
+
+/* ==================================================
+SECTION 09 : COLD START RULE
+================================================== */
+
+신규 channel:
+
+
+
+global trending 사용
+
+
+
+RULE :
+
+fallback 필요
+
+
+
+예 :
+
+
+
+region trending
+
+global trending
+
+
+
+/* ==================================================
+SECTION 10 : RECOMMENDATION FILTER RULE
+================================================== */
+
+제외:
+
+
+
+blocked channels
+
+hidden channels
+
+already seen
+
+
+
+CHECK:
+
+
+
+feed_seen
+
+blocks
+
+hide filters
+
+
+
+RULE :
+
+filter mandatory
+
+
+
+/* ==================================================
+SECTION 11 : FEEDBACK LOOP RULE
+================================================== */
+
+추천 결과:
+
+
+
+feedback 저장
+
+
+
+예 :
+
+
+
+clicked
+
+skipped
+
+hidden
+
+
+
+future:
+
+
+
+recommendation_feedback
+
+
+
+RULE :
+
+model 개선 가능
+
+
+
+/* ==================================================
+SECTION 12 : PERFORMANCE RULE
+================================================== */
+
+필수 index:
+
+
+
+actorChannelCode
+
+targetId
+
+targetType
+
+
+
+RULE :
+
+AI query 최적화
+
+
+
+/* ==================================================
+SECTION 13 : AI FEATURE EXTENSION
+================================================== */
+
+future:
+
+
+
+embedding vectors
+
+
+
+TABLE 가능:
+
+
+
+content_embeddings
+
+
+
+COLUMNS :
+
+
+
+postId
+
+vector
+
+
+
+RULE :
+
+vector search 가능
+
+
+
+/* ==================================================
+SECTION 14 : EXPLORE FEED RULE
+================================================== */
+
+explore:
+
+
+
+follow independent feed
+
+
+
+source:
+
+
+
+high score content
+
+
+
+RULE :
+
+discovery feed
+
+
+
+/* ==================================================
+SECTION 15 : FUTURE ML PIPELINE
+================================================== */
+
+가능:
+
+
+
+batch training
+
+online learning
+
+ranking model
+
+
+
+RULE :
+
+ML ready 구조
+
+
+
+==================================================
+RECOMMENDATION SYSTEM END
+==================================================
+==================================================
+FILE : docs/platform-cache-architecture.txt
+ROOT : C:\Users\kjm\social-platform\docs\platform-cache-architecture.txt
+STATUS : PLATFORM CACHE LAYER
+ROLE : REDIS / FEED CACHE / PERFORMANCE LAYER
+==================================================
+
+
+/* ==================================================
+SECTION 01 : CACHE CORE CONCEPT
+================================================== */
+
+cache 정의 :
+
+DB 조회 최소화
+
+
+
+RULE :
+
+DB = source of truth
+
+CACHE = performance layer
+
+
+
+RULE :
+
+cache 없어도 동작
+
+cache 있으면 빠름
+
+
+
+/* ==================================================
+SECTION 02 : CACHE TYPES
+================================================== */
+
+플랫폼 필수 cache:
+
+
+
+feed cache
+
+profile cache
+
+channel cache
+
+follow cache
+
+region cache
+
+notification cache
+
+search cache
+
+
+
+RULE :
+
+고빈도 조회 cache 대상
+
+
+
+/* ==================================================
+SECTION 03 : FEED CACHE STRUCTURE
+================================================== */
+
+key:
+
+
+
+feed:{channelCode}
+
+
+
+value:
+
+
+
+postId list
+
+
+
+예:
+
+
+
+feed:A1B2C3D4
+
+
+
+value:
+
+
+
+[post1,post2,post3]
+
+
+
+RULE :
+
+viewer 기준 cache
+
+
+
+TTL 가능
+
+
+
+/* ==================================================
+SECTION 04 : PROFILE CACHE
+================================================== */
+
+key:
+
+
+
+profile:{channelCode}
+
+
+
+value:
+
+
+
+profile json
+
+
+
+RULE :
+
+profile 조회 최적화
+
+
+
+/* ==================================================
+SECTION 05 : FOLLOW CACHE
+================================================== */
+
+key:
+
+
+
+following:{channelCode}
+
+
+
+value:
+
+
+
+following channel list
+
+
+
+또는:
+
+
+
+followers:{channelCode}
+
+
+
+RULE :
+
+social graph cache
+
+
+
+/* ==================================================
+SECTION 06 : REGION FEED CACHE
+================================================== */
+
+key:
+
+
+
+feed:region:{regionCode}
+
+
+
+예:
+
+
+
+feed:region:KR
+
+
+
+value:
+
+
+
+post list
+
+
+
+RULE :
+
+지역 feed 빠르게 제공
+
+
+
+/* ==================================================
+SECTION 07 : NOTIFICATION CACHE
+================================================== */
+
+key:
+
+
+
+notification:{channelCode}
+
+
+
+value:
+
+
+
+recent notifications
+
+
+
+RULE :
+
+unread count cache 가능
+
+
+
+예:
+
+
+
+notification_count:{channelCode}
+
+
+
+/* ==================================================
+SECTION 08 : SEARCH CACHE
+================================================== */
+
+key:
+
+
+
+search:{query}
+
+
+
+value:
+
+
+
+result ids
+
+
+
+TTL 필요
+
+
+
+RULE :
+
+hot query cache
+
+
+
+/* ==================================================
+SECTION 09 : ENGAGEMENT COUNT CACHE
+================================================== */
+
+key:
+
+
+
+post:engagement:{postId}
+
+
+
+value:
+
+
+
+likeCount
+
+commentCount
+
+viewCount
+
+
+
+RULE :
+
+counter cache
+
+
+
+DB sync 필요
+
+
+
+/* ==================================================
+SECTION 10 : CACHE INVALIDATION RULE
+================================================== */
+
+가장 중요:
+
+
+
+cache invalidation
+
+
+
+RULE :
+
+
+
+update 발생시 cache 삭제
+
+
+
+예:
+
+
+
+new post
+
+→ feed cache invalidate
+
+
+
+new follow
+
+→ feed refresh
+
+
+
+RULE :
+
+write → invalidate
+
+
+
+/* ==================================================
+SECTION 11 : CACHE TTL RULE
+================================================== */
+
+TTL 가능:
+
+
+
+search cache
+
+feed cache
+
+region feed
+
+
+
+TTL 불필요:
+
+
+
+profile cache
+
+
+
+RULE :
+
+data 특성별 TTL
+
+
+
+/* ==================================================
+SECTION 12 : CACHE CONSISTENCY RULE
+================================================== */
+
+RULE :
+
+
+
+eventual consistency 허용
+
+
+
+RULE :
+
+strong consistency 불필요
+
+
+
+SNS 특성상 허용
+
+
+
+/* ==================================================
+SECTION 13 : CACHE STORAGE RULE
+================================================== */
+
+추천:
+
+
+
+Redis
+
+
+
+이유 :
+
+
+
+in memory
+
+fast lookup
+
+sorted set 가능
+
+
+
+RULE :
+
+feed ranking 가능
+
+
+
+/* ==================================================
+SECTION 14 : REDIS DATA STRUCTURE RULE
+================================================== */
+
+사용 가능:
+
+
+
+STRING
+
+HASH
+
+LIST
+
+SET
+
+SORTED SET
+
+
+
+추천:
+
+
+
+feed → sorted set
+
+
+
+예:
+
+
+
+ZADD feed:A1B2 score postId
+
+
+
+RULE :
+
+score 기반 ranking 가능
+
+
+
+/* ==================================================
+SECTION 15 : FUTURE CACHE EXTENSION
+================================================== */
+
+확장 가능:
+
+
+
+AI candidate cache
+
+recommendation cache
+
+ad delivery cache
+
+
+
+RULE :
+
+compute heavy 결과 cache
+
+
+
+/* ==================================================
+SECTION 16 : CACHE FAILURE RULE
+================================================== */
+
+cache 장애:
+
+
+
+DB fallback
+
+
+
+RULE :
+
+cache optional layer
+
+
+
+RULE :
+
+service must work without cache
+
+
+
+/* ==================================================
+SECTION 17 : CACHE WARMING RULE
+================================================== */
+
+startup:
+
+
+
+hot data preload
+
+
+
+예:
+
+
+
+trending posts
+
+top channels
+
+
+
+RULE :
+
+cold start 완화
+
+
+
+/* ==================================================
+SECTION 18 : FEED GENERATION STRATEGY
+================================================== */
+
+fanout on write:
+
+
+
+post 생성시 feed push
+
+
+
+fanout on read:
+
+
+
+조회시 생성
+
+
+
+추천:
+
+
+
+hybrid
+
+
+
+RULE :
+
+초기:
+
+fanout on read
+
+
+
+scale:
+
+hybrid
+
+
+
+/* ==================================================
+SECTION 19 : RATE LIMIT CACHE
+================================================== */
+
+key:
+
+
+
+rate:{channelCode}
+
+
+
+value:
+
+
+
+action count
+
+
+
+RULE :
+
+spam 방지 가능
+
+
+
+/* ==================================================
+SECTION 20 : FUTURE DISTRIBUTED CACHE
+================================================== */
+
+scale시:
+
+
+
+Redis cluster
+
+
+
+RULE :
+
+horizontal scaling 가능
+
+
+
+==================================================
+CACHE ARCHITECTURE END
+==================================================
+==================================================
+FILE : docs/platform-cache-architecture.txt
+ROOT : C:\Users\kjm\social-platform\docs\platform-cache-architecture.txt
+STATUS : PLATFORM CACHE LAYER
+ROLE : REDIS / FEED CACHE / PERFORMANCE LAYER
+==================================================
+
+
+/* ==================================================
+SECTION 01 : CACHE CORE CONCEPT
+================================================== */
+
+cache 정의 :
+
+DB 조회 최소화
+
+
+
+RULE :
+
+DB = source of truth
+
+CACHE = performance layer
+
+
+
+RULE :
+
+cache 없어도 동작
+
+cache 있으면 빠름
+
+
+
+/* ==================================================
+SECTION 02 : CACHE TYPES
+================================================== */
+
+플랫폼 필수 cache:
+
+
+
+feed cache
+
+profile cache
+
+channel cache
+
+follow cache
+
+region cache
+
+notification cache
+
+search cache
+
+
+
+RULE :
+
+고빈도 조회 cache 대상
+
+
+
+/* ==================================================
+SECTION 03 : FEED CACHE STRUCTURE
+================================================== */
+
+key:
+
+
+
+feed:{channelCode}
+
+
+
+value:
+
+
+
+postId list
+
+
+
+예:
+
+
+
+feed:A1B2C3D4
+
+
+
+value:
+
+
+
+[post1,post2,post3]
+
+
+
+RULE :
+
+viewer 기준 cache
+
+
+
+TTL 가능
+
+
+
+/* ==================================================
+SECTION 04 : PROFILE CACHE
+================================================== */
+
+key:
+
+
+
+profile:{channelCode}
+
+
+
+value:
+
+
+
+profile json
+
+
+
+RULE :
+
+profile 조회 최적화
+
+
+
+/* ==================================================
+SECTION 05 : FOLLOW CACHE
+================================================== */
+
+key:
+
+
+
+following:{channelCode}
+
+
+
+value:
+
+
+
+following channel list
+
+
+
+또는:
+
+
+
+followers:{channelCode}
+
+
+
+RULE :
+
+social graph cache
+
+
+
+/* ==================================================
+SECTION 06 : REGION FEED CACHE
+================================================== */
+
+key:
+
+
+
+feed:region:{regionCode}
+
+
+
+예:
+
+
+
+feed:region:KR
+
+
+
+value:
+
+
+
+post list
+
+
+
+RULE :
+
+지역 feed 빠르게 제공
+
+
+
+/* ==================================================
+SECTION 07 : NOTIFICATION CACHE
+================================================== */
+
+key:
+
+
+
+notification:{channelCode}
+
+
+
+value:
+
+
+
+recent notifications
+
+
+
+RULE :
+
+unread count cache 가능
+
+
+
+예:
+
+
+
+notification_count:{channelCode}
+
+
+
+/* ==================================================
+SECTION 08 : SEARCH CACHE
+================================================== */
+
+key:
+
+
+
+search:{query}
+
+
+
+value:
+
+
+
+result ids
+
+
+
+TTL 필요
+
+
+
+RULE :
+
+hot query cache
+
+
+
+/* ==================================================
+SECTION 09 : ENGAGEMENT COUNT CACHE
+================================================== */
+
+key:
+
+
+
+post:engagement:{postId}
+
+
+
+value:
+
+
+
+likeCount
+
+commentCount
+
+viewCount
+
+
+
+RULE :
+
+counter cache
+
+
+
+DB sync 필요
+
+
+
+/* ==================================================
+SECTION 10 : CACHE INVALIDATION RULE
+================================================== */
+
+가장 중요:
+
+
+
+cache invalidation
+
+
+
+RULE :
+
+
+
+update 발생시 cache 삭제
+
+
+
+예:
+
+
+
+new post
+
+→ feed cache invalidate
+
+
+
+new follow
+
+→ feed refresh
+
+
+
+RULE :
+
+write → invalidate
+
+
+
+/* ==================================================
+SECTION 11 : CACHE TTL RULE
+================================================== */
+
+TTL 가능:
+
+
+
+search cache
+
+feed cache
+
+region feed
+
+
+
+TTL 불필요:
+
+
+
+profile cache
+
+
+
+RULE :
+
+data 특성별 TTL
+
+
+
+/* ==================================================
+SECTION 12 : CACHE CONSISTENCY RULE
+================================================== */
+
+RULE :
+
+
+
+eventual consistency 허용
+
+
+
+RULE :
+
+strong consistency 불필요
+
+
+
+SNS 특성상 허용
+
+
+
+/* ==================================================
+SECTION 13 : CACHE STORAGE RULE
+================================================== */
+
+추천:
+
+
+
+Redis
+
+
+
+이유 :
+
+
+
+in memory
+
+fast lookup
+
+sorted set 가능
+
+
+
+RULE :
+
+feed ranking 가능
+
+
+
+/* ==================================================
+SECTION 14 : REDIS DATA STRUCTURE RULE
+================================================== */
+
+사용 가능:
+
+
+
+STRING
+
+HASH
+
+LIST
+
+SET
+
+SORTED SET
+
+
+
+추천:
+
+
+
+feed → sorted set
+
+
+
+예:
+
+
+
+ZADD feed:A1B2 score postId
+
+
+
+RULE :
+
+score 기반 ranking 가능
+
+
+
+/* ==================================================
+SECTION 15 : FUTURE CACHE EXTENSION
+================================================== */
+
+확장 가능:
+
+
+
+AI candidate cache
+
+recommendation cache
+
+ad delivery cache
+
+
+
+RULE :
+
+compute heavy 결과 cache
+
+
+
+/* ==================================================
+SECTION 16 : CACHE FAILURE RULE
+================================================== */
+
+cache 장애:
+
+
+
+DB fallback
+
+
+
+RULE :
+
+cache optional layer
+
+
+
+RULE :
+
+service must work without cache
+
+
+
+/* ==================================================
+SECTION 17 : CACHE WARMING RULE
+================================================== */
+
+startup:
+
+
+
+hot data preload
+
+
+
+예:
+
+
+
+trending posts
+
+top channels
+
+
+
+RULE :
+
+cold start 완화
+
+
+
+/* ==================================================
+SECTION 18 : FEED GENERATION STRATEGY
+================================================== */
+
+fanout on write:
+
+
+
+post 생성시 feed push
+
+
+
+fanout on read:
+
+
+
+조회시 생성
+
+
+
+추천:
+
+
+
+hybrid
+
+
+
+RULE :
+
+초기:
+
+fanout on read
+
+
+
+scale:
+
+hybrid
+
+
+
+/* ==================================================
+SECTION 19 : RATE LIMIT CACHE
+================================================== */
+
+key:
+
+
+
+rate:{channelCode}
+
+
+
+value:
+
+
+
+action count
+
+
+
+RULE :
+
+spam 방지 가능
+
+
+
+/* ==================================================
+SECTION 20 : FUTURE DISTRIBUTED CACHE
+================================================== */
+
+scale시:
+
+
+
+Redis cluster
+
+
+
+RULE :
+
+horizontal scaling 가능
+
+
+
+==================================================
+CACHE ARCHITECTURE END
+==================================================
+==================================================
+FILE : docs/platform-event-architecture.txt
+ROOT : C:\Users\kjm\social-platform\docs\platform-event-architecture.txt
+STATUS : EVENT DRIVEN PLATFORM STRUCTURE
+ROLE : ASYNC PROCESSING / QUEUE / BACKGROUND JOB
+==================================================
+
+
+/* ==================================================
+SECTION 01 : EVENT CORE CONCEPT
+================================================== */
+
+event 정의 :
+
+시스템에서 발생한 상태 변화
+
+
+
+예:
+
+
+
+post created
+
+follow created
+
+payment success
+
+reservation confirmed
+
+
+
+RULE :
+
+event = fact
+
+
+
+/* ==================================================
+SECTION 02 : EVENT STRUCTURE
+================================================== */
+
+event 구조:
+
+
+
+eventId
+
+eventType
+
+actorChannelCode
+
+targetId
+
+payload
+
+createdAt
+
+
+
+RULE :
+
+generic event 가능
+
+
+
+/* ==================================================
+SECTION 03 : EVENT TYPES
+================================================== */
+
+예:
+
+
+
+POST_CREATED
+
+POST_LIKED
+
+FOLLOW_CREATED
+
+PAYMENT_SUCCESS
+
+RESERVATION_CREATED
+
+REPORT_CREATED
+
+
+
+RULE :
+
+event naming 표준 필요
+
+
+
+/* ==================================================
+SECTION 04 : EVENT TABLE (OPTIONAL)
+================================================== */
+
+TABLE :
+
+events
+
+
+
+ROLE :
+
+event audit
+
+
+
+COLUMNS :
+
+
+
+eventType
+
+payload
+
+createdAt
+
+processedAt
+
+
+
+RULE :
+
+debug 가능
+
+
+
+/* ==================================================
+SECTION 05 : QUEUE SYSTEM ROLE
+================================================== */
+
+queue 역할:
+
+
+
+async job 처리
+
+
+
+예:
+
+
+
+notification send
+
+feed update
+
+recommendation update
+
+cache invalidate
+
+
+
+RULE :
+
+API blocking 금지
+
+
+
+/* ==================================================
+SECTION 06 : JOB TYPES
+================================================== */
+
+job 예:
+
+
+
+send notification
+
+update feed cache
+
+calculate ranking
+
+send email
+
+process payment webhook
+
+
+
+RULE :
+
+event → job
+
+
+
+/* ==================================================
+SECTION 07 : QUEUE TECHNOLOGY OPTIONS
+================================================== */
+
+가능:
+
+
+
+Redis queue (BullMQ)
+
+Kafka
+
+RabbitMQ
+
+
+
+초기 추천:
+
+
+
+Redis queue
+
+
+
+scale:
+
+
+
+Kafka
+
+
+
+RULE :
+
+stage별 도입
+
+
+
+/* ==================================================
+SECTION 08 : EVENT FLOW
+================================================== */
+
+FLOW :
+
+
+
+action 발생
+
+↓
+
+event emit
+
+↓
+
+queue push
+
+↓
+
+worker process
+
+↓
+
+result update
+
+
+
+RULE :
+
+event producer / consumer 분리
+
+
+
+/* ==================================================
+SECTION 09 : WORKER STRUCTURE
+================================================== */
+
+worker 역할:
+
+
+
+background processing
+
+
+
+예:
+
+
+
+feed worker
+
+notification worker
+
+payment worker
+
+recommendation worker
+
+
+
+RULE :
+
+worker 분리 가능
+
+
+
+/* ==================================================
+SECTION 10 : RETRY RULE
+================================================== */
+
+job 실패:
+
+
+
+retry
+
+
+
+예:
+
+
+
+retry 3회
+
+
+
+RULE :
+
+dead letter queue 가능
+
+
+
+/* ==================================================
+SECTION 11 : IDEMPOTENCY RULE
+================================================== */
+
+중복 처리 방지:
+
+
+
+idempotent job
+
+
+
+예:
+
+
+
+same event ignore
+
+
+
+RULE :
+
+eventId 기반 처리
+
+
+
+/* ==================================================
+SECTION 12 : DELAYED JOB RULE
+================================================== */
+
+가능:
+
+
+
+delayed execution
+
+
+
+예:
+
+
+
+reminder notification
+
+
+
+RULE :
+
+scheduled job 가능
+
+
+
+/* ==================================================
+SECTION 13 : BATCH JOB RULE
+================================================== */
+
+periodic job:
+
+
+
+ranking update
+
+trending 계산
+
+recommendation refresh
+
+
+
+RULE :
+
+cron worker 필요
+
+
+
+/* ==================================================
+SECTION 14 : PAYMENT EVENT RULE
+================================================== */
+
+payment:
+
+
+
+webhook event
+
+
+
+FLOW :
+
+
+
+PG webhook
+
+↓
+
+payment event
+
+↓
+
+order update
+
+
+
+RULE :
+
+webhook async 처리
+
+
+
+/* ==================================================
+SECTION 15 : FEED EVENT RULE
+================================================== */
+
+post 생성:
+
+
+
+feed update event
+
+
+
+LIKE 발생:
+
+
+
+ranking update event
+
+
+
+RULE :
+
+feed async 처리
+
+
+
+/* ==================================================
+SECTION 16 : NOTIFICATION EVENT RULE
+================================================== */
+
+follow:
+
+
+
+notification event
+
+
+
+comment:
+
+
+
+notification event
+
+
+
+RULE :
+
+notification async
+
+
+
+/* ==================================================
+SECTION 17 : CACHE EVENT RULE
+================================================== */
+
+update 발생:
+
+
+
+cache invalidate event
+
+
+
+RULE :
+
+cache update async
+
+
+
+/* ==================================================
+SECTION 18 : MONITORING RULE
+================================================== */
+
+필수:
+
+
+
+job monitoring
+
+
+
+예:
+
+
+
+failed jobs
+
+processing jobs
+
+
+
+RULE :
+
+admin dashboard 필요
+
+
+
+/* ==================================================
+SECTION 19 : FUTURE EVENT STREAMING
+================================================== */
+
+scale시:
+
+
+
+Kafka event stream
+
+
+
+가능:
+
+
+
+real time analytics
+
+AI pipeline
+
+
+
+RULE :
+
+event bus 확장 가능
+
+
+
+/* ==================================================
+SECTION 20 : FAILURE SAFETY RULE
+================================================== */
+
+queue down:
+
+
+
+service still works
+
+
+
+RULE :
+
+event eventually processed
+
+
+
+RULE :
+
+system resilient
+
+
+
+==================================================
+EVENT SYSTEM ARCHITECTURE END
+==================================================
+==================================================
+FILE : docs/service-architecture-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\service-architecture-absolute-structure.txt
+STATUS : PLATFORM SERVICE ARCHITECTURE
+ROLE : MONOLITH / MODULE SPLIT / MSA STRATEGY
+==================================================
+
+
+/* ==================================================
+SECTION 01 : CORE PRINCIPLE
+================================================== */
+
+RULE :
+
+처음부터 MSA 금지
+
+
+
+RULE :
+
+Modular Monolith 시작
+
+
+
+이유 :
+
+
+
+개발 속도
+
+단순 infra
+
+빠른 iteration
+
+
+
+추천 구조:
+
+
+
+Single backend
+
+Module separation
+
+
+
+/* ==================================================
+SECTION 02 : INITIAL STRUCTURE
+================================================== */
+
+초기 구조:
+
+
+
+backend/
+
+modules/
+
+users/
+
+channels/
+
+posts/
+
+feed/
+
+business/
+
+payments/
+
+reservation/
+
+
+
+RULE :
+
+모듈 분리
+
+서비스 분리 아님
+
+
+
+/* ==================================================
+SECTION 03 : MODULE BOUNDARY RULE
+================================================== */
+
+각 module:
+
+
+
+own service
+
+own repository
+
+own schema logic
+
+
+
+하지만:
+
+
+
+single DB
+
+
+
+RULE :
+
+code isolation
+
+
+
+/* ==================================================
+SECTION 04 : WHEN NOT TO SPLIT
+================================================== */
+
+금지 조건:
+
+
+
+team < 5
+
+traffic 낮음
+
+deploy 하루 1회 이하
+
+
+
+RULE :
+
+premature MSA 금지
+
+
+
+/* ==================================================
+SECTION 05 : SPLIT SIGNALS
+================================================== */
+
+분리 고려:
+
+
+
+API 느림
+
+DB contention
+
+deploy risk
+
+team collision
+
+
+
+RULE :
+
+problem driven split
+
+
+
+/* ==================================================
+SECTION 06 : FIRST SPLIT TARGETS
+================================================== */
+
+보통 먼저 분리:
+
+
+
+feed service
+
+notification service
+
+search service
+
+recommendation service
+
+
+
+이유:
+
+
+
+high compute
+
+
+
+RULE :
+
+stateless service 우선
+
+
+
+/* ==================================================
+SECTION 07 : NEVER FIRST SPLIT
+================================================== */
+
+초기 분리 금지:
+
+
+
+users
+
+channels
+
+auth
+
+
+
+이유:
+
+
+
+identity core
+
+
+
+RULE :
+
+identity monolith 유지
+
+
+
+/* ==================================================
+SECTION 08 : DATABASE SPLIT RULE
+================================================== */
+
+초기:
+
+
+
+single DB
+
+
+
+나중:
+
+
+
+read replica 가능
+
+
+
+마지막:
+
+
+
+service DB split
+
+
+
+RULE :
+
+DB split 마지막 단계
+
+
+
+/* ==================================================
+SECTION 09 : CACHE BEFORE MSA RULE
+================================================== */
+
+RULE :
+
+
+
+MSA 전에 cache
+
+
+
+이유 :
+
+
+
+성능 문제 대부분 cache 해결
+
+
+
+RULE :
+
+Redis first
+
+
+
+/* ==================================================
+SECTION 10 : EVENT BEFORE MSA RULE
+================================================== */
+
+RULE :
+
+
+
+service split 전에 event
+
+
+
+이유 :
+
+
+
+loose coupling
+
+
+
+RULE :
+
+queue 먼저 도입
+
+
+
+/* ==================================================
+SECTION 11 : MSA TRANSITION PATH
+================================================== */
+
+추천 단계:
+
+
+
+Monolith
+
+↓
+
+Modular Monolith
+
+↓
+
+Event driven modules
+
+↓
+
+Service extraction
+
+↓
+
+MSA
+
+
+
+RULE :
+
+stepwise transition
+
+
+
+/* ==================================================
+SECTION 12 : SERVICE SPLIT ORDER
+================================================== */
+
+추천 순서:
+
+
+
+1 Feed
+
+2 Notification
+
+3 Recommendation
+
+4 Search
+
+5 Media processing
+
+6 Ads
+
+
+
+RULE :
+
+compute heavy 먼저
+
+
+
+/* ==================================================
+SECTION 13 : COMMUNICATION RULE
+================================================== */
+
+초기:
+
+
+
+in process call
+
+
+
+나중:
+
+
+
+REST
+
+
+
+확장:
+
+
+
+event
+
+
+
+RULE :
+
+sync → async 이동
+
+
+
+/* ==================================================
+SECTION 14 : DEPLOY STRATEGY
+================================================== */
+
+초기:
+
+
+
+single deploy
+
+
+
+MSA:
+
+
+
+independent deploy
+
+
+
+RULE :
+
+CI/CD 준비 필요
+
+
+
+/* ==================================================
+SECTION 15 : TEAM SCALING RULE
+================================================== */
+
+팀 구조:
+
+
+
+module ownership
+
+
+
+예:
+
+
+
+Feed team
+
+Commerce team
+
+Discovery team
+
+
+
+RULE :
+
+team boundary = module boundary
+
+
+
+/* ==================================================
+SECTION 16 : OBSERVABILITY RULE
+================================================== */
+
+필수:
+
+
+
+logging
+
+metrics
+
+tracing
+
+
+
+도구:
+
+
+
+Prometheus
+
+Grafana
+
+OpenTelemetry
+
+
+
+RULE :
+
+MSA 전 observability
+
+
+
+/* ==================================================
+SECTION 17 : FAILURE ISOLATION RULE
+================================================== */
+
+MSA 목적:
+
+
+
+failure isolation
+
+
+
+예:
+
+
+
+feed down
+
+payment still works
+
+
+
+RULE :
+
+critical separation
+
+
+
+/* ==================================================
+SECTION 18 : COST RULE
+================================================== */
+
+MSA 비용:
+
+
+
+infra 증가
+
+
+
+RULE :
+
+
+
+scale 필요할때만
+
+
+
+/* ==================================================
+SECTION 19 : PLATFORM MATURITY MODEL
+================================================== */
+
+Stage 1:
+
+
+
+Monolith
+
+
+
+Stage 2:
+
+
+
+Modular Monolith
+
+
+
+Stage 3:
+
+
+
+Event platform
+
+
+
+Stage 4:
+
+
+
+Service platform
+
+
+
+Stage 5:
+
+
+
+Distributed platform
+
+
+
+RULE :
+
+성장 단계별 전환
+
+
+
+/* ==================================================
+SECTION 20 : FINAL ABSOLUTE RULE
+================================================== */
+
+RULE :
+
+
+
+MSA는 목표 아님
+
+
+
+scale 대응 수단
+
+
+
+RULE :
+
+문제 없으면 분리 금지
+
+
+
+==================================================
+SERVICE ARCHITECTURE END
+==================================================
+==================================================
+FILE : docs/channel-lifecycle-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\channel-lifecycle-absolute-structure.txt
+STATUS : CHANNEL IDENTITY LIFECYCLE MODEL
+ROLE : CHANNEL STATE MACHINE / OWNERSHIP / SAFETY
+==================================================
+
+
+/* ==================================================
+SECTION 01 : CHANNEL CORE PRINCIPLE
+================================================== */
+
+channel 정의 :
+
+플랫폼 행위 주체 identity
+
+
+
+RULE :
+
+channel immutable id
+
+channelCode never changes
+
+
+
+RULE :
+
+channel = actor
+
+
+
+RULE :
+
+user != channel
+
+
+
+/* ==================================================
+SECTION 02 : CHANNEL STATE MODEL
+================================================== */
+
+channel must have state
+
+
+
+COLUMN :
+
+status TEXT NOT NULL
+
+
+
+status values:
+
+
+
+ACTIVE
+
+SUSPENDED
+
+DEACTIVATED
+
+DELETED
+
+
+
+RULE :
+
+state machine 기반 운영
+
+
+
+/* ==================================================
+SECTION 03 : STATE MEANING
+================================================== */
+
+ACTIVE :
+
+정상 활동 가능
+
+
+
+SUSPENDED :
+
+제재 상태
+
+읽기 가능
+
+행위 제한
+
+
+
+DEACTIVATED :
+
+사용자 비활성
+
+로그인 가능
+
+활동 불가
+
+
+
+DELETED :
+
+soft delete
+
+
+
+RULE :
+
+physical delete 금지
+
+
+
+/* ==================================================
+SECTION 04 : STATE TRANSITION RULE
+================================================== */
+
+allowed transitions:
+
+
+
+ACTIVE → SUSPENDED
+
+ACTIVE → DEACTIVATED
+
+ACTIVE → DELETED
+
+
+
+SUSPENDED → ACTIVE
+
+SUSPENDED → DELETED
+
+
+
+DEACTIVATED → ACTIVE
+
+DEACTIVATED → DELETED
+
+
+
+RULE :
+
+invalid transition 금지
+
+
+
+/* ==================================================
+SECTION 05 : SUSPENSION STRUCTURE
+================================================== */
+
+TABLE :
+
+channel_suspensions
+
+
+
+COLUMNS :
+
+id
+
+channelCode
+
+reason
+
+moderatorChannelCode
+
+startAt
+
+endAt
+
+createdAt
+
+
+
+RULE :
+
+audit 필요
+
+
+
+/* ==================================================
+SECTION 06 : DEACTIVATION RULE
+================================================== */
+
+user action:
+
+
+
+account deactivate
+
+
+
+RULE :
+
+login 가능
+
+activity 불가
+
+
+
+COLUMN 가능:
+
+
+
+deactivatedAt
+
+
+
+/* ==================================================
+SECTION 07 : SOFT DELETE RULE
+================================================== */
+
+삭제:
+
+
+
+soft delete only
+
+
+
+COLUMN :
+
+
+
+deletedAt
+
+
+
+RULE :
+
+channelCode reuse 금지
+
+
+
+RULE :
+
+history 유지
+
+
+
+/* ==================================================
+SECTION 08 : CHANNEL OWNERSHIP MODEL
+================================================== */
+
+COLUMN :
+
+ownerUserId
+
+
+
+RULE :
+
+owner 변경 가능
+
+
+
+TABLE 가능:
+
+
+
+channel_ownership_history
+
+
+
+COLUMNS :
+
+
+
+channelCode
+
+oldOwnerId
+
+newOwnerId
+
+transferredAt
+
+
+
+RULE :
+
+ownership audit
+
+
+
+/* ==================================================
+SECTION 09 : MULTI PROFILE RELATION
+================================================== */
+
+channel ← profile
+
+
+
+RULE :
+
+channel identity
+
+profile presentation
+
+
+
+TABLE :
+
+profiles
+
+
+
+profile change 가능
+
+
+
+channel 유지
+
+
+
+/* ==================================================
+SECTION 10 : CHANNEL VISIBILITY RULE
+================================================== */
+
+COLUMN :
+
+visibility
+
+
+
+values:
+
+
+
+PUBLIC
+
+PRIVATE
+
+LIMITED
+
+
+
+RULE :
+
+feed exposure control
+
+
+
+/* ==================================================
+SECTION 11 : CHANNEL SECURITY RULE
+================================================== */
+
+RULE :
+
+channelCode external exposure safe
+
+
+
+RULE :
+
+internal numeric id 별도 유지
+
+
+
+COLUMN 가능:
+
+
+
+id INTEGER PRIMARY KEY
+
+
+
+RULE :
+
+internal PK + external code
+
+
+
+/* ==================================================
+SECTION 12 : CHANNEL PERMISSION MODEL
+================================================== */
+
+future:
+
+
+
+channel roles
+
+
+
+TABLE 가능:
+
+
+
+channel_members
+
+
+
+COLUMNS :
+
+
+
+channelCode
+
+memberChannelCode
+
+role
+
+
+
+role:
+
+
+
+OWNER
+
+ADMIN
+
+EDITOR
+
+VIEWER
+
+
+
+RULE :
+
+team channel 가능
+
+
+
+/* ==================================================
+SECTION 13 : CHANNEL METADATA RULE
+================================================== */
+
+COLUMN 가능:
+
+
+
+createdAt
+
+updatedAt
+
+lastActiveAt
+
+
+
+RULE :
+
+activity tracking
+
+
+
+/* ==================================================
+SECTION 14 : CHANNEL RATE LIMIT STATE
+================================================== */
+
+COLUMN 가능:
+
+
+
+isRateLimited
+
+
+
+RULE :
+
+spam protection
+
+
+
+/* ==================================================
+SECTION 15 : CHANNEL BAN MODEL
+================================================== */
+
+TABLE :
+
+channel_bans
+
+
+
+COLUMNS :
+
+
+
+channelCode
+
+reason
+
+createdAt
+
+expiresAt
+
+
+
+RULE :
+
+permanent ban 가능
+
+
+
+/* ==================================================
+SECTION 16 : CHANNEL RECOVERY RULE
+================================================== */
+
+복구 가능:
+
+
+
+SUSPENDED
+
+DEACTIVATED
+
+
+
+불가능:
+
+
+
+DELETED (optional policy)
+
+
+
+RULE :
+
+recovery 정책 필요
+
+
+
+/* ==================================================
+SECTION 17 : CHANNEL DATA INTEGRITY RULE
+================================================== */
+
+삭제시:
+
+
+
+posts 유지
+
+payments 유지
+
+reservations 유지
+
+
+
+RULE :
+
+channel FK 유지
+
+
+
+RULE :
+
+history integrity
+
+
+
+/* ==================================================
+SECTION 18 : CHANNEL MERGE (FUTURE)
+================================================== */
+
+future:
+
+
+
+channel merge 가능
+
+
+
+예:
+
+
+
+brand merge
+
+
+
+TABLE 가능:
+
+
+
+channel_merge_history
+
+
+
+/* ==================================================
+SECTION 19 : CHANNEL ANALYTICS STATE
+================================================== */
+
+COLUMN 가능:
+
+
+
+followerCount
+
+postCount
+
+engagementScore
+
+
+
+RULE :
+
+counter cache 가능
+
+
+
+/* ==================================================
+SECTION 20 : ABSOLUTE PLATFORM RULE
+================================================== */
+
+RULE :
+
+
+
+channel never physically deleted
+
+
+
+RULE :
+
+channelCode never reused
+
+
+
+RULE :
+
+channel identity permanent
+
+
+
+==================================================
+CHANNEL LIFECYCLE END
+==================================================
+==================================================
+FILE : docs/channel-permission-system-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\channel-permission-system-absolute-structure.txt
+STATUS : CHANNEL PERMISSION MODEL
+ROLE : RBAC / TEAM CHANNEL / ACCESS CONTROL
+==================================================
+
+
+/* ==================================================
+SECTION 01 : PERMISSION CORE PRINCIPLE
+================================================== */
+
+channel ownership != channel operation
+
+
+
+RULE :
+
+owner와 operator 분리
+
+
+
+예:
+
+
+
+Owner :
+
+business owner
+
+
+
+Operator :
+
+marketing team
+
+
+
+RULE :
+
+multi member channel 가능
+
+
+
+/* ==================================================
+SECTION 02 : CHANNEL MEMBERS TABLE
+================================================== */
+
+TABLE :
+
+channel_members
+
+
+
+ROLE :
+
+channel team
+
+
+
+COLUMNS :
+
+
+
+id INTEGER PRIMARY KEY
+
+
+
+channelCode TEXT NOT NULL
+
+
+
+memberChannelCode TEXT NOT NULL
+
+
+
+role TEXT NOT NULL
+
+
+
+status TEXT
+
+
+
+joinedAt TIMESTAMP
+
+
+
+invitedByChannelCode
+
+
+
+RULE :
+
+channel → channel membership
+
+
+
+FK :
+
+channelCode → channels(channelCode)
+
+memberChannelCode → channels(channelCode)
+
+
+
+INDEX :
+
+
+
+INDEX idx_channel_members_channel(channelCode)
+
+INDEX idx_channel_members_member(memberChannelCode)
+
+
+
+/* ==================================================
+SECTION 03 : MEMBER STATUS
+================================================== */
+
+status values:
+
+
+
+INVITED
+
+ACTIVE
+
+REMOVED
+
+DECLINED
+
+
+
+RULE :
+
+invite flow 필요
+
+
+
+/* ==================================================
+SECTION 04 : ROLE MODEL
+================================================== */
+
+role values:
+
+
+
+OWNER
+
+ADMIN
+
+MANAGER
+
+EDITOR
+
+ANALYST
+
+VIEWER
+
+
+
+RULE :
+
+확장 가능
+
+
+
+RULE :
+
+string role 사용
+
+
+
+/* ==================================================
+SECTION 05 : ROLE PERMISSION MATRIX
+================================================== */
+
+OWNER :
+
+full access
+
+
+
+ADMIN :
+
+manage members
+
+settings
+
+
+
+MANAGER :
+
+content
+
+ads
+
+reservation
+
+
+
+EDITOR :
+
+posts only
+
+
+
+ANALYST :
+
+analytics only
+
+
+
+VIEWER :
+
+read only
+
+
+
+RULE :
+
+role capability 정의 필요
+
+
+
+/* ==================================================
+SECTION 06 : PERMISSION TABLE (OPTIONAL)
+================================================== */
+
+future:
+
+
+
+permission granularity
+
+
+
+TABLE :
+
+channel_permissions
+
+
+
+COLUMNS :
+
+
+
+role
+
+permissionKey
+
+
+
+예:
+
+
+
+POST_CREATE
+
+POST_DELETE
+
+MEMBER_INVITE
+
+ADS_MANAGE
+
+
+
+RULE :
+
+fine control 가능
+
+
+
+/* ==================================================
+SECTION 07 : OWNER ABSOLUTE RULE
+================================================== */
+
+RULE :
+
+channel must have OWNER
+
+
+
+RULE :
+
+owner remove 금지
+
+
+
+RULE :
+
+owner transfer 필요
+
+
+
+/* ==================================================
+SECTION 08 : OWNER TRANSFER FLOW
+================================================== */
+
+FLOW :
+
+
+
+new owner 지정
+
+↓
+
+old owner 승인
+
+↓
+
+transfer
+
+
+
+TABLE :
+
+channel_owner_transfers
+
+
+
+COLUMNS :
+
+
+
+channelCode
+
+oldOwnerChannelCode
+
+newOwnerChannelCode
+
+status
+
+createdAt
+
+
+
+RULE :
+
+ownership audit
+
+
+
+/* ==================================================
+SECTION 09 : MEMBER INVITE FLOW
+================================================== */
+
+FLOW :
+
+
+
+invite send
+
+↓
+
+INVITED
+
+↓
+
+accept
+
+↓
+
+ACTIVE
+
+
+
+decline:
+
+
+
+DECLINED
+
+
+
+RULE :
+
+invite expiration 가능
+
+
+
+COLUMN 가능:
+
+
+
+expiresAt
+
+
+
+/* ==================================================
+SECTION 10 : MEMBER REMOVE RULE
+================================================== */
+
+remove 가능:
+
+
+
+ADMIN
+
+OWNER
+
+
+
+RULE :
+
+EDITOR remove 불가
+
+
+
+RULE :
+
+self leave 가능
+
+
+
+status → REMOVED
+
+
+
+/* ==================================================
+SECTION 11 : SELF LEAVE RULE
+================================================== */
+
+member:
+
+
+
+leave channel 가능
+
+
+
+RULE :
+
+OWNER leave 불가
+
+
+
+transfer 후 가능
+
+
+
+/* ==================================================
+SECTION 12 : PERMISSION CHECK RULE
+================================================== */
+
+API:
+
+
+
+channel access check
+
+
+
+FLOW :
+
+
+
+request channelCode
+
+↓
+
+member lookup
+
+↓
+
+role check
+
+↓
+
+permission check
+
+
+
+RULE :
+
+central permission service 필요
+
+
+
+/* ==================================================
+SECTION 13 : MULTI CHANNEL MEMBERSHIP
+================================================== */
+
+RULE :
+
+channel 여러개 참여 가능
+
+
+
+예:
+
+
+
+agency channel
+
+brand channel
+
+personal channel
+
+
+
+RULE :
+
+membership independent
+
+
+
+/* ==================================================
+SECTION 14 : ACTIVITY AUDIT RULE
+================================================== */
+
+TABLE :
+
+channel_activity_logs
+
+
+
+COLUMNS :
+
+
+
+channelCode
+
+actorChannelCode
+
+action
+
+targetId
+
+createdAt
+
+
+
+예:
+
+
+
+member added
+
+member removed
+
+post deleted
+
+
+
+RULE :
+
+audit 필요
+
+
+
+/* ==================================================
+SECTION 15 : SECURITY RULE
+================================================== */
+
+RULE :
+
+permission check server only
+
+
+
+금지 :
+
+
+
+frontend trust
+
+
+
+RULE :
+
+always backend validation
+
+
+
+/* ==================================================
+SECTION 16 : MEMBER LIMIT RULE
+================================================== */
+
+future:
+
+
+
+plan 기반 member limit
+
+
+
+예:
+
+
+
+FREE = 3
+
+PRO = 10
+
+ENTERPRISE = unlimited
+
+
+
+RULE :
+
+billing 연동 가능
+
+
+
+/* ==================================================
+SECTION 17 : CHANNEL TEAM TYPES
+================================================== */
+
+가능:
+
+
+
+personal channel
+
+business channel
+
+organization channel
+
+
+
+COLUMN 가능:
+
+
+
+channelType
+
+
+
+values:
+
+
+
+PERSONAL
+
+BUSINESS
+
+ORG
+
+
+
+RULE :
+
+permission 차등 가능
+
+
+
+/* ==================================================
+SECTION 18 : PERMISSION CACHE RULE
+================================================== */
+
+cache 가능:
+
+
+
+channel membership
+
+
+
+예:
+
+
+
+member:{channelCode}
+
+
+
+RULE :
+
+fast permission check
+
+
+
+/* ==================================================
+SECTION 19 : FAILURE RULE
+================================================== */
+
+member lookup 실패:
+
+
+
+access deny
+
+
+
+RULE :
+
+default deny
+
+
+
+/* ==================================================
+SECTION 20 : ABSOLUTE RULE
+================================================== */
+
+RULE :
+
+permission always explicit
+
+
+
+RULE :
+
+no implicit access
+
+
+
+RULE :
+
+owner override 가능
+
+
+
+==================================================
+CHANNEL PERMISSION SYSTEM END
+==================================================
+==================================================
+FILE : docs/channel-settings-absolute-structure.txt
+ROOT : C:\Users\kjm\social-platform\docs\channel-settings-absolute-structure.txt
+STATUS : CHANNEL SETTINGS DOMAIN
+ROLE : CHANNEL CONFIGURATION / PRIVACY / INTERACTION CONTROL
+==================================================
+
+
+/* ==================================================
+SECTION 01 : SETTINGS CORE PRINCIPLE
+================================================== */
+
+RULE :
+
+channel 설정 = channel identity 일부
+
+
+
+RULE :
+
+default safe 설정 필요
+
+
+
+RULE :
+
+설정은 channel별 독립
+
+
+
+/* ==================================================
+SECTION 02 : CHANNEL SETTINGS TABLE
+================================================== */
+
+TABLE :
+
+channel_settings
+
+
+
+ROLE :
+
+channel configuration
+
+
+
+COLUMNS :
+
+
+
+channelCode TEXT PRIMARY KEY
+
+
+
+profileVisibility TEXT
+
+
+
+allowMessages TEXT
+
+
+
+allowComments TEXT
+
+
+
+allowMentions TEXT
+
+
+
+allowFollows INTEGER
+
+
+
+discoverable INTEGER
+
+
+
+showActivity INTEGER
+
+
+
+createdAt TIMESTAMP
+
+updatedAt TIMESTAMP
+
+
+
+FK :
+
+channelCode → channels(channelCode)
+
+
+
+/* ==================================================
+SECTION 03 : PROFILE VISIBILITY
+================================================== */
+
+profileVisibility values:
+
+
+
+PUBLIC
+
+FOLLOWERS
+
+PRIVATE
+
+
+
+RULE :
+
+profile access control
+
+
+
+/* ==================================================
+SECTION 04 : MESSAGE SETTINGS
+================================================== */
+
+allowMessages values:
+
+
+
+ALL
+
+FOLLOWERS
+
+NONE
+
+
+
+RULE :
+
+DM spam control
+
+
+
+/* ==================================================
+SECTION 05 : COMMENT CONTROL
+================================================== */
+
+allowComments values:
+
+
+
+ALL
+
+FOLLOWERS
+
+NONE
+
+
+
+RULE :
+
+comment spam 방지
+
+
+
+/* ==================================================
+SECTION 06 : MENTION SETTINGS
+================================================== */
+
+allowMentions values:
+
+
+
+ALL
+
+FOLLOWERS
+
+NONE
+
+
+
+RULE :
+
+mention abuse 방지
+
+
+
+/* ==================================================
+SECTION 07 : FOLLOW SETTINGS
+================================================== */
+
+allowFollows INTEGER
+
+
+
+values:
+
+
+
+1 = allow
+
+0 = block
+
+
+
+RULE :
+
+follow control 가능
+
+
+
+/* ==================================================
+SECTION 08 : DISCOVERY SETTINGS
+================================================== */
+
+discoverable INTEGER
+
+
+
+values:
+
+
+
+1 = search 가능
+
+0 = hidden
+
+
+
+RULE :
+
+검색 노출 제어
+
+
+
+/* ==================================================
+SECTION 09 : ACTIVITY VISIBILITY
+================================================== */
+
+showActivity INTEGER
+
+
+
+values:
+
+
+
+1 = activity visible
+
+0 = hidden
+
+
+
+예:
+
+
+
+like activity
+
+
+
+RULE :
+
+privacy control
+
+
+
+/* ==================================================
+SECTION 10 : DEFAULT SETTINGS RULE
+================================================== */
+
+channel 생성시:
+
+
+
+default row 생성
+
+
+
+default values:
+
+
+
+profileVisibility = PUBLIC
+
+allowMessages = FOLLOWERS
+
+allowComments = ALL
+
+allowMentions = ALL
+
+allowFollows = 1
+
+discoverable = 1
+
+showActivity = 1
+
+
+
+RULE :
+
+settings always exist
+
+
+
+/* ==================================================
+SECTION 11 : SETTINGS UPDATE RULE
+================================================== */
+
+update:
+
+
+
+partial update 가능
+
+
+
+RULE :
+
+patch update
+
+
+
+예:
+
+
+
+update allowMessages only
+
+
+
+/* ==================================================
+SECTION 12 : SETTINGS VALIDATION RULE
+================================================== */
+
+허용값만 가능
+
+
+
+RULE :
+
+enum validation 필요
+
+
+
+/* ==================================================
+SECTION 13 : SETTINGS CACHE RULE
+================================================== */
+
+cache 가능:
+
+
+
+settings:{channelCode}
+
+
+
+RULE :
+
+permission check fast
+
+
+
+/* ==================================================
+SECTION 14 : SETTINGS AUDIT RULE
+================================================== */
+
+future:
+
+
+
+settings history
+
+
+
+TABLE 가능:
+
+
+
+channel_settings_history
+
+
+
+RULE :
+
+change tracking 가능
+
+
+
+/* ==================================================
+SECTION 15 : INTERACTION BLOCK SETTINGS
+================================================== */
+
+future:
+
+
+
+interaction control
+
+
+
+예:
+
+
+
+comment filters
+
+keyword block
+
+
+
+TABLE 가능:
+
+
+
+channel_interaction_filters
+
+
+
+/* ==================================================
+SECTION 16 : BUSINESS CHANNEL SETTINGS
+================================================== */
+
+business channel:
+
+
+
+추가 설정 가능
+
+
+
+예:
+
+
+
+reservation enabled
+
+ads enabled
+
+
+
+COLUMN 가능:
+
+
+
+businessFeatures JSON
+
+
+
+RULE :
+
+feature toggle
+
+
+
+/* ==================================================
+SECTION 17 : NOTIFICATION SETTINGS (LINK)
+================================================== */
+
+notification settings 분리 권장
+
+
+
+TABLE :
+
+channel_notification_settings
+
+
+
+이유:
+
+
+
+column 증가 방지
+
+
+
+/* ==================================================
+SECTION 18 : FEATURE FLAGS
+================================================== */
+
+future:
+
+
+
+feature enable
+
+
+
+COLUMN 가능:
+
+
+
+features JSON
+
+
+
+예:
+
+
+
+stories enabled
+
+live enabled
+
+
+
+RULE :
+
+feature rollout 가능
+
+
+
+/* ==================================================
+SECTION 19 : SECURITY RULE
+================================================== */
+
+RULE :
+
+settings change permission 필요
+
+
+
+OWNER
+
+ADMIN
+
+
+
+RULE :
+
+self only 수정 가능
+
+
+
+/* ==================================================
+SECTION 20 : ABSOLUTE RULE
+================================================== */
+
+RULE :
+
+settings row must exist
+
+
+
+RULE :
+
+no null settings
+
+
+
+RULE :
+
+default first
+
+
+
+==================================================
+CHANNEL SETTINGS END
+==================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+      

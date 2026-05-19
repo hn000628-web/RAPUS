@@ -1,0 +1,540 @@
+/* ==================================================
+
+BACKEND ABSOLUTE RULES
+
+PLATFORM ARCHITECTURE CONSTITUTION
+
+SNAPSHOT_BACKEND_ABSOLUTE_RULE_v1
+
+================================================== */
+
+
+/* ==================================================
+
+RULE 01
+
+DOMAIN OWNERSHIP RULE
+
+================================================== */
+
+
+Each table must have one owner domain only.
+
+Example:
+
+POST domain → posts
+
+PHOTO domain → images
+
+PROFILE domain → users
+
+REGION domain → regions
+
+FEED domain → owns nothing
+
+
+
+FORBIDDEN:
+
+Multiple domains writing same table.
+
+
+
+VIOLATION:
+
+Architecture corruption.
+
+
+
+/* ==================================================
+
+RULE 02
+
+FEED READ ONLY RULE
+
+================================================== */
+
+
+Feed must never modify database.
+
+Feed must only read.
+
+Feed must never own data.
+
+Feed must never create data.
+
+
+
+FORBIDDEN:
+
+INSERT
+
+UPDATE
+
+DELETE
+
+
+
+VIOLATION:
+
+Architecture failure.
+
+
+
+/* ==================================================
+
+RULE 03
+
+CONTENT FIRST RULE
+
+================================================== */
+
+
+Content must exist before media.
+
+Post must exist before:
+
+image mapping
+engagement creation
+feed visibility
+
+
+
+RULE:
+
+Content lifecycle precedes media.
+
+
+
+VIOLATION:
+
+Broken data relation.
+
+
+
+/* ==================================================
+
+RULE 04
+
+ENGAGEMENT MANDATORY RULE
+
+================================================== */
+
+
+Every post must have engagement row.
+
+Post without engagement is invalid state.
+
+
+
+MANDATORY:
+
+create engagement after post.
+
+
+
+VIOLATION:
+
+Feed inconsistency.
+
+
+
+/* ==================================================
+
+RULE 05
+
+OPTIONAL MEDIA RULE
+
+================================================== */
+
+
+Image must never block post creation.
+
+Image failure must not rollback post.
+
+
+
+RULE:
+
+Content mandatory.
+
+Media optional.
+
+
+
+VIOLATION:
+
+UX degradation.
+
+
+
+/* ==================================================
+
+RULE 06
+
+DEPENDENCY DIRECTION RULE
+
+================================================== */
+
+
+Dependency must always flow:
+
+FOUNDATION
+
+↓
+
+IDENTITY
+
+↓
+
+MEDIA
+
+↓
+
+CONTENT
+
+↓
+
+AGGREGATION
+
+
+
+Never reverse.
+
+
+
+VIOLATION:
+
+Circular dependency risk.
+
+
+
+/* ==================================================
+
+RULE 07
+
+FOUNDATION ISOLATION RULE
+
+================================================== */
+
+
+Foundation domains must not depend on others.
+
+Example:
+
+Region must not call:
+
+post
+profile
+feed
+photo
+
+
+
+RULE:
+
+Foundation must remain isolated.
+
+
+
+VIOLATION:
+
+Platform instability.
+
+
+
+/* ==================================================
+
+RULE 08
+
+NO ORPHAN CORE DATA RULE
+
+================================================== */
+
+
+Core tables must not have orphan rows.
+
+
+
+FORBIDDEN:
+
+post without profile
+
+post without region
+
+post without engagement
+
+profile without user
+
+
+
+VIOLATION:
+
+Database corruption.
+
+
+
+/* ==================================================
+
+RULE 09
+
+SOFT DELETE FIRST RULE
+
+================================================== */
+
+
+Core data must not be hard deleted.
+
+Use status instead.
+
+Example:
+
+posts.status = INACTIVE
+
+
+
+RULE:
+
+History preservation.
+
+
+
+VIOLATION:
+
+Data loss risk.
+
+
+
+/* ==================================================
+
+RULE 10
+
+SERVICE BOUNDARY RULE
+
+================================================== */
+
+
+Service must only modify owned tables.
+
+
+
+Example:
+
+post.service → posts only
+
+profile.service → profiles only
+
+photo.service → images only
+
+
+
+FORBIDDEN:
+
+Cross domain write.
+
+
+
+VIOLATION:
+
+Domain boundary collapse.
+
+
+
+/* ==================================================
+
+RULE 11
+
+TRANSACTION SAFETY RULE
+
+================================================== */
+
+
+Critical data must be transactional.
+
+Example:
+
+post + engagement
+
+
+
+RULE:
+
+Core data must be atomic.
+
+
+
+VIOLATION:
+
+Partial state risk.
+
+
+
+/* ==================================================
+
+RULE 12
+
+FEED LAST RULE
+
+================================================== */
+
+
+Feed must always be last layer.
+
+Feed must depend on all domains.
+
+No domain must depend on Feed.
+
+
+
+VIOLATION:
+
+Architecture inversion.
+
+
+
+/* ==================================================
+
+RULE 13
+
+VALIDATION BEFORE WRITE RULE
+
+================================================== */
+
+
+All writes must validate ownership first.
+
+
+
+Example:
+
+validate profile
+
+validate region
+
+then create post.
+
+
+
+VIOLATION:
+
+Invalid FK state.
+
+
+
+/* ==================================================
+
+RULE 14
+
+ERROR ISOLATION RULE
+
+================================================== */
+
+
+Optional failures must not break core flow.
+
+
+
+Example:
+
+image fail → ignore
+
+feed fail → skip
+
+
+
+RULE:
+
+Graceful degradation.
+
+
+
+VIOLATION:
+
+Service instability.
+
+
+
+/* ==================================================
+
+RULE 15
+
+ARCHITECTURE SIMPLICITY RULE
+
+================================================== */
+
+
+Do not add domain without need.
+
+Maintain:
+
+REGION
+PROFILE
+POST
+PHOTO
+FEED
+
+
+
+RULE:
+
+Architecture must remain minimal.
+
+
+
+VIOLATION:
+
+Overengineering risk.
+
+
+
+/* ==================================================
+
+FINAL ABSOLUTE PRINCIPLE
+
+================================================== */
+
+
+REGION defines where
+
+PROFILE defines who
+
+POST defines what
+
+PHOTO defines media
+
+FEED defines view
+
+
+
+These responsibilities must never mix.
+
+
+
+/* ==================================================
+
+BACKEND CONSTITUTION SUMMARY
+
+================================================== */
+
+
+Feed reads everything.
+
+Post owns content.
+
+Photo owns media.
+
+Profile owns identity.
+
+Region owns geography.
+
+
+
+These boundaries are absolute.
+
+
+
+/* ==================================================
+
+END OF ABSOLUTE RULES
+
+================================================== */

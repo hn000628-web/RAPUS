@@ -1,0 +1,37 @@
+﻿C:\Users\kjm\social-platform\.context\index.txt
+
+※기본 모드는 수정모드(제안형): 자동 파일 수정 금지, 파일/라인 기준 수정안만 제시. 사용자가 "자동" 또는 "바로 고쳐"라고 명시할 때만 직접 수정.
+※ 기본 수정은 우선적으로 [AI]가 [파일루트안내] + [코드 출력] 해주면 [사용자가 직접 수정] = 단일 파일 기준
+※ 파일 3개이상 동시 수정은 [AI]가 [자동수정] 모드 제안/ 물론 사용자는 AI가 코드를 출력해주면 직접 수정할 수는 있음 
+
+[SNAPSHOT]
+S001-2_SNAPSHOT_서머리_BUSINESS SUMMARY PAGE
+S001_SNAPSHOT_매뉴_INFO
+S001-3_SNAPSHOT__평점시스템 규칙
+
+☆[Always]☆
+※작업 완료 후 반드시 [000_작업지시_절대규칙.txt] 기준으로 완료보고서를 제출한다.※
+※한글 코딩시 무조건 [UTF-8]로 코딩 강제규칙사항※
+000_POS UI 수정 기본 컨텍스트
+001_1_SERVER_RUN_GUIDE
+000_작업지시_절대규칙.txt
+필수_공동규칙.txt
+000_필수_API규칙_개발 절대규칙.txt
+
+AI절대규칙_SNAPSHOT BACKEND RULE VALIDATION_반드시 준수.txt
+중요_오류 수정 규칙_AI DEBUG GOLDEN RULE.txt
+개발규칙_PLATFORM ARCHITECTURE ABSOLUTE RULE SNAPSHOT.txt
+서버구성 개념도_260204_213740.txt
+
+[Backend]
+백엔드 API절대규칙.txt
+백엔드API방식규칙_스냅샷.txt
+백엔드 미디어 저장규칙.txt
+채널코드 개념_운영규칙_ChannelCode.txt
+비지니스 메뉴 포스트타입 규칙.txt
+이미지저장_MEDIA_STORAGE_STRUCTURE_SNAPSHOT.txt
+
+[DB]
+DB스키마_구조_규칙.txt
+DB&Service_init규칙.txt
+정규 _DB 스키마_init-db_14섹션_26-04-27.txt

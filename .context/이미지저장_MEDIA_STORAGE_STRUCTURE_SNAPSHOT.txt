@@ -1,0 +1,1851 @@
+==================================================
+SECTION SNAPSHOT : MEDIA STORAGE ARCHITECTURE RULE
+ROLE : ABSOLUTE IMAGE STORAGE STRUCTURE
+STATUS : PRODUCTION ARCHITECTURE STANDARD
+PRIORITY : ABSOLUTE RULE
+==================================================
+
+
+[CORE PRINCIPLE]
+
+모든 이미지 파일은 반드시 image_assets 단일 테이블에만 저장된다.
+
+어떤 도메인도 직접 파일을 저장하지 않는다.
+
+profiles / posts / blocks / channels 등
+모든 도메인은 파일을 저장하지 않고
+오직 relation table 만 가진다.
+
+
+
+==================================================
+SECTION 01 : STORAGE SINGLE SOURCE RULE
+==================================================
+
+이미지 파일 저장 책임은 오직 media domain 이 담당한다.
+
+절대 금지:
+
+profiles 테이블에 filePath 저장
+posts 테이블에 filePath 저장
+hero 테이블에 filePath 저장
+
+허용:
+
+image_assets.filePath
+
+
+구조:
+
+image_assets
+
+→ profile_avatars
+→ profile_hero_images
+→ post_images
+→ block_images
+
+
+
+==================================================
+SECTION 02 : IMAGE ASSET TABLE (MASTER STORAGE)
+==================================================
+
+TABLE image_assets
+
+id                PK
+channelCode       OWNER CHANNEL
+usageType         avatar / hero / post / block
+filePath          STORAGE PATH
+fileName          ORIGINAL NAME
+mimeType          image/webp
+fileSize          byte
+createdAt         timestamp
+
+
+설명:
+
+실제 파일 위치는 오직 image_assets 만 가진다.
+
+
+
+==================================================
+SECTION 03 : RELATION TABLE ABSOLUTE RULE
+==================================================
+
+모든 relation table 구조는 동일 패턴 사용.
+
+공통 구조:
+
+id
+profileId or postId
+imageAssetId
+createdAt
+
+절대 규칙:
+
+relation table 은 파일을 저장하지 않는다.
+파일 수정 권한 없음.
+파일 삭제 권한 없음.
+오직 연결만 관리.
+
+
+
+==================================================
+SECTION 04 : PROFILE AVATAR STRUCTURE (HERO SAME RULE)
+==================================================
+
+avatar 도 hero 와 동일한 저장구조 사용.
+
+파일 개수 제한은 DB 구조가 아니라
+Service Logic 으로 처리한다.
+
+
+TABLE profile_avatars
+
+id
+profileId
+imageAssetId
+createdAt
+
+
+정책:
+
+profileId 당 1개만 허용.
+
+
+처리 방식:
+
+새 avatar 설정 시:
+
+DELETE FROM profile_avatars
+WHERE profileId = ?
+
+
+INSERT INTO profile_avatars(
+profileId,
+imageAssetId,
+createdAt
+)
+
+VALUES(?,?,datetime('now'))
+
+
+UPDATE 사용 금지.
+
+
+
+==================================================
+SECTION 05 : HERO IMAGE STRUCTURE
+==================================================
+
+TABLE profile_hero_images
+
+id
+profileId
+imageAssetId
+sortOrder
+createdAt
+
+
+규칙:
+
+최대 개수 Service 에서 제한.
+DB 제한 금지.
+
+
+INSERT 방식만 사용.
+
+UPDATE 구조 금지.
+
+
+
+==================================================
+SECTION 06 : FILE DELETE RULE (ABSOLUTE)
+==================================================
+
+Frontend:
+
+relation 제거만 가능.
+
+profile_avatars delete
+profile_hero_images delete
+
+image_assets 삭제 금지.
+
+
+
+Admin only:
+
+image_assets 실제 삭제 가능.
+
+
+구조:
+
+USER DELETE:
+
+relation remove only
+
+
+ADMIN DELETE:
+
+relation check
+orphan detect
+file remove
+asset remove
+
+
+
+==================================================
+SECTION 07 : MEDIA WORKFLOW STANDARD
+==================================================
+
+UPLOAD FLOW:
+
+STEP 1
+
+POST /media/upload
+
+→ image_assets insert
+
+
+STEP 2
+
+RETURN assetId
+
+
+STEP 3
+
+domain relation connect
+
+PUT /profiles/avatar
+
+or
+
+PUT /profiles/hero
+
+
+절대 금지:
+
+upload + relation 동시에 처리.
+
+항상:
+
+upload → connect 분리.
+
+
+
+==================================================
+SECTION 08 : FK RULE
+==================================================
+
+모든 relation table:
+
+FOREIGN KEY(imageAssetId)
+
+REFERENCES image_assets(id)
+
+ON DELETE RESTRICT
+
+
+이유:
+
+relation 삭제 ≠ 파일 삭제
+
+
+
+==================================================
+SECTION 09 : AI IMPLEMENTATION RULE
+==================================================
+
+AI 작업 시 반드시 준수:
+
+image_assets 외 파일 저장 금지
+
+모든 이미지 저장 방식은 [히어로] 기준/ avatar 구조 hero 와 동일
+image_assets -> profile_hero_images
+image_assets -> profile_avatars
+
+relation insert only
+
+update 구조 금지
+
+파일 삭제는 admin only
+
+profile domain 은 파일 직접 관리 금지
+
+
+
+==================================================
+SECTION 10 : FINAL ARCHITECTURE MODEL
+==================================================
+
+
+IMAGE STORAGE:
+
+image_assets
+
+
+USAGE RELATION:
+
+profile_avatars
+profile_hero_images
+post_images
+block_images
+
+
+책임 분리:
+
+MEDIA → 저장
+
+DOMAIN → 연결
+
+ADMIN → 실제 삭제
+
+
+==================================================
+END OF MEDIA STORAGE ABSOLUTE RULE
+==================================================
+
+====================================================
+ROOT:
+C:\Users\kjm\social-platform\backend\uploads\
+
+FILE:
+MEDIA_STORAGE_STRUCTURE_SNAPSHOT.txt
+
+STATUS:
+PLATFORM OFFICIAL MEDIA STORAGE RULE
+PRODUCTION / DEVELOPMENT COMMON RULE
+
+
+==================================================
+RAPHA PLATFORM MEDIA STORAGE STRUCTURE v1.0
+CHANNEL BASED STORAGE POLICY
+==================================================
+
+
+[CORE PRINCIPLE]
+
+channelCode = platform absolute coordinate
+media files = channel owned resources
+storage = channelCode partition structure
+
+
+==================================================
+SECTION 01 : STORAGE ROOT STRUCTURE
+==================================================
+
+backend/uploads/{channelCode}/
+
+
+EXAMPLE:
+
+backend/uploads/KRA1B2C3D4E5/
+
+
+==================================================
+SECTION 02 : FILE NAMING POLICY
+==================================================
+
+FORMAT:
+
+{usageType}_{date}_{unique}.{ext}
+
+
+usageType:
+
+avatar
+hero
+gallery
+post
+business
+qr
+
+
+date format:
+
+YYYYMMDD_HHMMSS
+
+
+unique:
+
+random hash or short uuid
+
+
+extension:
+
+webp (default)
+jpg (legacy)
+png (legacy)
+
+
+==================================================
+SECTION 03 : OFFICIAL STORAGE EXAMPLES
+==================================================
+
+/uploads/KRA1B2C3D4E5/avatar_20260324_012530.webp
+
+/uploads/KRA1B2C3D4E5/hero_01_20260324_012531.webp
+
+/uploads/KRA1B2C3D4E5/gallery_20260324_abcd1234.webp
+
+
+==================================================
+SECTION 04 : USAGE TYPE DEFINITION
+==================================================
+
+AVATAR
+
+profile representative image
+1 active image allowed
+
+
+HERO
+
+profile cover images
+multiple allowed
+ordered display
+
+
+GALLERY
+
+profile photo album
+multiple allowed
+
+
+POST
+
+feed post images
+
+
+BUSINESS
+
+business profile images
+
+
+QR
+
+QR generated images
+
+
+==================================================
+SECTION 05 : DATABASE MAPPING POLICY
+==================================================
+
+TABLE:
+
+image_assets
+
+
+COLUMNS:
+
+id
+
+channelCode
+
+usageType
+
+fileName
+
+filePath
+
+mimeType
+
+fileSize
+
+createdAt
+
+
+RELATION:
+
+channelCode = logical ownership
+
+filePath = physical storage location
+
+
+==================================================
+SECTION 06 : STORAGE DIRECTORY RULE
+==================================================
+
+Channel isolated storage:
+
+
+backend/uploads/KRA1B2C3D4E5/
+
+
+Advantages:
+
+channel delete = folder delete
+
+channel backup = folder copy
+
+media scan = folder based
+
+cdn migration easy
+
+permission isolation possible
+
+
+==================================================
+SECTION 07 : PRODUCTION SAFETY RULE
+==================================================
+
+avatar overwrite allowed
+
+hero multiple index required
+
+gallery never overwrite
+
+post immutable storage recommended
+
+
+==================================================
+FINAL PLATFORM RULE
+==================================================
+
+FILES BELONG TO CHANNEL
+
+CHANNEL IS ABSOLUTE COORDINATE
+
+STORAGE FOLLOWS CHANNEL
+
+
+END OF SNAPSHOT
+==================================================
+
+
+ROOT:
+C:\Users\kjm\social-platform\docs\architecture\
+
+FILE:
+IMAGE_DB_STORAGE_URL_FULL_STRUCTURE_SNAPSHOT.txt
+
+STATUS:
+RAPHA PLATFORM FINAL MEDIA ARCHITECTURE
+SERVICE STANDARD STRUCTURE
+PRODUCTION READY SNAPSHOT
+
+
+==================================================
+RAPHA PLATFORM MEDIA CONNECTION STRUCTURE v1.0
+(DB + STORAGE + URL + CDN + FRONT)
+==================================================
+
+
+[CORE PRINCIPLE]
+
+channelCode = absolute owner
+image_assets = media metadata
+uploads folder = physical storage
+URL = access path
+CDN = delivery optimization
+
+FLOW:
+
+UPLOAD → STORAGE → DB SAVE → URL CREATE → CDN → FRONT DISPLAY
+
+
+==================================================
+SECTION 01 : FULL MEDIA FLOW
+==================================================
+
+USER UPLOAD
+
+↓
+
+FRONTEND
+(Next.js)
+
+↓
+
+API REQUEST
+
+↓
+
+BACKEND
+(NestJS Upload Module)
+
+↓
+
+FILE SAVE
+
+↓
+
+DATABASE RECORD
+
+↓
+
+URL GENERATION
+
+↓
+
+CDN DELIVERY
+
+↓
+
+FRONT RENDER
+
+
+==================================================
+SECTION 02 : STORAGE STRUCTURE
+==================================================
+
+PHYSICAL STORAGE:
+
+backend/uploads/{channelCode}/
+
+
+EXAMPLE:
+
+backend/uploads/KRA1B2C3D4E5/avatar_20260324_012530.webp
+
+backend/uploads/KRA1B2C3D4E5/hero_01_20260324_012531.webp
+
+backend/uploads/KRA1B2C3D4E5/gallery_20260324_abcd1234.webp
+
+
+STRUCTURE:
+
+backend/
+
+ ├ uploads/
+ │
+ ├ KRA1B2C3D4E5/
+ │   ├ avatar_20260324_012530.webp
+ │   ├ hero_01_20260324_012531.webp
+ │   ├ gallery_20260324_abcd1234.webp
+ │   ├ post_20260324_9911aa.webp
+ │   └ qr_20260324_code.webp
+
+
+==================================================
+SECTION 03 : DATABASE STRUCTURE
+==================================================
+
+TABLE:
+
+image_assets
+
+
+COLUMN STRUCTURE:
+
+id INTEGER PRIMARY KEY
+
+channelCode TEXT
+
+usageType TEXT
+
+fileName TEXT
+
+filePath TEXT
+
+mimeType TEXT
+
+fileSize INTEGER
+
+createdAt TEXT
+
+
+
+EXAMPLE RECORD:
+
+id:
+
+15
+
+
+channelCode:
+
+KRA1B2C3D4E5
+
+
+usageType:
+
+avatar
+
+
+fileName:
+
+avatar_20260324_012530.webp
+
+
+filePath:
+
+/uploads/KRA1B2C3D4E5/avatar_20260324_012530.webp
+
+
+mimeType:
+
+image/webp
+
+
+fileSize:
+
+182233
+
+
+createdAt:
+
+2026-03-24
+
+
+
+==================================================
+SECTION 04 : URL STRUCTURE
+==================================================
+
+INTERNAL FILE URL:
+
+/uploads/{channelCode}/{fileName}
+
+
+EXAMPLE:
+
+/uploads/KRA1B2C3D4E5/avatar_20260324_012530.webp
+
+
+FULL ACCESS URL:
+
+http://api.xxx.com/uploads/KRA1B2C3D4E5/avatar_20260324_012530.webp
+
+
+PROFILE URL:
+
+xxx.com/KRA1B2C3D4E5
+
+
+QR URL:
+
+xxx.com/KRA1B2C3D4E5
+
+
+
+==================================================
+SECTION 05 : CDN STRUCTURE (PRODUCTION)
+==================================================
+
+FLOW:
+
+Object Storage
+
+↓
+
+CDN Origin
+
+↓
+
+Edge Cache
+
+↓
+
+User
+
+
+EXAMPLE:
+
+STORAGE:
+
+s3://rapha-media/KRA1B2C3D4E5/avatar.webp
+
+
+CDN URL:
+
+https://cdn.xxx.com/KRA1B2C3D4E5/avatar.webp
+
+
+FRONT USE:
+
+cdn.xxx.com/KRA1B2C3D4E5/avatar.webp
+
+
+
+==================================================
+SECTION 06 : BACKEND RESPONSIBILITY
+==================================================
+
+BACKEND ROLE:
+
+1 file upload 처리
+
+2 파일명 생성
+
+3 channelCode 폴더 확인
+
+4 파일 저장
+
+5 DB 기록
+
+6 URL 반환
+
+
+UPLOAD RESPONSE:
+
+{
+
+fileName:
+
+avatar_20260324_012530.webp,
+
+filePath:
+
+/uploads/KRA1B2C3D4E5/avatar_20260324_012530.webp,
+
+url:
+
+http://api.xxx.com/uploads/KRA1B2C3D4E5/avatar_20260324_012530.webp
+
+}
+
+
+
+==================================================
+SECTION 07 : FRONTEND USAGE
+==================================================
+
+FRONT USE RULE:
+
+DB filePath 사용
+
+
+EXAMPLE:
+
+<img
+src={
+process.env.NEXT_PUBLIC_API
++
+filePath
+}
+/>
+
+
+
+EXAMPLE RESULT:
+
+http://api.xxx.com/uploads/KRA1B2C3D4E5/avatar.webp
+
+
+
+==================================================
+SECTION 08 : CHANNEL OWNERSHIP RULE
+==================================================
+
+FILES BELONG TO:
+
+channelCode
+
+
+NOT:
+
+userId
+
+
+REASON:
+
+1 profile = 1 channelCode
+
+
+ADVANTAGE:
+
+profile delete → folder delete
+
+profile backup → folder copy
+
+ownership clear
+
+data isolation
+
+
+==================================================
+SECTION 09 : DELETE POLICY
+==================================================
+
+PROFILE DELETE:
+
+DELETE DB RECORD
+
+↓
+
+DELETE STORAGE FOLDER:
+
+backend/uploads/KRA1B2C3D4E5/
+
+
+MEDIA DELETE:
+
+DELETE image_assets row
+
+↓
+
+DELETE file
+
+
+==================================================
+SECTION 10 : FINAL SERVICE ARCHITECTURE
+==================================================
+
+MEDIA CONNECTION MAP:
+
+
+FRONTEND
+
+↓
+
+API
+
+↓
+
+UPLOAD MODULE
+
+↓
+
+STORAGE
+
+↓
+
+DATABASE
+
+↓
+
+URL
+
+↓
+
+CDN
+
+↓
+
+FRONT DISPLAY
+
+
+
+==================================================
+FINAL PLATFORM MEDIA RULE
+==================================================
+
+MEDIA OWNER:
+
+channelCode
+
+
+STORAGE RULE:
+
+channel partition structure
+
+
+DB RULE:
+
+metadata only
+
+
+URL RULE:
+
+filePath reference
+
+
+DELIVERY RULE:
+
+CDN optional
+
+
+ARCHITECTURE PRINCIPLE:
+
+CHANNEL = ROOT
+MEDIA = RESOURCE
+DB = INDEX
+STORAGE = REAL DATA
+
+
+==================================================
+END OF SNAPSHOT
+==================================================
+
+
+ROOT:
+C:\Users\kjm\social-platform\docs\architecture\
+
+FILE:
+IMAGE_SYSTEM_PRODUCTION_FINAL_SNAPSHOT.txt
+
+STATUS:
+RAPHA PLATFORM MEDIA SYSTEM FINAL
+PRODUCTION SERVICE STANDARD
+DB + STORAGE + URL + CDN + DELIVERY FULL SNAPSHOT
+
+
+==================================================
+RAPHA PLATFORM IMAGE SYSTEM FINAL SNAPSHOT v2.0
+PRODUCTION SERVICE APPLIED STRUCTURE
+==================================================
+
+
+[CORE PRINCIPLE]
+
+channelCode = absolute channel owner
+image_assets = media metadata index
+storage = physical file location
+cdn = delivery layer
+frontend = url consumer only
+
+FINAL FLOW:
+
+UPLOAD
+→ BACKEND SAVE
+→ STORAGE WRITE
+→ DB RECORD
+→ PUBLIC URL BUILD
+→ CDN DELIVERY
+→ FRONT DISPLAY
+
+
+==================================================
+SECTION 01 : ABSOLUTE PLATFORM RULE
+==================================================
+
+1. 모든 이미지 소유권은 userId가 아니라 channelCode 기준이다
+
+2. 이미지 물리 저장 위치는 channelCode 폴더 기준으로 분리한다
+
+3. DB는 이미지 바이너리 저장 금지
+   DB는 메타데이터만 저장한다
+
+4. 프론트는 DB 직접 접근 금지
+   API 또는 반환 URL만 사용한다
+
+5. 파일 URL은 고정 문자열 저장보다
+   BASE URL + relativePath 조합 구조가 우선이다
+
+6. 개발환경과 운영환경은 storage provider만 다르고
+   논리 구조는 동일해야 한다
+
+
+==================================================
+SECTION 02 : FINAL OWNER STRUCTURE
+==================================================
+
+OWNER:
+
+channelCode
+
+
+REASON:
+
+channelCode = 플랫폼 절대 좌표
+profile = channelCode 1개 보유
+media = 해당 channel resource
+
+
+RULE:
+
+FILES BELONG TO CHANNEL
+
+NOT:
+
+FILES BELONG TO USER
+
+
+EXAMPLE:
+
+channelCode:
+KRA1B2C3D4E5
+
+owner folder:
+backend/uploads/KRA1B2C3D4E5/
+
+
+==================================================
+SECTION 03 : DEVELOPMENT STORAGE STRUCTURE
+==================================================
+
+ROOT:
+C:\Users\kjm\social-platform\backend\uploads\
+
+
+STRUCTURE:
+
+backend/uploads/{channelCode}/
+
+
+EXAMPLE:
+
+backend/uploads/KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp
+
+backend/uploads/KRA1B2C3D4E5/hero_01_20260324_012531_c3d4.webp
+
+backend/uploads/KRA1B2C3D4E5/gallery_20260324_012800_e5f6.webp
+
+backend/uploads/KRA1B2C3D4E5/post_20260324_013000_g7h8.webp
+
+backend/uploads/KRA1B2C3D4E5/business_20260324_013100_i9j0.webp
+
+backend/uploads/KRA1B2C3D4E5/qr_20260324_013200_k1l2.webp
+
+
+DEVELOPMENT RULE:
+
+로컬 / 테스트 / MVP 단계에서는
+backend uploads direct serving 허용
+
+
+==================================================
+SECTION 04 : PRODUCTION STORAGE STRUCTURE
+==================================================
+
+PRODUCTION STORAGE:
+
+object storage 사용
+
+
+EXAMPLE:
+
+s3://rapha-media/{channelCode}/{fileName}
+
+
+REAL EXAMPLE:
+
+s3://rapha-media/KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp
+
+s3://rapha-media/KRA1B2C3D4E5/hero_01_20260324_012531_c3d4.webp
+
+
+RULE:
+
+개발:
+backend/uploads/{channelCode}/
+
+운영:
+object-storage-bucket/{channelCode}/{fileName}
+
+
+IMPORTANT:
+
+개발 / 운영 모두
+논리 path 구조는 동일하게 유지한다
+
+
+==================================================
+SECTION 05 : FILE NAMING POLICY
+==================================================
+
+FORMAT:
+
+{usageType}_{date}_{unique}.{ext}
+
+
+usageType:
+
+avatar
+hero
+gallery
+post
+business
+qr
+
+
+date format:
+
+YYYYMMDD_HHMMSS
+
+
+unique:
+
+short hash or uuid short token
+
+
+extension standard:
+
+webp
+
+
+legacy allowed:
+
+jpg
+jpeg
+png
+
+
+OFFICIAL EXAMPLE:
+
+avatar_20260324_012530_a1b2.webp
+hero_01_20260324_012531_c3d4.webp
+gallery_20260324_012800_e5f6.webp
+post_20260324_013000_g7h8.webp
+
+
+RULE:
+
+1. 파일명 중복 금지
+2. avatar는 overwrite 허용 가능
+3. gallery / post는 immutable 저장 권장
+4. 운영에서는 webp 기본 강제 권장
+
+
+==================================================
+SECTION 06 : USAGE TYPE POLICY
+==================================================
+
+AVATAR
+
+대표 프로필 이미지
+1 active image
+overwrite 가능
+
+
+HERO
+
+커버 / 메인 슬라이드
+multiple allowed
+sort order 필요
+
+
+GALLERY
+
+프로필 사진첩
+multiple allowed
+never overwrite
+
+
+POST
+
+피드 게시물 이미지
+immutable 권장
+
+
+BUSINESS
+
+비즈니스 프로필 이미지
+multiple allowed
+
+
+QR
+
+QR 렌더링 또는 다운로드 이미지
+재생성 가능
+
+
+==================================================
+SECTION 07 : DATABASE FINAL POLICY
+==================================================
+
+TABLE:
+
+image_assets
+
+
+FINAL COLUMN STANDARD:
+
+id INTEGER PRIMARY KEY
+
+channelCode TEXT NOT NULL
+
+usageType TEXT NOT NULL
+
+fileName TEXT NOT NULL
+
+filePath TEXT NOT NULL
+
+mimeType TEXT
+
+fileSize INTEGER
+
+width INTEGER
+
+height INTEGER
+
+createdAt TEXT
+
+
+DESCRIPTION:
+
+channelCode:
+논리 소유권
+
+usageType:
+avatar / hero / gallery / post / business / qr
+
+fileName:
+실제 저장 파일명
+
+filePath:
+상대 경로 저장
+
+mimeType:
+image/webp 등
+
+fileSize:
+바이트 크기
+
+width / height:
+렌더링 최적화용 메타데이터
+
+
+==================================================
+SECTION 08 : DB PATH STORAGE RULE
+==================================================
+
+ABSOLUTE RULE:
+
+DB에는 full URL 저장 금지
+DB에는 로컬 절대경로 저장 금지
+
+
+GOOD:
+
+filePath:
+
+KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp
+
+
+ALLOWED DEV STYLE:
+
+/uploads/KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp
+
+
+BEST PRACTICE FINAL:
+
+KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp
+
+
+BAD:
+
+C:\Users\kjm\social-platform\backend\uploads\KRA1B2C3D4E5\avatar.webp
+
+https://cdn.xxx.com/KRA1B2C3D4E5/avatar.webp
+
+http://api.xxx.com/uploads/KRA1B2C3D4E5/avatar.webp
+
+
+REASON:
+
+storage provider / domain / cdn 변경 시
+DB 수정 없이 유지되어야 한다
+
+
+==================================================
+SECTION 09 : DATABASE INDEX POLICY
+==================================================
+
+REQUIRED INDEX:
+
+INDEX(channelCode)
+
+INDEX(usageType)
+
+INDEX(channelCode, usageType)
+
+INDEX(createdAt)
+
+
+OPTIONAL INDEX:
+
+INDEX(fileName)
+
+INDEX(channelCode, createdAt)
+
+
+PURPOSE:
+
+avatar 조회
+hero 목록 조회
+gallery 목록 조회
+post 이미지 조회
+channel media cleanup
+backup scan
+
+
+==================================================
+SECTION 10 : URL STRUCTURE
+==================================================
+
+DB SAVED PATH:
+
+KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp
+
+
+DEVELOPMENT URL:
+
+http://localhost:4000/uploads/KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp
+
+
+PRODUCTION API URL:
+
+https://api.xxx.com/uploads/KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp
+
+
+PRODUCTION CDN URL:
+
+https://cdn.xxx.com/KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp
+
+
+FINAL RULE:
+
+FRONT는
+BASE_MEDIA_URL + filePath
+조합으로 사용
+
+
+==================================================
+SECTION 11 : ENVIRONMENT URL POLICY
+==================================================
+
+DEVELOPMENT ENV:
+
+MEDIA_BASE_URL=http://localhost:4000/uploads/
+
+
+PRODUCTION ENV:
+
+MEDIA_BASE_URL=https://cdn.xxx.com/
+
+
+FRONT RENDER FORMULA:
+
+MEDIA_BASE_URL + filePath
+
+
+EXAMPLE RESULT:
+
+https://cdn.xxx.com/KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp
+
+
+ADVANTAGE:
+
+1. 도메인 변경 쉬움
+2. CDN 교체 쉬움
+3. storage migration 쉬움
+4. DB 무수정 유지 가능
+
+
+==================================================
+SECTION 12 : BACKEND RESPONSIBILITY
+==================================================
+
+BACKEND ROLE:
+
+1. 업로드 파일 수신
+2. channelCode 검증
+3. usageType 검증
+4. 파일명 생성
+5. image 변환 처리
+6. storage 저장
+7. DB metadata 저장
+8. filePath 반환
+9. public url 조립 또는 response 포함
+
+
+BACKEND MUST NOT:
+
+1. DB에 binary 저장 금지
+2. frontend에 storage 내부 절대경로 노출 금지
+3. channelName 기준으로 저장 금지
+
+
+UPLOAD RESPONSE EXAMPLE:
+
+{
+  "id": 15,
+  "channelCode": "KRA1B2C3D4E5",
+  "usageType": "avatar",
+  "fileName": "avatar_20260324_012530_a1b2.webp",
+  "filePath": "KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp",
+  "url": "https://cdn.xxx.com/KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp"
+}
+
+
+==================================================
+SECTION 13 : FRONTEND RESPONSIBILITY
+==================================================
+
+FRONT ROLE:
+
+1. 업로드 요청
+2. 반환된 filePath 또는 url 사용
+3. 이미지 렌더링
+4. 정렬 / 대표 선택 / 삭제 요청
+
+
+FRONT MUST NOT:
+
+1. DB 구조 직접 해석 금지
+2. storage 경로 임의 생성 금지
+3. channelCode 없이 로컬 경로 추론 금지
+
+
+FRONT DISPLAY RULE:
+
+img src =
+MEDIA_BASE_URL + filePath
+
+
+EXAMPLE:
+
+https://cdn.xxx.com/KRA1B2C3D4E5/avatar_20260324_012530_a1b2.webp
+
+
+==================================================
+SECTION 14 : CDN POLICY
+==================================================
+
+PRODUCTION DELIVERY FLOW:
+
+User
+→ CDN Edge
+→ Cache Hit
+→ User
+
+Cache Miss
+→ Object Storage Origin
+→ CDN Cache
+→ User
+
+
+CDN ROLE:
+
+1. 이미지 캐시
+2. 지역별 속도 최적화
+3. backend 부하 감소
+4. 트래픽 비용 절감
+
+
+RULE:
+
+운영에서는 이미지 직접 backend 서빙보다
+CDN 앞단 구성이 우선
+
+
+==================================================
+SECTION 15 : OBJECT STORAGE POLICY
+==================================================
+
+OBJECT STORAGE ROLE:
+
+1. 원본 파일 저장
+2. 영구 보관
+3. CDN origin
+4. 멀티 서버 환경 대응
+
+
+RULE:
+
+API 서버는 이미지 binary 장기 저장소가 아니다
+
+API 서버는
+업로드 처리 / 메타 저장 / URL 반환 역할
+
+
+RECOMMENDED PROVIDER:
+
+S3 compatible storage
+
+
+==================================================
+SECTION 16 : DELETE POLICY
+==================================================
+
+IMAGE DELETE FLOW:
+
+DELETE request
+→ DB row delete or inactive 처리
+→ storage object delete
+→ CDN cache expire
+
+
+PROFILE DELETE FLOW:
+
+profile delete
+→ channelCode 기준 media row delete
+→ storage folder / prefix delete
+→ cache purge
+
+
+RULE:
+
+channel delete = channel media cleanup 가능해야 함
+
+
+==================================================
+SECTION 17 : UPDATE POLICY
+==================================================
+
+AVATAR UPDATE:
+
+old avatar inactive or overwrite
+→ new avatar 저장
+→ profile representative image 변경
+
+
+HERO UPDATE:
+
+sortOrder 기준 교체 가능
+multiple 유지
+
+
+GALLERY UPDATE:
+
+append only 권장
+기존 파일 덮어쓰기 금지
+
+
+POST IMAGE UPDATE:
+
+immutable 권장
+수정 대신 신규 생성이 안전
+
+
+==================================================
+SECTION 18 : CACHE POLICY
+==================================================
+
+AVATAR:
+
+짧은 캐시 또는 versioned filename 권장
+
+
+HERO / GALLERY / POST:
+
+긴 캐시 허용
+
+
+RULE:
+
+파일명 변경 기반 cache busting 우선
+
+
+BAD:
+
+같은 파일명 계속 덮어쓰기
+
+
+GOOD:
+
+avatar_20260324_012530_a1b2.webp
+avatar_20260325_091010_z9y8.webp
+
+
+==================================================
+SECTION 19 : IMAGE PROCESSING POLICY
+==================================================
+
+RECOMMENDED:
+
+1. 업로드 후 webp 변환
+2. width / height 저장
+3. thumbnail variant 생성 가능
+4. 원본 과도한 용량 제한
+5. mime type 검증
+6. 확장자만 믿지 말고 실제 파일 검증
+
+
+THUMBNAIL OPTIONAL STRUCTURE:
+
+KRA1B2C3D4E5/thumb_avatar_20260324_012530_a1b2.webp
+
+KRA1B2C3D4E5/thumb_post_20260324_013000_g7h8.webp
+
+
+==================================================
+SECTION 20 : SECURITY POLICY
+==================================================
+
+SECURITY RULE:
+
+1. 업로드 허용 mime 제한
+2. 실행파일 업로드 금지
+3. channelCode 권한 검증 필수
+4. 타 채널 폴더 업로드 금지
+5. 파일 크기 제한 필수
+6. 랜덤 파일명 사용 필수
+
+
+FORBIDDEN:
+
+original client filename direct use
+
+reason:
+충돌 / 보안 / 인코딩 문제
+
+
+==================================================
+SECTION 21 : BACKUP POLICY
+==================================================
+
+BACKUP UNIT:
+
+channelCode prefix
+
+
+EXAMPLE:
+
+KRA1B2C3D4E5/
+
+
+ADVANTAGE:
+
+1. channel 단위 백업
+2. channel 단위 복구
+3. 계정 이관 구조 대응 쉬움
+4. 미디어 이동 간단
+
+
+==================================================
+SECTION 22 : MIGRATION POLICY
+==================================================
+
+CURRENT:
+
+backend/uploads/{channelCode}/{fileName}
+
+
+TARGET:
+
+object-storage/{channelCode}/{fileName}
+
+
+MIGRATION RULE:
+
+DB filePath 구조 유지
+BASE URL만 변경
+
+
+EXAMPLE:
+
+DB:
+KRA1B2C3D4E5/avatar.webp
+
+DEV:
+http://localhost:4000/uploads/KRA1B2C3D4E5/avatar.webp
+
+PROD:
+https://cdn.xxx.com/KRA1B2C3D4E5/avatar.webp
+
+
+RESULT:
+
+DB migration 최소화
+frontend code change 최소화
+
+
+==================================================
+SECTION 23 : SERVICE FINAL CONNECTION FLOW
+==================================================
+
+FRONTEND
+(Upload UI / Image Viewer)
+
+↓
+
+API
+(Upload endpoint / image metadata endpoint)
+
+↓
+
+BACKEND SERVICE
+(validation / naming / conversion / save)
+
+↓
+
+STORAGE
+(local or object storage)
+
+↓
+
+DATABASE
+(image_assets metadata save)
+
+↓
+
+URL BUILD
+(base url + filePath)
+
+↓
+
+CDN
+(production delivery)
+
+↓
+
+FRONT DISPLAY
+
+
+==================================================
+SECTION 24 : FINAL PRODUCTION DECISION
+==================================================
+
+DEVELOPMENT STANDARD:
+
+backend/uploads/{channelCode}/
++ API static serving
+
+
+PRODUCTION STANDARD:
+
+object storage
++ CDN delivery
++ DB relative path save
++ channelCode ownership
+
+
+DB FINAL RULE:
+
+DB stores metadata only
+
+
+STORAGE FINAL RULE:
+
+binary files in storage only
+
+
+URL FINAL RULE:
+
+BASE_MEDIA_URL + filePath
+
+
+OWNERSHIP FINAL RULE:
+
+channelCode is absolute media owner
+
+
+==================================================
+SECTION 25 : FINAL IMPLEMENTATION CHECKLIST
+==================================================
+
+[ ] image_assets 에 channelCode 존재
+[ ] image_assets 에 usageType 존재
+[ ] image_assets 에 fileName 존재
+[ ] image_assets 에 filePath 존재
+[ ] filePath 는 상대경로 저장
+[ ] backend uploads 는 channelCode 폴더 구조
+[ ] 운영은 object storage prefix 구조 동일 유지
+[ ] frontend 는 BASE_MEDIA_URL + filePath 사용
+[ ] CDN 적용 가능 구조
+[ ] avatar / hero / gallery / post usageType 분리
+[ ] webp 기본 처리
+[ ] mime / size 검증 적용
+[ ] 삭제시 DB + storage 동기화
+[ ] channel delete 시 prefix cleanup 가능
+
+
+==================================================
+FINAL DECLARATION
+==================================================
+
+실서비스에서 적용되어야 하는 최종 구조는
+
+1. channelCode 기반 미디어 소유권
+2. storage 분리 구조
+3. DB 상대경로 저장
+4. URL 조립 방식 통일
+5. object storage + CDN 전환 가능 구조
+
+이다.
+
+즉,
+
+개발 구조와 서비스 구조는
+물리 저장소만 달라지고
+
+논리 구조는 동일해야 한다.
+
+
+==================================================
+END OF SNAPSHOT
+==================================================

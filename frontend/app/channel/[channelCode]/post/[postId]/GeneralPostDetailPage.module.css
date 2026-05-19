@@ -1,0 +1,694 @@
+/* FILE : frontend/app/channel/[channelCode]/post/[postId]/GeneralPostDetailPage.module.css */
+/* ROOT : C:\Users\kjm\social-platform\frontend\app\channel\[channelCode]\post\[postId]\GeneralPostDetailPage.module.css */
+/* STATUS : FINAL MODIFIED */
+/* ROLE : PUBLIC GENERAL POST DETAIL PAGE STYLE */
+/* CHANGE SUMMARY :
+- 모바일에서 공유하기 / 좋아요 버튼을 1행 2칸으로 변경
+- 기존 mobile .bottomActions 1열 전환 제거
+- small mobile에서도 공유하기 / 좋아요 2칸 유지
+- 모바일 조회 / 반응 / 댓글 1행 3칸 유지
+- PC / Tablet / Mobile 반응형 구조 유지
+- PC : 좌측 미디어 / 우측 게시물 정보 2칼럼
+- Tablet : 1칼럼 전환
+- Mobile : 1칼럼 + 이미지 16:9 + 반응 카드 1행 3칸 + 하단 버튼 1행 2칸
+- PRODUCT / EVENT와 분리된 GENERAL 상세 스타일 유지
+- API / DB / Service 영향 없음
+*/
+
+/* SECTION 01 : PAGE */
+
+.page {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #111827;
+  font-family:
+    Arial,
+    Helvetica,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 72px;
+  padding: 0 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #eef0f4;
+  background: #ffffff;
+}
+
+.logo {
+  color: #000000;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #111827;
+  font-size: 14px;
+}
+
+.locationDot {
+  color: #ec407a;
+  font-size: 14px;
+}
+
+.locationText {
+  font-weight: 700;
+}
+
+.loginButton {
+  height: 34px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* SECTION 02 : LAYOUT */
+
+.shell {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 34px 24px 80px;
+  box-sizing: border-box;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(380px, 0.82fr);
+  gap: 34px;
+  align-items: start;
+}
+
+.mediaColumn {
+  min-width: 0;
+}
+
+.infoColumn {
+  min-width: 0;
+  padding-top: 6px;
+}
+
+/* SECTION 03 : MEDIA */
+
+.mediaFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f3f4f6;
+}
+
+.mainImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.mediaNavButton {
+  position: absolute;
+  top: 50%;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.72);
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 32px;
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.mediaNavButtonLeft {
+  left: 16px;
+}
+
+.mediaNavButtonRight {
+  right: 16px;
+}
+
+.mediaCount {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.82);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.thumbnailRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.thumbnailButton {
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: #f3f4f6;
+  cursor: pointer;
+}
+
+.thumbnailButtonActive {
+  border-color: #111827;
+}
+
+.thumbnailImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* SECTION 04 : POST CONTENT */
+
+.postCard {
+  padding-top: 0;
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tag {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.categoryText {
+  margin: 0 0 8px;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.postTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.05em;
+}
+
+.authorBox {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.avatarBox {
+  width: 60px;
+  height: 60px;
+  flex: 0 0 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.avatarText {
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.avatarSubText {
+  color: #16a34a;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.authorInfo {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.authorName {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.authorMeta {
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.createdAt {
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.divider {
+  height: 1px;
+  margin: 28px 0;
+  background: #edf0f5;
+}
+
+/* SECTION 05 : BODY */
+
+.contentSection {
+  margin-top: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 12px;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.contentText {
+  margin: 0;
+  color: #4b5563;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.85;
+  white-space: pre-line;
+}
+
+/* SECTION 06 : REACTION */
+
+.reactionSection {
+  margin-top: 24px;
+}
+
+.reactionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.reactionBox {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.reactionLabel {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.reactionValue {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+/* SECTION 07 : COMMENT */
+
+.commentPreviewSection {
+  margin-top: 24px;
+}
+
+.commentPreviewBox {
+  min-height: 96px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fafafa;
+}
+
+.commentPreviewTitle {
+  color: #111827;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.commentPreviewText {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.commentButton {
+  flex-shrink: 0;
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* SECTION 08 : ACTIONS */
+
+.bottomActions {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+.outlineButton {
+  height: 54px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.darkButton {
+  height: 54px;
+  border: none;
+  border-radius: 12px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* SECTION 09 : DEBUG */
+
+.debugBox {
+  margin-top: 18px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #edf0f5;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* SECTION 10 : TABLET */
+
+@media (max-width: 1023px) {
+  .shell {
+    max-width: 760px;
+    padding: 24px 18px 72px;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+
+  .infoColumn {
+    padding-top: 0;
+  }
+
+  .mediaFrame {
+    aspect-ratio: 16 / 10;
+    border-radius: 14px;
+  }
+
+  .postTitle {
+    font-size: 32px;
+  }
+}
+
+/* SECTION 11 : MOBILE */
+
+@media (max-width: 767px) {
+  .header {
+    height: 60px;
+    padding: 0 16px;
+  }
+
+  .logo {
+    font-size: 16px;
+  }
+
+  .headerRight {
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .loginButton {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+
+  .shell {
+    max-width: none;
+    padding: 0 0 48px;
+  }
+
+  .layout {
+    gap: 0;
+  }
+
+  .mediaColumn {
+    width: 100%;
+  }
+
+  .mediaFrame {
+    aspect-ratio: 16 / 9;
+    border: none;
+    border-radius: 0;
+  }
+
+  .mediaNavButton {
+    width: 36px;
+    height: 36px;
+    font-size: 28px;
+    line-height: 28px;
+  }
+
+  .mediaNavButtonLeft {
+    left: 12px;
+  }
+
+  .mediaNavButtonRight {
+    right: 12px;
+  }
+
+  .mediaCount {
+    right: 12px;
+    bottom: 12px;
+    font-size: 12px;
+  }
+
+  .thumbnailRow {
+    gap: 8px;
+    margin: 10px 14px 0;
+  }
+
+  .thumbnailButton {
+    border-radius: 9px;
+  }
+
+  .infoColumn {
+    padding: 22px 18px 0;
+  }
+
+  .tagRow {
+    margin-bottom: 12px;
+  }
+
+  .tag {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .categoryText {
+    font-size: 13px;
+  }
+
+  .postTitle {
+    font-size: 30px;
+  }
+
+  .authorBox {
+    margin-top: 18px;
+  }
+
+  .divider {
+    margin: 24px 0;
+  }
+
+  .reactionGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .reactionBox {
+    min-width: 0;
+    padding: 12px 10px;
+    gap: 5px;
+    border-radius: 12px;
+  }
+
+  .reactionLabel {
+    font-size: 11px;
+  }
+
+  .reactionValue {
+    font-size: 13px;
+    line-height: 1.25;
+    word-break: keep-all;
+  }
+
+  .commentPreviewBox {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .commentButton {
+    width: 100%;
+  }
+
+  .bottomActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .outlineButton,
+  .darkButton {
+    height: 52px;
+    font-size: 15px;
+  }
+
+  .debugBox {
+    display: none;
+  }
+}
+
+/* SECTION 12 : SMALL MOBILE */
+
+@media (max-width: 420px) {
+  .headerRight {
+    gap: 6px;
+  }
+
+  .locationText {
+    max-width: 54px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .thumbnailRow {
+    gap: 6px;
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+
+  .infoColumn {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .postTitle {
+    font-size: 28px;
+  }
+
+  .reactionGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .reactionBox {
+    padding: 10px 8px;
+    border-radius: 10px;
+  }
+
+  .reactionLabel {
+    font-size: 10px;
+  }
+
+  .reactionValue {
+    font-size: 12px;
+  }
+
+  .bottomActions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .outlineButton,
+  .darkButton {
+    height: 50px;
+    font-size: 14px;
+  }
+}
+
+/* SECTION 13 : VALIDATION */
+
+/*
+VALIDATION:
+- 단일 CSS 파일 통코드 출력
+- 모바일 공유하기 / 좋아요 1행 2칸 변경 완료
+- small mobile 공유하기 / 좋아요 1행 2칸 유지 완료
+- 모바일 조회 / 반응 / 댓글 1행 3칸 유지 완료
+- 기존 mobile .bottomActions 1fr 제거 완료
+- mobile button height / font-size 보정 완료
+- PC 2컬럼 구조 유지
+- Tablet 1컬럼 구조 유지
+- Mobile 1컬럼 구조 유지
+- Mobile hero image 16:9 적용 유지
+- Mobile thumbnail 3칸 유지
+- 일반 포스트 본문 / 반응 / 댓글 영역 구성 유지
+- API / DB / Service 영향 없음
+*/

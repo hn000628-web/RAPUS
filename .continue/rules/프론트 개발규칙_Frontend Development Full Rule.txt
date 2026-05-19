@@ -1,0 +1,535 @@
+==================================================
+FRONTEND DEVELOPMENT MASTER SNAPSHOT v1.0
+(프론트 개발 규칙 풀세트 - 완전체)
+==================================================
+
+DOMAIN:
+
+Frontend System
+
+SCOPE:
+
+전체 Frontend 개발
+
+page
+component
+ui block
+admin
+api route
+
+STATUS:
+
+OFFICIAL FRONTEND DEVELOPMENT RULE
+
+==================================================
+SECTION 0
+CORE PRINCIPLE
+==================================================
+
+Frontend 개발 목표:
+
+구조 안정성
+누락 방지
+수정 용이성
+UI 유지보수성
+통코드 안정성
+
+Frontend는:
+
+UI 구조 유지 기반 개발.
+
+기존 UX 영향 금지.
+
+==================================================
+SECTION 1
+MANDATORY PRE CHECK RULE
+==================================================
+
+코드 생성 전 반드시 확인:
+
+1 프로젝트 규칙 파일
+
+AI Constitution
+
+Frontend 통코드 규칙
+
+Backend Snapshot
+
+DB Snapshot
+
+2 기존 코드 확보
+
+전체 코드 필수.
+
+부분 코드:
+
+출력 금지.
+
+3 Folder 구조 확인
+
+경로 없으면:
+
+출력 금지.
+
+==================================================
+SECTION 2
+FRONTEND FOLDER STRUCTURE STANDARD
+==================================================
+
+표준 구조:
+
+frontend/
+
+app/
+
+profile/
+
+page.tsx
+
+components/
+
+profile/
+
+BasicInfoSection.tsx
+
+AvatarSection.tsx
+
+CoverSection.tsx
+
+shared/
+
+ui/
+
+Button.tsx
+
+Card.tsx
+
+types/
+
+profile.ts
+
+api/
+
+profile.api.ts
+
+utils/
+
+format.ts
+
+구조 변경 금지.
+
+==================================================
+SECTION 3
+PAGE STRUCTURE STANDARD
+==================================================
+
+모든 page.tsx 구조:
+
+SECTION 1 IMPORT
+
+SECTION 2 TYPE
+
+SECTION 3 CONSTANT
+
+SECTION 4 STATE
+
+SECTION 5 DATA FUNCTION
+
+SECTION 6 EVENT FUNCTION
+
+SECTION 7 EFFECT
+
+SECTION 8 UI BLOCK
+
+SECTION 9 RETURN
+
+SECTION 없는 코드:
+
+통코드 수정 불가.
+
+==================================================
+SECTION 4
+COMPONENT STRUCTURE STANDARD
+==================================================
+
+모든 component 구조:
+
+IMPORT
+
+TYPE
+
+PROPS
+
+STATE
+
+FUNCTION
+
+RETURN
+
+허용:
+
+단일 책임 구조.
+
+금지:
+
+다중 역할 component.
+
+==================================================
+SECTION 5
+CODE ORDER RULE
+==================================================
+
+순서 고정:
+
+1 IMPORT
+
+2 TYPE
+
+3 CONSTANT
+
+4 STATE
+
+5 DATA
+
+6 EVENT
+
+7 EFFECT
+
+8 UI
+
+9 RETURN
+
+순서 변경 금지.
+
+==================================================
+SECTION 6
+OMISSION CHECK RULE
+==================================================
+
+출력 전 반드시 검증:
+
+[ ] 기존 import 유지
+
+[ ] 기존 state 유지
+
+[ ] 기존 effect 유지
+
+[ ] 기존 api 유지
+
+[ ] 기존 component 유지
+
+[ ] 기존 event 유지
+
+[ ] 기존 validation 유지
+
+[ ] 기존 loading 유지
+
+[ ] 기존 error 유지
+
+[ ] 기존 router 유지
+
+누락 발견:
+
+출력 금지.
+
+==================================================
+SECTION 7
+FULL CODE RULE
+==================================================
+
+수정 방식:
+
+ADD ONLY.
+
+허용:
+
+기존 코드 +
+추가 코드
+
+금지:
+
+삭제
+
+축소
+
+replace
+
+로직 변경
+
+즉:
+
+OLD CODE 100%
+
++
+
+ADD
+
+=
+
+FULL CODE
+
+==================================================
+SECTION 8
+LINE VALIDATION RULE
+==================================================
+
+출력시 반드시:
+
+FILE PATH
+
+OLD LINES
+
+NEW LINES
+
+누락 없음 선언
+
+라인 감소:
+
+FAIL.
+
+라인 증가:
+
+PASS.
+
+==================================================
+SECTION 9
+FRONTEND 7 STEP EXECUTION RULE
+==================================================
+
+Frontend 코드 생성시:
+
+STEP 1
+
+규칙 확인
+
+STEP 2
+
+Snapshot 확인
+
+STEP 3
+
+DB 영향 확인
+
+STEP 4
+
+기존 코드 확보
+
+STEP 5
+
+누락 점검
+
+STEP 6
+
+구조 검증
+
+STEP 7
+
+통코드 출력
+
+순서 변경 금지.
+
+==================================================
+SECTION 10
+UI STABILITY RULE
+==================================================
+
+Frontend 수정시:
+
+UI 깨짐 금지.
+
+layout 유지.
+
+style 유지.
+
+UX flow 유지.
+
+==================================================
+SECTION 11
+STATE MANAGEMENT RULE
+==================================================
+
+State 규칙:
+
+state 최소화.
+
+중복 state 금지.
+
+derived state 금지.
+
+loading state 필수.
+
+error state 권장.
+
+==================================================
+SECTION 12
+API CALL RULE
+==================================================
+
+API 호출 규칙:
+
+API_BASE constant 사용.
+
+직접 URL 금지.
+
+loading 처리 필수.
+
+error 처리 필수.
+
+==================================================
+SECTION 13
+COMPONENT SPLIT RULE
+==================================================
+
+Component 분리 기준:
+
+300 lines 초과:
+
+분리.
+
+기능 2개 이상:
+
+분리.
+
+UI block 반복:
+
+분리.
+
+==================================================
+SECTION 14
+FRONTEND QUALITY RULE
+==================================================
+
+GRADE A
+
+Production Ready
+
+조건:
+
+누락 없음
+
+구조 정상
+
+UI 안정
+
+GRADE B
+
+테스트 필요
+
+GRADE C
+
+누락 존재
+
+사용 금지.
+
+==================================================
+SECTION 15
+AUTO STOP CONDITION
+==================================================
+
+즉시 중단:
+
+기존 코드 없음
+
+DB 구조 불명확
+
+Snapshot 없음
+
+Folder 없음
+
+누락 발생
+
+규칙 충돌
+
+발생시:
+
+출력 중단.
+
+==================================================
+SECTION 16
+MANDATORY OUTPUT FORMAT
+==================================================
+
+출력 구조:
+
+FILE:
+
+frontend/app/profile/page.tsx
+
+OLD:
+
+≈ XXX
+
+NEW:
+
+≈ XXX
+
+누락 없음 확인.
+
+전체 통코드 출력.
+
+==================================================
+SECTION 17
+ABSOLUTE PROHIBITION
+==================================================
+
+AI 금지:
+
+부분 코드 출력
+
+기존 UI 삭제
+
+CSS 삭제
+
+state 삭제
+
+api 삭제
+
+effect 삭제
+
+component 삭제
+
+event 삭제
+
+허용:
+
+ADD ONLY.
+
+==================================================
+SECTION 18
+FRONTEND DEVELOPMENT PRIORITY
+==================================================
+
+개발 우선순위:
+
+1 UI 구조
+
+2 UX flow
+
+3 state 구조
+
+4 api 연결
+
+5 optimization
+
+==================================================
+SECTION 19
+STATUS DECLARATION
+==================================================
+
+본 규칙은:
+
+FRONTEND DEVELOPMENT MASTER RULE
+
+로 고정.
+
+이후:
+
+본 규칙 미통과 코드:
+
+비공식 코드.
+
+Production 금지.
+
+==================================================
+END OF SNAPSHOT
+==================================================

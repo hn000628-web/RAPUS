@@ -1,0 +1,554 @@
+/* ==================================================
+
+BACKEND ERROR HANDLING FLOW SPECIFICATION
+
+ROLLBACK / RETRY / CLEANUP RULE
+
+SNAPSHOT_BACKEND_ERROR_FLOW_v1
+
+================================================== */
+
+
+/* ==================================================
+
+ERROR HANDLING PRINCIPLE
+
+================================================== */
+
+
+ALL WRITE OPERATIONS MUST DEFINE:
+
+ROLLBACK RULE
+RETRY RULE
+CLEANUP RULE
+
+
+
+RULE:
+
+Critical data must rollback.
+
+Optional data must cleanup.
+
+Feed must ignore inconsistent state.
+
+
+
+/* ==================================================
+
+ERROR SEVERITY CLASS
+
+================================================== */
+
+
+CRITICAL ERROR
+
+post creation failure
+engagement creation failure
+profile creation failure
+
+
+
+NON CRITICAL ERROR
+
+image upload failure
+image mapping failure
+feed query failure
+
+
+
+RULE:
+
+Critical = rollback required
+
+Non critical = cleanup only
+
+
+
+/* ==================================================
+
+POST CREATION ERROR FLOW
+
+================================================== */
+
+
+STEP 01
+
+BEGIN TRANSACTION
+
+
+
+STEP 02
+
+create post
+
+
+
+IF FAIL:
+
+STOP
+
+RETURN error
+
+
+
+STEP 03
+
+create engagement
+
+
+
+IF FAIL:
+
+ROLLBACK post
+
+DELETE posts.id
+
+RETURN error
+
+
+
+STEP 04
+
+COMMIT
+
+
+
+RULE:
+
+Post must not exist without engagement.
+
+
+
+/* ==================================================
+
+IMAGE ERROR FLOW
+
+================================================== */
+
+
+STEP 01
+
+post already created
+
+
+
+STEP 02
+
+upload image
+
+
+
+IF FAIL:
+
+IGNORE
+
+post remains valid
+
+
+
+STEP 03
+
+store image metadata
+
+
+
+IF FAIL:
+
+DELETE uploaded file
+
+RETURN warning
+
+
+
+STEP 04
+
+post image mapping
+
+
+
+IF FAIL:
+
+mark image orphan
+
+schedule cleanup
+
+
+
+RULE:
+
+Image is optional.
+
+Post must not rollback due to image.
+
+
+
+/* ==================================================
+
+ORPHAN IMAGE CLEANUP RULE
+
+================================================== */
+
+
+ORPHAN CONDITION:
+
+image_assets exists
+
+but no post_images mapping
+
+
+
+ACTION:
+
+scheduled cleanup job
+
+delete unused image after time window
+
+
+
+Example:
+
+24 hours cleanup job
+
+
+
+RULE:
+
+Image without mapping must not remain permanent.
+
+
+
+/* ==================================================
+
+ENGAGEMENT ERROR FLOW
+
+================================================== */
+
+
+IF engagement missing:
+
+Feed must ignore post.
+
+
+
+Feed query rule:
+
+JOIN post_engagements
+
+IF NULL:
+
+exclude post
+
+
+
+RULE:
+
+No engagement row = invalid content.
+
+
+
+/* ==================================================
+
+FEED ERROR FLOW
+
+================================================== */
+
+
+IF join failure:
+
+skip broken row.
+
+
+
+Feed must never crash due to:
+
+missing image
+
+missing engagement
+
+missing profile
+
+
+
+RULE:
+
+Feed must degrade gracefully.
+
+
+
+/* ==================================================
+
+RETRY POLICY
+
+================================================== */
+
+
+RETRY ALLOWED:
+
+image upload retry
+
+image mapping retry
+
+engagement retry
+
+
+
+RETRY FORBIDDEN:
+
+post duplicate insert
+
+
+
+RULE:
+
+Retry only safe operations.
+
+
+
+/* ==================================================
+
+SAFE RETRY COUNT
+
+================================================== */
+
+
+image upload retry:
+
+max 3
+
+
+
+mapping retry:
+
+max 2
+
+
+
+engagement retry:
+
+max 1
+
+
+
+RULE:
+
+Infinite retry forbidden.
+
+
+
+/* ==================================================
+
+ROLLBACK RULE
+
+================================================== */
+
+
+ROLLBACK REQUIRED:
+
+
+post without engagement
+
+profile without user
+
+mapping without image
+
+
+
+ROLLBACK NOT REQUIRED:
+
+
+image without mapping
+
+feed failure
+
+
+
+RULE:
+
+Only core data rollback.
+
+
+
+/* ==================================================
+
+DATA CONSISTENCY RULE
+
+================================================== */
+
+
+CRITICAL DATA:
+
+users
+profiles
+posts
+post_engagements
+
+
+
+OPTIONAL DATA:
+
+image_assets
+post_images
+profile_hero_slides
+
+
+
+RULE:
+
+Critical must remain consistent.
+
+Optional may cleanup later.
+
+
+
+/* ==================================================
+
+BACKGROUND CLEANUP TASKS
+
+================================================== */
+
+
+REQUIRED JOBS:
+
+
+orphan image cleanup
+
+failed mapping cleanup
+
+expired post cleanup
+
+
+
+Example schedule:
+
+
+daily orphan cleanup
+
+hourly mapping check
+
+
+
+RULE:
+
+Cleanup must be automated.
+
+
+
+/* ==================================================
+
+LOGGING RULE
+
+================================================== */
+
+
+CRITICAL ERROR:
+
+log + alert
+
+
+
+NON CRITICAL:
+
+log only
+
+
+
+Example:
+
+
+post failure → ERROR
+
+image failure → WARNING
+
+
+
+RULE:
+
+All failures must log.
+
+
+
+/* ==================================================
+
+ABSOLUTE ERROR RULES
+
+================================================== */
+
+
+Post without engagement = INVALID STATE
+
+Image without post = CLEANUP STATE
+
+Feed failure = IGNORE STATE
+
+
+
+Feed must never create data.
+
+
+
+/* ==================================================
+
+FINAL ERROR HANDLING FLOW
+
+================================================== */
+
+
+POST CREATE FLOW:
+
+
+BEGIN
+
+create post
+
+IF FAIL → STOP
+
+
+create engagement
+
+IF FAIL → ROLLBACK post
+
+
+COMMIT
+
+
+
+IF images:
+
+upload
+
+IF FAIL → IGNORE
+
+
+map
+
+IF FAIL → CLEANUP
+
+
+
+END
+
+
+
+/* ==================================================
+
+FINAL PRINCIPLE
+
+================================================== */
+
+
+Core data must be consistent.
+
+Optional data must be recoverable.
+
+Feed must be tolerant.
+
+Cleanup must be automatic.
+
+
+
+/* ==================================================
+
+END OF ERROR HANDLING FLOW
+
+================================================== */

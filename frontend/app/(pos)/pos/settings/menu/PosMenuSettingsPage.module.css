@@ -1,0 +1,474 @@
+﻿/* FILE : frontend/app/(pos)/pos/settings/menu/PosMenuSettingsPage.module.css */
+/* ROOT : frontend/app/(pos)/pos/settings/menu/PosMenuSettingsPage.module.css */
+/* STATUS : MODIFY MODE */
+/* ROLE : POS MENU SETTINGS PAGE STYLE */
+/* CHANGE SUMMARY :
+- POS 메뉴 / 상품 설정 페이지 라이트 테마 유지
+- 상품 카드 그리드 컬럼 수 고정
+- 640px 이하 2열
+- 640px 이상 4열
+- 1024px 이상 5열
+- 기존 auto-fit / 1600px 6열 / 1열 모바일 규칙 제거
+- 상품 카드 내부 compact 정렬 유지
+*/
+
+.page {
+  width: 100%;
+  min-height: 100dvh;
+  background-color: #f5f7fb;
+  color: #111827;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.topbarWrap {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: 64px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.topbarInner {
+  width: 100%;
+  height: 100%;
+}
+
+.content {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px 20px 56px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.headerCard {
+  position: sticky;
+  top: 84px;
+  z-index: 40;
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 14px rgba(17, 24, 39, 0.06);
+}
+
+.headerStatsWrap {
+  flex: 1 1 720px;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.secondaryButton {
+  height: 38px;
+  border: 1px solid #d1d5db;
+  background-color: #ffffff;
+  color: #111827;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  background-color: #f9fafb;
+}
+
+.primaryButton {
+  height: 38px;
+  border: 1px solid #111827;
+  background-color: #111827;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.primaryButton:hover {
+  background-color: #1f2937;
+}
+
+.statCard {
+  border: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.statLabel {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.statValue {
+  margin: 0;
+  font-size: 20px;
+  color: #111827;
+  font-weight: 900;
+}
+
+.productSection {
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.productHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.cardDescription {
+  margin: 0;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.productCard {
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  border-radius: 14px;
+  padding: 14px;
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.orderAvailabilityWrap {
+  border-top: 1px solid #e5e7eb;
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.orderAvailabilityTitle {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.orderAvailabilityBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.orderAvailabilityEmpty {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.productCard:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.productTop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.productName {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 900;
+  color: #111827;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.productPrice {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: #2563eb;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.productDescription {
+  margin: 0;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.optionSummaryWrap {
+  border: 1px dashed #dbeafe;
+  background: #f8fbff;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.optionSummaryTitle {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: #1e3a8a;
+}
+
+.optionSummaryText {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #334155;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.optionSummaryEmpty {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.productMetaRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.productActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.thumbnailViewButton {
+  height: 30px;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  color: #0f172a;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.thumbnailViewButton:hover:not(:disabled) {
+  background-color: #f8fafc;
+}
+
+.thumbnailViewButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.productBadge {
+  height: 28px;
+  border: 1px solid #d1d5db;
+  background-color: #f9fafb;
+  color: #374151;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.productStatusOn {
+  border-color: #bbf7d0;
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.productStatusOff {
+  border-color: #fed7aa;
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+
+.productStatusSoldOut {
+  border-color: #fecaca;
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.emptyCard,
+.loadingCard,
+.errorCard {
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.errorCard {
+  border-color: #fecaca;
+  color: #b91c1c;
+  background-color: #fff7f7;
+}
+
+.thumbnailModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background-color: rgba(15, 23, 42, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.thumbnailModal {
+  width: min(1024px, calc(100dvw - 40px));
+  max-height: calc(100dvh - 40px);
+  border: 1px solid #dbe2ea;
+  border-radius: 14px;
+  background-color: #ffffff;
+  box-shadow: 0 24px 44px rgba(15, 23, 42, 0.24);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.thumbnailModalHeader {
+  height: 56px;
+  padding: 0 14px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.thumbnailModalTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 900;
+  color: #111827;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thumbnailModalClose {
+  height: 34px;
+  border: 1px solid #d1d5db;
+  background-color: #ffffff;
+  color: #111827;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.thumbnailModalBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background-color: #f8fafc;
+  overflow: auto;
+}
+
+.thumbnailModalImage {
+  width: min(1024px, 100%);
+  max-width: 1024px;
+  max-height: calc(100dvh - 140px);
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid #dbe2ea;
+  background-color: #ffffff;
+}
+
+@media (min-width: 640px) {
+  .productGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .productGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .headerStatsWrap {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .headerStatsWrap {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

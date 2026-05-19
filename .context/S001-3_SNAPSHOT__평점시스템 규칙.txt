@@ -1,0 +1,759 @@
+// FILE : docs/BUSINESS_RATING_TOTAL_SCORE_SYSTEM_SNAPSHOT.txt
+// ROOT : C:\Users\kjm\social-platform\docs\BUSINESS_RATING_TOTAL_SCORE_SYSTEM_SNAPSHOT.txt
+// STATUS : PRODUCTION LOCK (LATEST)
+// ROLE : BUSINESS RATING / SERVICE SCORE / STORE SCORE / TOTAL SCORE SYSTEM
+// CHANGE SUMMARY :
+// - 기존 맛(음식) 점수를 상품/서비스 점수(serviceScore)로 재정의
+// - 맛 = 음식 업종에서의 serviceScore UI 라벨로 고정
+// - 가게 점수 3항목 구조 확정
+// - 총점 계산 공식 확정
+// - 파생 점수는 Service 계산값으로 고정
+// - UI 하드코딩 단계와 향후 API 응답 구조의 의미 일치 기준 확정
+
+==================================================
+SECTION 01 : PURPOSE
+==================================================
+
+본 스냅샷의 목적은
+비즈니스 프로필의 평점 총점 시스템을
+최신 기준으로 고정하는 것이다.
+
+본 평점 시스템은
+공개 비즈니스 채널 화면,
+비즈니스 리뷰 탭,
+비즈니스 관리 화면,
+상품/서비스 상세 화면에서
+공통으로 사용될 수 있다.
+
+핵심 목적은 다음과 같다.
+
+1. 가게 자체 평가와 상품/서비스 평가를 분리한다.
+2. 대표 점수는 총점(totalScore) 하나로 표시한다.
+3. 총점은 5점 만점 체계를 유지한다.
+4. 총점은 직접 입력값이 아니라 계산값으로 처리한다.
+5. 맛 점수는 음식 업종에서의 상품/서비스 점수 표시명으로 해석한다.
+6. 시스템 내부 필드명은 serviceScore로 통일한다.
+
+
+==================================================
+SECTION 02 : CORE PRINCIPLE
+==================================================
+
+평점 시스템은 2개 축으로 구성한다.
+
+1. 가게 점수
+2. 상품/서비스 점수
+
+최종 대표 점수는
+위 2개 축의 평균값으로 산출한다.
+
+즉:
+
+총점
+=
+가게 점수
++
+상품/서비스 점수
+의 평균
+
+
+==================================================
+SECTION 03 : SCORE COMPONENT STRUCTURE
+==================================================
+
+리뷰 1건은 총 4개의 원점수 입력값을 가진다.
+
+가게 점수 항목:
+
+1. 친절도(응대)
+   - friendlinessScore
+   - 5점 만점
+
+2. 신속성
+   - speedScore
+   - 5점 만점
+   - 예: 빠른 배송 / 빠른 조리 / 빠른 응답 / 빠른 처리
+
+3. 편의성
+   - convenienceScore
+   - 5점 만점
+   - 예: 접근성 / 이용 편의성 / 주문 편의성 / 예약 편의성
+
+상품/서비스 점수 항목:
+
+4. 상품/서비스 점수
+   - serviceScore
+   - 5점 만점
+
+
+==================================================
+SECTION 04 : SERVICE SCORE NAMING RULE
+==================================================
+
+시스템 내부 기준 필드명은 serviceScore로 통일한다.
+
+serviceScore는 업종별로 UI 표시명이 달라질 수 있다.
+
+예:
+
+음식점:
+serviceScore = 맛 점수
+
+카페:
+serviceScore = 맛 / 음료 만족도
+
+상품 판매:
+serviceScore = 상품 만족도
+
+병원:
+serviceScore = 진료 서비스 만족도
+
+학원:
+serviceScore = 교육 서비스 만족도
+
+미용실:
+serviceScore = 시술 서비스 만족도
+
+프리랜서:
+serviceScore = 결과물 / 서비스 만족도
+
+즉:
+
+맛
+=
+음식 업종에서의 serviceScore UI 라벨
+
+맛은 별도 DB 필드가 아니다.
+맛은 serviceScore의 업종별 표시명이다.
+
+
+==================================================
+SECTION 05 : STORE SCORE RULE
+==================================================
+
+가게 점수(storeScore)는
+가게 관련 3개 항목의 평균값으로 계산한다.
+
+공식:
+
+storeScore
+=
+(
+  friendlinessScore
+  + speedScore
+  + convenienceScore
+) / 3
+
+예시:
+
+친절도 4.0
+신속성 3.8
+편의성 3.9
+
+storeScore
+=
+(4.0 + 3.8 + 3.9) / 3
+=
+3.9
+
+storeScore는 계산값이다.
+사용자가 직접 입력하지 않는다.
+
+
+==================================================
+SECTION 06 : SERVICE SCORE RULE
+==================================================
+
+상품/서비스 점수(serviceScore)는
+리뷰 작성자가 직접 입력하는 원점수이다.
+
+공식:
+
+serviceScore
+=
+상품/서비스 만족도 점수
+
+범위:
+
+1 ~ 5
+
+음식 업종에서는 UI에 다음처럼 표시할 수 있다.
+
+맛 점수
+
+하지만 시스템 내부 저장/계산 기준은 항상 serviceScore이다.
+
+
+==================================================
+SECTION 07 : TOTAL SCORE RULE
+==================================================
+
+총점(totalScore)은
+가게 점수(storeScore)와
+상품/서비스 점수(serviceScore)의 평균값으로 계산한다.
+
+공식:
+
+totalScore
+=
+(storeScore + serviceScore) / 2
+
+전체 공식:
+
+totalScore
+=
+{
+  (
+    friendlinessScore
+    + speedScore
+    + convenienceScore
+  ) / 3
+  +
+  serviceScore
+} / 2
+
+예시:
+
+친절도 4.0
+신속성 3.8
+편의성 3.9
+상품/서비스 점수 4.5
+
+storeScore
+=
+(4.0 + 3.8 + 3.9) / 3
+=
+3.9
+
+totalScore
+=
+(3.9 + 4.5) / 2
+=
+4.2
+
+주의:
+
+총점은 단순 합산값이 아니다.
+총점은 5점 만점 평균값이다.
+
+금지 예:
+
+가게 3.9 + 서비스 4.5 = 8.4 표시
+
+정답 예:
+
+가게 3.9 + 서비스 4.5
+→ 평균 4.2 표시
+
+
+==================================================
+SECTION 08 : DISPLAY ROUNDING RULE
+==================================================
+
+UI 표시 기준:
+
+1. 공개 UI는 소수점 1자리까지 표시한다.
+2. 내부 계산은 소수점 정밀도를 유지할 수 있다.
+3. 최종 표시 시 반올림한다.
+
+예:
+
+4.24 → 4.2
+4.25 → 4.3
+4.26 → 4.3
+
+공개 채널 대표 표시 예:
+
+★ 4.2
+방문자 리뷰 3,897
+
+상세 표시 예:
+
+총점 4.2
+가게 점수 3.9
+상품/서비스 점수 4.5
+
+세부 항목:
+
+친절도 4.0
+신속성 3.8
+편의성 3.9
+
+
+==================================================
+SECTION 09 : REVIEW ROW DATA RULE
+==================================================
+
+리뷰 1건은 다음 데이터를 가진다.
+
+필수 식별:
+
+reviewId
+reviewerChannelCode
+targetChannelCode
+targetProfileId
+
+필수 원점수:
+
+friendlinessScore
+speedScore
+convenienceScore
+serviceScore
+
+선택 또는 정책별 필수:
+
+content
+
+상태 / 시간:
+
+status
+createdAt
+updatedAt
+
+의미:
+
+reviewerChannelCode
+=
+리뷰 작성자 채널
+
+targetChannelCode
+=
+리뷰 대상 비즈니스 채널
+
+targetProfileId
+=
+리뷰 대상 비즈니스 프로필 내부 ID
+
+friendlinessScore
+=
+친절도 원점수
+
+speedScore
+=
+신속성 원점수
+
+convenienceScore
+=
+편의성 원점수
+
+serviceScore
+=
+상품/서비스 원점수
+
+
+==================================================
+SECTION 10 : CHANNELCODE ROLE RULE
+==================================================
+
+리뷰는 다중 주체 관계 테이블이다.
+
+따라서 의미 없는 단일 channelCode 컬럼을 사용하지 않는다.
+
+반드시 역할 기반 컬럼명을 사용한다.
+
+허용:
+
+reviewerChannelCode
+targetChannelCode
+
+금지:
+
+channelCode
+ownerChannelCode
+userId
+profileChannel
+authorId
+
+해석:
+
+reviewerChannelCode
+=
+리뷰를 작성한 주체
+
+targetChannelCode
+=
+리뷰 대상 비즈니스 채널
+
+본 규칙은 다자 관계 테이블의 role + ChannelCode 네이밍 기준을 따른다.
+
+
+==================================================
+SECTION 11 : SUMMARY CALCULATION RULE
+==================================================
+
+비즈니스 채널의 대표 평점 요약은
+ACTIVE 상태 리뷰만 기준으로 계산한다.
+
+집계 항목:
+
+1. friendlinessAverage
+2. speedAverage
+3. convenienceAverage
+4. serviceAverage
+5. storeScoreAverage
+6. totalScoreAverage
+7. reviewCount
+
+집계 공식:
+
+friendlinessAverage
+=
+AVG(friendlinessScore)
+
+speedAverage
+=
+AVG(speedScore)
+
+convenienceAverage
+=
+AVG(convenienceScore)
+
+serviceAverage
+=
+AVG(serviceScore)
+
+storeScoreAverage
+=
+(
+  friendlinessAverage
+  + speedAverage
+  + convenienceAverage
+) / 3
+
+totalScoreAverage
+=
+(storeScoreAverage + serviceAverage) / 2
+
+대표 공개 점수는 totalScoreAverage를 사용한다.
+
+
+==================================================
+SECTION 12 : DERIVED DATA RULE
+==================================================
+
+다음 값들은 파생값이다.
+
+- storeScore
+- totalScore
+- friendlinessAverage
+- speedAverage
+- convenienceAverage
+- serviceAverage
+- storeScoreAverage
+- totalScoreAverage
+- reviewCount
+
+원칙:
+
+파생값은 원본 입력값으로 저장하지 않는다.
+
+저장 대상:
+
+- friendlinessScore
+- speedScore
+- convenienceScore
+- serviceScore
+- content
+- status
+- createdAt
+- updatedAt
+
+계산 대상:
+
+- storeScore
+- totalScore
+- 모든 average 계열
+- reviewCount
+
+처리 흐름:
+
+원점수 저장
+→ Service 계산
+→ API 응답
+→ Front 표시
+
+
+==================================================
+SECTION 13 : REVIEW WRITE RULE
+==================================================
+
+리뷰 작성 규칙은 다음과 같다.
+
+1. 한 채널은 같은 비즈니스 채널에 ACTIVE 리뷰 1개만 작성 가능하다.
+2. 중복 작성은 금지한다.
+3. 기존 리뷰가 있으면 신규 생성이 아니라 수정으로 처리한다.
+4. 삭제는 soft delete 기준으로 처리한다.
+5. HIDDEN / DELETED 리뷰는 대표 점수 집계에서 제외한다.
+6. 신고 또는 관리자 숨김 상태의 리뷰는 정책에 따라 집계 제외 가능하다.
+
+권장 무결성 규칙:
+
+UNIQUE(reviewerChannelCode, targetChannelCode)
+
+목적:
+
+- 중복 평점 방지
+- 평점 조작 방지
+- 리뷰 신뢰도 유지
+
+
+==================================================
+SECTION 14 : UI INTEGRATION RULE
+==================================================
+
+공개 비즈니스 채널 상단 UI에는
+대표 총점과 리뷰 수를 표시한다.
+
+표시 예:
+
+★ 4.2
+방문자 리뷰 3,897
+
+상세 UI에는 다음을 표시한다.
+
+1. 총점
+2. 가게 점수
+3. 상품/서비스 점수
+4. 친절도
+5. 신속성
+6. 편의성
+7. 리뷰 수
+
+음식점 업종에서는
+상품/서비스 점수 라벨을
+맛 점수로 표시할 수 있다.
+
+예:
+
+총점 4.2
+가게 점수 3.9
+맛 점수 4.5
+
+비음식 업종에서는
+상품/서비스 점수로 표시한다.
+
+예:
+
+총점 4.2
+가게 점수 3.9
+서비스 점수 4.5
+
+
+==================================================
+SECTION 15 : HARDCODE UI PHASE RULE
+==================================================
+
+초기 UI 구현 단계에서는
+하드코딩 데이터를 사용할 수 있다.
+
+단,
+하드코딩 데이터 구조는
+향후 API 응답 구조와 동일한 의미를 유지해야 한다.
+
+권장 하드코딩 구조:
+
+ratingSummary
+
+- totalScore
+- storeScore
+- serviceScore
+- friendlinessAverage
+- speedAverage
+- convenienceAverage
+- serviceAverage
+- reviewCount
+- serviceScoreLabel
+
+예시:
+
+totalScore            : 4.2
+storeScore            : 3.9
+serviceScore          : 4.5
+friendlinessAverage   : 4.0
+speedAverage          : 3.8
+convenienceAverage    : 3.9
+serviceAverage        : 4.5
+reviewCount           : 3897
+serviceScoreLabel     : 맛
+
+주의:
+
+serviceScoreLabel은 UI 표시용이다.
+계산에는 사용하지 않는다.
+
+
+==================================================
+SECTION 16 : API RESPONSE MEANING RULE
+==================================================
+
+향후 API 응답은 다음 의미를 유지해야 한다.
+
+ratingSummary:
+
+totalScore
+=
+대표 총점
+
+storeScore
+=
+가게 점수 평균
+
+serviceScore
+=
+상품/서비스 점수 평균
+
+serviceScoreLabel
+=
+업종별 표시 라벨
+
+friendlinessAverage
+=
+친절도 평균
+
+speedAverage
+=
+신속성 평균
+
+convenienceAverage
+=
+편의성 평균
+
+reviewCount
+=
+집계 대상 리뷰 수
+
+Front는 API 응답을 표시만 한다.
+Front에서 평점 계산 로직을 중복 구현하지 않는다.
+
+
+==================================================
+SECTION 17 : FUTURE EXPANSION RULE
+==================================================
+
+현재 구조는 모든 업종에 적용 가능한 범용 구조이다.
+
+음식점:
+serviceScoreLabel = 맛
+
+카페:
+serviceScoreLabel = 맛 / 음료
+
+상품 판매:
+serviceScoreLabel = 상품 만족도
+
+서비스업:
+serviceScoreLabel = 서비스 만족도
+
+병원:
+serviceScoreLabel = 진료 만족도
+
+학원:
+serviceScoreLabel = 교육 만족도
+
+미용:
+serviceScoreLabel = 시술 만족도
+
+향후 업종별 세부 평가 항목을 추가할 수 있으나,
+대표 총점 공식은 유지한다.
+
+기본 공식:
+
+storeScore
+=
+친절도 + 신속성 + 편의성 평균
+
+totalScore
+=
+storeScore + serviceScore 평균
+
+
+==================================================
+SECTION 18 : ABSOLUTE PROHIBITION
+==================================================
+
+절대 금지:
+
+1. 총점을 직접 입력값으로 저장하는 구조
+2. storeScore를 직접 입력값으로 받는 구조
+3. totalScore를 직접 입력값으로 받는 구조
+4. 맛 점수를 별도 DB 필드로 고정하는 구조
+5. 음식 업종 기준 필드명을 전체 업종에 강제하는 구조
+6. 리뷰 테이블에서 의미 없는 단일 channelCode 사용
+7. reviewer / target 역할 구분 없는 채널 컬럼 사용
+8. userId 직접 저장 구조
+9. 중복 리뷰 허용 구조
+10. 삭제된 리뷰를 대표 점수 집계에 포함하는 구조
+11. 총점을 5점 만점 초과 체계로 만드는 구조
+12. 단순 합산값을 총점으로 표시하는 구조
+13. Frontend에서 Service 계산 로직을 중복 구현하는 구조
+
+
+==================================================
+SECTION 19 : FINAL DECLARATION
+==================================================
+
+최종 입력 원점수:
+
+- friendlinessScore
+- speedScore
+- convenienceScore
+- serviceScore
+
+가게 점수:
+
+storeScore
+=
+(
+  friendlinessScore
+  + speedScore
+  + convenienceScore
+) / 3
+
+상품/서비스 점수:
+
+serviceScore
+=
+업종별 상품 / 서비스 / 맛 만족도 점수
+
+총점:
+
+totalScore
+=
+(storeScore + serviceScore) / 2
+
+표시 기준:
+
+5점 만점
+소수점 1자리
+
+저장 기준:
+
+원점수만 저장
+파생 점수는 Service 계산
+
+UI 기준:
+
+공개 채널 대표 점수는 totalScoreAverage 사용
+
+최종 해석:
+
+맛
+=
+음식 업종에서의 serviceScore UI 라벨
+
+serviceScore
+=
+전체 업종 공통 상품/서비스 평가 점수
+
+따라서 본 평점 총점 시스템은
+
+가게 자체 평가
++
+상품/서비스 평가
+
+를 평균 반영한
+5점 만점 총점 구조로 고정한다.
+
+==================================================
+END OF SNAPSHOT
+==================================================

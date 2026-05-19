@@ -1,0 +1,249 @@
+==================================================
+SNAPSHOT BACKEND RULE VALIDATION
+Version: v1.1
+==================================================
+
+목적
+--------------------------------------------------
+본 스냅샷은 Backend 코드 구현 시
+프로젝트 Backend 개발 규칙과 충돌하는 코드 생성을 방지하기 위한
+Implementation Gate를 정의한다.
+
+이 규칙은 다음 문제를 방지한다.
+
+- Backend 구조 불일치
+- Folder 구조 붕괴
+- Service 구조 규칙 위반
+- Controller 구조 규칙 위반
+- Snapshot 미확인 상태 구현
+- 프로젝트 기준과 충돌하는 코드 생성
+
+본 규칙은 Backend Implementation Safety Gate로 작동한다.
+
+--------------------------------------------------
+1. 절대 규칙 (ABSOLUTE RULE)
+--------------------------------------------------
+
+Backend 관련 코드 출력 전 반드시 다음을 수행한다.
+
+1) Backend Rules Snapshot 존재 확인
+2) Backend Rules 파일 확인 여부 확인
+3) Backend Folder Structure 규칙 확인
+4) Backend Service Template 규칙 확인
+5) Backend Controller Template 규칙 확인
+6) Backend Implementation Priority Order 확인
+7) 기존 DB Snapshot 충돌 여부 확인
+
+다음 중 하나라도 미확인 시:
+
+Backend 코드 출력 금지
+
+반드시 다음 순서 수행:
+
+1 Backend rules 파일 요구
+2 Snapshot 확인 요청
+3 기준 문서 확인 후 진행
+
+--------------------------------------------------
+2. 필수 요구 파일 (MANDATORY REQUIRED FILE)
+--------------------------------------------------
+
+Backend 코드 생성 전 반드시 다음 파일 확인 필요:
+
+필수 파일명:
+
+백엔드 개발규칙 스냅샷.zip
+
+(파일명 변경 불가 / 동일 이름 유지)
+
+해당 파일은 Backend 코드 생성의
+공식 기준 문서로 간주한다.
+
+파일 미확인 상태에서는:
+
+Backend 코드 생성 금지
+
+--------------------------------------------------
+3. Backend Rules File Requirement Rule
+--------------------------------------------------
+
+다음 요청 발생 시 AI는 반드시:
+
+파일:
+
+백엔드 개발규칙 스냅샷.zip
+
+업로드 여부 확인 수행
+
+파일이 존재하지 않을 경우:
+
+반드시 다음 수행:
+
+1 파일 업로드 요청
+2 Backend 코드 생성 중단
+3 Snapshot 확인 요청
+
+파일 확인 완료 이후에만:
+
+Backend 코드 생성 허용
+
+--------------------------------------------------
+4. 적용 대상 (SCOPE)
+--------------------------------------------------
+
+다음 요청 발생 시 본 규칙 자동 적용:
+
+- service.ts 생성 요청
+- controller.ts 생성 요청
+- module 구조 생성
+- backend folder 구조 생성
+- API endpoint 구현
+- DB 연결 코드 작성
+- Feed service 구현
+- Profile service 구현
+- Image service 구현
+- Engagement service 구현
+- Region service 구현
+- Industry service 구현
+- Backend 신규 기능 구현
+
+즉:
+
+모든 Backend 코드 생성 요청에 적용된다.
+
+--------------------------------------------------
+5. Implementation Gate Rule
+--------------------------------------------------
+
+Backend 코드 생성 전 반드시 다음 Gate 통과 필요:
+
+GATE 1
+
+백엔드 개발규칙 스냅샷.zip 확인 여부
+
+GATE 2
+
+Backend Rules Snapshot 존재 여부
+
+GATE 3
+
+DB Snapshot 충돌 여부
+
+GATE 4
+
+Service 구조 일치 여부
+
+GATE 5
+
+Folder 구조 일치 여부
+
+5개 Gate 모두 통과 시에만:
+
+Backend 코드 출력 허용
+
+--------------------------------------------------
+6. 자동 중단 조건 (AUTO STOP CONDITIONS)
+--------------------------------------------------
+
+다음 상황 발생 시 AI는 즉시 코드 출력 중단:
+
+- 백엔드 개발규칙 스냅샷.zip 미확인
+- Backend 개발 규칙 문서 미존재
+- Folder 구조 정의 없음
+- Service template 정의 없음
+- Controller template 정의 없음
+- DB 구조 충돌 가능성 존재
+- Snapshot 누락
+
+중단 시 반드시 수행:
+
+1 출력 중단
+2 백엔드 개발규칙 스냅샷.zip 요구
+3 Snapshot 확인 요청
+
+--------------------------------------------------
+7. Code Validity Rule
+--------------------------------------------------
+
+Backend rules snapshot 미확인 상태에서 생성된 코드는:
+
+비공식 코드로 간주한다.
+
+다음 상태로 처리한다:
+
+- Production 사용 금지
+- 공식 코드로 인정하지 않음
+- 구조 검증 실패 코드로 분류
+
+즉:
+
+백엔드 개발규칙 스냅샷.zip
+확인 전 생성된 코드는
+
+프로젝트 기준 코드가 아니다.
+
+--------------------------------------------------
+8. AI Mandatory Action Rule
+--------------------------------------------------
+
+Backend 코드 요청 발생 시 AI는 반드시:
+
+STEP 1
+
+백엔드 개발규칙 스냅샷.zip 존재 확인
+
+STEP 2
+
+미확인 시 파일 요구
+
+STEP 3
+
+확인 완료 시 코드 생성
+
+STEP 4
+
+구조 충돌 검증
+
+STEP 5
+
+통코드 방식 출력
+
+이 순서를 반드시 따른다.
+
+--------------------------------------------------
+9. Integration With Existing AI Constitution
+--------------------------------------------------
+
+본 규칙은 다음 규칙의 하위 안전 규칙이다:
+
+AI 작업규칙 (AI Constitution)
+Snapshot Output Rule
+통코드 작업 규칙
+DB Snapshot Rule
+
+우선순위:
+
+AI Constitution
+→ Snapshot Rule
+→ Backend Validation Rule
+→ Implementation
+
+--------------------------------------------------
+10. Status Declaration
+--------------------------------------------------
+
+본 규칙은 Backend Implementation Safety Gate로 고정된다.
+
+Backend 코드 생성 시
+필수 검증 규칙으로 적용된다.
+
+본 규칙 이후:
+
+백엔드 개발규칙 스냅샷.zip
+확인 없이
+
+Backend 코드 생성은 허용되지 않는다.
+
+==================================================
+END OF SNAPSHOT
+==================================================

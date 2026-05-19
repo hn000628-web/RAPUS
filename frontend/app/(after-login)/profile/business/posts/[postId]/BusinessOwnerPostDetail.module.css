@@ -1,0 +1,758 @@
+/* FILE : frontend/app/(after-login)/profile/business/posts/[postId]/BusinessOwnerPostDetail.module.css */
+/* ROOT : frontend/app/(after-login)/profile/business/posts/[postId]/BusinessOwnerPostDetail.module.css */
+/* STATUS : MODIFY MODE */
+/* ROLE : BUSINESS OWNER POST DETAIL PAGE STYLE */
+/* CHANGE SUMMARY :
+- 사업자 본인 포스트 상세페이지 CSS Module 유지
+- PC 2컬럼 상세 구조 유지
+- 통계 메타 카드 확장 대응 유지
+- 조회수 / 클릭수 / 평점 / 리뷰수 카드 추가 대응 유지
+- 리뷰 관리 카드 / 리뷰 요약 / 리뷰 목록 UI 추가
+- 768px / 640px 모바일 대응 유지
+- 관리 작업 버튼 모바일 3컬럼 유지
+- 통계 메타 모바일 4컬럼 유지
+- 사용자용 공개 상세와 스타일 책임 분리
+*/
+
+/* SECTION 01 : PAGE */
+
+.page {
+  width: 100%;
+  min-height: 100vh;
+  padding: 32px 20px;
+  box-sizing: border-box;
+  background: #f8fafc;
+}
+
+.shell {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+/* SECTION 02 : TOP BAR */
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.backButton {
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pageBadge {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+/* SECTION 03 : HERO */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) 1fr;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 22px;
+  box-sizing: border-box;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+}
+
+.imagePlaceholder {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.imageIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #111827;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.imageText {
+  margin-top: 12px;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.summary {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.typeRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.typeBadge,
+.statusBadge,
+.visibilityBadge {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.typeBadge {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.statusBadge {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.visibilityBadge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.title {
+  margin: 0;
+  color: #111827;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: -0.6px;
+}
+
+.price {
+  margin-top: 10px;
+  color: #1877f2;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+/* SECTION 04 : META */
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.metaItem {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #eef0f3;
+  border-radius: 14px;
+  box-sizing: border-box;
+  background: #fafafa;
+}
+
+.metaLabel {
+  display: block;
+  margin-bottom: 5px;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.metaValue {
+  display: block;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+  word-break: break-word;
+}
+
+/* SECTION 05 : CARD */
+
+.manageCard,
+.contentCard,
+.reviewCard {
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 22px;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.sectionHeader {
+  margin-bottom: 12px;
+  color: #111827;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.contentText {
+  margin: 0;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+/* SECTION 06 : ACTION */
+
+.actionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton {
+  height: 44px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: none;
+  background: #1877f2;
+  color: #fff;
+}
+
+.secondaryButton {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+}
+
+.dangerButton {
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #dc2626;
+}
+
+.notice {
+  margin: 14px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* SECTION 07 : REVIEW */
+
+.reviewHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reviewDescription {
+  margin: -4px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.reviewListButton {
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.reviewSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.reviewSummaryItem {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #eef0f3;
+  border-radius: 14px;
+  box-sizing: border-box;
+  background: #fafafa;
+}
+
+.reviewSummaryLabel {
+  display: block;
+  margin-bottom: 5px;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.reviewSummaryValue {
+  display: block;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+  word-break: break-word;
+}
+
+.reviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.reviewItem {
+  padding: 14px;
+  border: 1px solid #eef0f3;
+  border-radius: 16px;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.reviewTopRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.reviewUserBlock {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.reviewUserName {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.reviewDate {
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.reviewBadgeRow {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.reviewSourceBadge,
+.reviewRatingBadge {
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.reviewSourceBadge {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.reviewRatingBadge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.reviewContent {
+  margin: 12px 0 0;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+/* SECTION 08 : INVALID */
+
+.invalidBox {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 24px;
+  border: 1px solid #e5e7eb;
+  border-radius: 22px;
+  box-sizing: border-box;
+  background: #fff;
+  text-align: center;
+}
+
+.invalidTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.invalidText {
+  margin: 10px 0 20px;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* SECTION 09 : RESPONSIVE TABLET */
+
+@media (max-width: 768px) {
+  .page {
+    padding: 24px 16px;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .summary {
+    justify-content: flex-start;
+  }
+
+  .title {
+    font-size: 26px;
+  }
+
+  .price {
+    font-size: 18px;
+  }
+
+  .metaGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .actionGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+}
+
+/* SECTION 10 : RESPONSIVE MOBILE */
+
+@media (max-width: 640px) {
+  .page {
+    padding: 16px 12px;
+  }
+
+  .topBar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .backButton {
+    width: 100%;
+  }
+
+  .pageBadge {
+    width: fit-content;
+  }
+
+  .hero {
+    gap: 14px;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .imagePlaceholder {
+    aspect-ratio: 16 / 11;
+    border-radius: 15px;
+  }
+
+  .imageIcon {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    font-size: 12px;
+  }
+
+  .imageText {
+    font-size: 12px;
+  }
+
+  .typeRow {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .typeBadge,
+  .statusBadge,
+  .visibilityBadge {
+    height: 26px;
+    padding: 0 9px;
+    font-size: 11px;
+  }
+
+  .title {
+    font-size: 23px;
+    letter-spacing: -0.4px;
+  }
+
+  .price {
+    margin-top: 8px;
+    font-size: 17px;
+  }
+
+  .metaGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 16px;
+  }
+
+  .metaItem {
+    min-height: 62px;
+    padding: 8px 6px;
+    border-radius: 12px;
+  }
+
+  .metaLabel {
+    margin-bottom: 4px;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .metaValue {
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+  .manageCard,
+  .contentCard,
+  .reviewCard {
+    margin-top: 14px;
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .sectionHeader {
+    font-size: 15px;
+  }
+
+  .actionGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .primaryButton,
+  .secondaryButton,
+  .dangerButton {
+    width: 100%;
+    height: 42px;
+    border-radius: 12px;
+    font-size: 13px;
+  }
+
+  .contentText {
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .notice {
+    font-size: 11px;
+  }
+
+  .reviewHeaderRow {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .reviewDescription {
+    font-size: 11px;
+  }
+
+  .reviewListButton {
+    width: 100%;
+    height: 40px;
+    border-radius: 12px;
+    font-size: 12px;
+  }
+
+  .reviewSummaryGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 14px;
+  }
+
+  .reviewSummaryItem {
+    min-height: 58px;
+    padding: 8px 6px;
+    border-radius: 12px;
+  }
+
+  .reviewSummaryLabel {
+    font-size: 10px;
+  }
+
+  .reviewSummaryValue {
+    font-size: 11px;
+  }
+
+  .reviewItem {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .reviewTopRow {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .reviewBadgeRow {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .reviewSourceBadge,
+  .reviewRatingBadge {
+    height: 24px;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  .reviewContent {
+    margin-top: 10px;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .invalidBox {
+    padding: 36px 18px;
+    border-radius: 18px;
+  }
+
+  .invalidTitle {
+    font-size: 20px;
+  }
+
+  .invalidText {
+    font-size: 13px;
+  }
+}
+
+/* SECTION 11 : RESPONSIVE SMALL MOBILE */
+
+@media (max-width: 390px) {
+  .page {
+    padding: 12px 10px;
+  }
+
+  .hero {
+    padding: 12px;
+  }
+
+  .title {
+    font-size: 21px;
+  }
+
+  .price {
+    font-size: 16px;
+  }
+
+  .metaGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .metaItem {
+    min-height: 58px;
+    padding: 7px 5px;
+    border-radius: 10px;
+  }
+
+  .metaLabel {
+    font-size: 9px;
+  }
+
+  .metaValue {
+    font-size: 11px;
+  }
+
+  .actionGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .primaryButton,
+  .secondaryButton,
+  .dangerButton {
+    height: 40px;
+    border-radius: 11px;
+    font-size: 12px;
+  }
+
+  .manageCard,
+  .contentCard,
+  .reviewCard {
+    padding: 14px;
+  }
+
+  .reviewSummaryGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .reviewSummaryItem {
+    padding: 7px 5px;
+    border-radius: 10px;
+  }
+
+  .reviewSummaryLabel {
+    font-size: 9px;
+  }
+
+  .reviewSummaryValue {
+    font-size: 10px;
+  }
+}

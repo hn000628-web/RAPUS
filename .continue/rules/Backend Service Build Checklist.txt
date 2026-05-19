@@ -1,0 +1,647 @@
+/* ==================================================
+
+BACKEND SERVICE BUILD CHECKLIST
+
+SERVICE IMPLEMENTATION REQUIRED COMPONENTS
+
+SNAPSHOT_BACKEND_SERVICE_CHECKLIST_v1
+
+================================================== */
+
+
+/* ==================================================
+
+SERVICE STANDARD STRUCTURE
+
+================================================== */
+
+
+Every service must include:
+
+validation
+
+ownership check
+
+error handling
+
+transaction safety
+
+logging
+
+return format
+
+
+
+RULE:
+
+Service must follow standard structure.
+
+
+
+/* ==================================================
+
+REQUIRED FUNCTION LIST
+
+================================================== */
+
+
+Every core service must implement:
+
+
+
+create()
+
+getById()
+
+list()
+
+update()
+
+delete() (soft)
+
+
+
+RULE:
+
+CRUD baseline required.
+
+
+
+/* ==================================================
+
+VALIDATION CHECKLIST
+
+================================================== */
+
+
+Before INSERT:
+
+validate foreign keys
+
+validate required fields
+
+validate ownership
+
+validate status
+
+
+
+Example:
+
+profile exists
+
+region exists
+
+category exists
+
+
+
+RULE:
+
+Never write before validation.
+
+
+
+/* ==================================================
+
+OWNERSHIP CHECK
+
+================================================== */
+
+
+Every write must verify owner.
+
+
+
+Example:
+
+profileId belongs to user.
+
+post belongs to profile.
+
+
+
+FORBIDDEN:
+
+Blind update.
+
+
+
+RULE:
+
+Ownership required.
+
+
+
+/* ==================================================
+
+TRANSACTION CHECK
+
+================================================== */
+
+
+Multi table write must use transaction.
+
+
+
+Example:
+
+post + engagement
+
+
+
+RULE:
+
+Core writes must be atomic.
+
+
+
+/* ==================================================
+
+ERROR HANDLING CHECK
+
+================================================== */
+
+
+Every service must handle:
+
+not found
+
+invalid input
+
+duplicate
+
+constraint error
+
+
+
+RULE:
+
+Never throw raw DB errors.
+
+
+
+/* ==================================================
+
+RETURN FORMAT RULE
+
+================================================== */
+
+
+Service must return consistent format.
+
+
+
+Example:
+
+success:
+
+{ success:true,data }
+
+
+
+error:
+
+{ success:false,error }
+
+
+
+RULE:
+
+Controller must not guess.
+
+
+
+/* ==================================================
+
+LOGGING CHECK
+
+================================================== */
+
+
+Must log:
+
+create failure
+
+update failure
+
+delete failure
+
+
+
+RULE:
+
+Critical actions logged.
+
+
+
+/* ==================================================
+
+SOFT DELETE RULE
+
+================================================== */
+
+
+Delete must use:
+
+status field.
+
+
+
+Example:
+
+status=INACTIVE
+
+
+
+RULE:
+
+Avoid hard delete.
+
+
+
+/* ==================================================
+
+TIMESTAMP RULE
+
+================================================== */
+
+
+Every write must set:
+
+createdAt
+
+updatedAt
+
+
+
+RULE:
+
+History tracking required.
+
+
+
+/* ==================================================
+
+INDEX USAGE RULE
+
+================================================== */
+
+
+Queries must use index.
+
+
+
+Example:
+
+profileId
+
+regionId
+
+createdAt
+
+
+
+RULE:
+
+Avoid table scan.
+
+
+
+/* ==================================================
+
+NULL SAFETY RULE
+
+================================================== */
+
+
+Service must handle:
+
+null values
+
+empty values
+
+missing values
+
+
+
+RULE:
+
+Never trust input.
+
+
+
+/* ==================================================
+
+SERVICE METHOD CHECKLIST
+
+================================================== */
+
+
+/* CREATE */
+
+
+validate input
+
+validate FK
+
+ownership check
+
+transaction start
+
+insert
+
+create dependent rows
+
+commit
+
+return
+
+
+
+/* UPDATE */
+
+
+validate ownership
+
+validate status
+
+update fields
+
+set updatedAt
+
+return
+
+
+
+/* READ */
+
+
+validate id
+
+query
+
+handle not found
+
+return
+
+
+
+/* LIST */
+
+
+apply filter
+
+apply pagination
+
+apply sort
+
+return
+
+
+
+/* DELETE */
+
+
+validate ownership
+
+soft delete
+
+return
+
+
+
+/* ==================================================
+
+FEED SERVICE SPECIAL RULE
+
+================================================== */
+
+
+Feed must include:
+
+pagination
+
+sorting
+
+filter
+
+join safety
+
+
+
+FORBIDDEN:
+
+INSERT
+
+UPDATE
+
+DELETE
+
+
+
+RULE:
+
+Feed is query only.
+
+
+
+/* ==================================================
+
+POST SERVICE SPECIAL RULE
+
+================================================== */
+
+
+Must include:
+
+engagement init
+
+status management
+
+expire logic
+
+
+
+RULE:
+
+Post lifecycle managed.
+
+
+
+/* ==================================================
+
+PROFILE SERVICE SPECIAL RULE
+
+================================================== */
+
+
+Must include:
+
+user mapping
+
+industry mapping
+
+region validation
+
+
+
+RULE:
+
+Identity integrity.
+
+
+
+/* ==================================================
+
+PHOTO SERVICE SPECIAL RULE
+
+================================================== */
+
+
+Must include:
+
+image metadata
+
+mapping logic
+
+cleanup rule
+
+
+
+RULE:
+
+Media lifecycle managed.
+
+
+
+/* ==================================================
+
+REGION SERVICE SPECIAL RULE
+
+================================================== */
+
+
+Must include:
+
+hierarchy support
+
+lookup
+
+validation
+
+
+
+RULE:
+
+Foundation stability.
+
+
+
+/* ==================================================
+
+PERFORMANCE CHECKLIST
+
+================================================== */
+
+
+Service must:
+
+limit query size
+
+avoid N+1 queries
+
+use join carefully
+
+
+
+RULE:
+
+Performance baseline required.
+
+
+
+/* ==================================================
+
+SECURITY CHECKLIST
+
+================================================== */
+
+
+Must check:
+
+ownership
+
+authorization
+
+invalid access
+
+
+
+RULE:
+
+Never trust request.
+
+
+
+/* ==================================================
+
+FINAL SERVICE BUILD CHECKLIST
+
+================================================== */
+
+
+Before service complete verify:
+
+
+
+validation exists
+
+ownership check exists
+
+error handling exists
+
+transaction safe
+
+logging exists
+
+consistent return
+
+soft delete supported
+
+
+
+All must pass.
+
+
+
+/* ==================================================
+
+SERVICE COMPLETION RULE
+
+================================================== */
+
+
+Service is complete only if:
+
+CRUD works
+
+validation exists
+
+error handling exists
+
+ownership enforced
+
+transactions safe
+
+
+
+Otherwise incomplete.
+
+
+
+/* ==================================================
+
+END OF SERVICE CHECKLIST
+
+================================================== */

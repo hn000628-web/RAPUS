@@ -1,0 +1,421 @@
+/* FILE : frontend/app/(after-login)/profile/ProfilePage.module.css */
+/* ROOT : frontend/app/(after-login)/profile/ProfilePage.module.css */
+/* STATUS : CREATE MODE */
+/* ROLE : PROFILE HUB PAGE STYLE MODULE */
+/* CHANGE SUMMARY :
+   - /profile 2칼럼 레이아웃용 CSS Module 추가
+   - PC 2칼럼 / 태블릿·모바일 1칼럼 반응형 적용
+   - 카드 간격 / overflow / 긴 텍스트 줄바꿈 제어
+   - General / Business 마이페이지 공용 스타일 제공
+*/
+
+.page {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 12px 20px;
+}
+
+.container {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.shellCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.titleBox {
+  width: 100%;
+}
+
+.pageTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.pageDescription {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 20px 0;
+}
+
+.profileGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.profileColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.section {
+  min-width: 0;
+}
+
+.sectionTitle {
+  margin: 0 0 14px;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.card {
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.accountInfoBox {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.infoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  min-width: 0;
+}
+
+.infoRow:last-child {
+  border-bottom: none;
+}
+
+.infoLabel {
+  flex-shrink: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.infoValue {
+  min-width: 0;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: right;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.infoValueLong {
+  line-height: 1.5;
+}
+
+.statusSafe {
+  color: #047857;
+}
+
+.statusWarning {
+  color: #b45309;
+}
+
+.statusDanger {
+  color: #b91c1c;
+}
+
+.profileEntryCard {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.profileEntryCard:not(.profileEntryCardDisabled):hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08);
+  transform: translateY(-1px);
+}
+
+.profileEntryCardDisabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.profileIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 26px;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profileContent {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardTitle {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.cardDescription {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.managementGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.managementCard {
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 14px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.managementCardEnabled {
+  cursor: pointer;
+}
+
+.managementCardEnabled:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08);
+  transform: translateY(-1px);
+}
+
+.managementCardDisabled {
+  cursor: default;
+}
+
+.managementTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.managementDescription {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badgeReady {
+  color: #64748b;
+  background: #f1f5f9;
+}
+
+.badgeActive {
+  color: #1e3a8a;
+  background: #dbeafe;
+}
+
+.businessProfileStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.businessProfileTopCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 16px;
+}
+
+.businessActionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.businessActionButton {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.businessActionButton:not(.profileEntryCardDisabled):hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08);
+  transform: translateY(-1px);
+}
+
+.fallbackPage {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 32px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.fallbackCard {
+  width: 100%;
+  max-width: 720px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.fallbackTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.fallbackDescription {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.fallbackInfoBox {
+  margin-top: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.fallbackInfoRow {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 900px) {
+  .profileGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .businessActionGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .page,
+  .fallbackPage {
+    padding: 20px 16px;
+  }
+
+  .shellCard,
+  .fallbackCard {
+    padding: 16px;
+  }
+
+  .pageTitle {
+    font-size: 24px;
+  }
+
+  .card,
+  .managementCard,
+  .businessActionButton,
+  .businessProfileTopCard,
+  .profileEntryCard {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .infoRow {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .infoValue {
+    text-align: left;
+  }
+}

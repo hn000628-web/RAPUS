@@ -1,0 +1,195 @@
+[SERVER RUN OFFICIAL GUIDE]
+
+본 문서는 social-platform 프로젝트의
+백엔드 / 프론트엔드 서버 실행에 대한
+유일한 공식 절차 문서이다.
+
+────────────────────────────────
+[1. 기본 원칙]
+
+- 서버 실행은 반드시 2개의 터미널에서 진행한다.
+- 실행 순서는 반드시:
+  1) 백엔드
+  2) 프론트엔드
+- 모든 명령은 실행 대상 영역을 명시한다.
+  ([백엔드] / [프론트엔드])
+
+────────────────────────────────
+[2. 프로젝트 구조]
+
+project-root
+├─ backend
+└─ frontend
+
+────────────────────────────────
+[3. 백엔드 서버 실행]
+
+실행 목적:
+- 인증(Auth)
+- API
+- 시스템 로직 제공
+
+실행 모드:
+- 개발 모드 (watch)
+
+명령어:
+
+[백엔드] cd backend
+[백엔드] npm run start:dev
+
+정상 기준:
+- NestJS 기동 로그 출력
+- "Nest application successfully started" 메시지
+- 포트 리슨 상태
+
+────────────────────────────────
+[4. 프론트엔드 서버 실행]
+
+실행 목적:
+- UI 렌더링
+- 백엔드 API 연동
+
+실행 모드:
+- 개발 모드
+
+명령어:
+
+[프론트엔드] cd frontend
+[프론트엔드] npm run dev
+
+정상 기준:
+- next dev 실행 로그 출력
+- "Local: http://localhost:3000" 표시
+
+────────────────────────────────
+[5. 주의 사항]
+
+- 프론트엔드를 백엔드보다 먼저 실행하지 않는다.
+- 프로젝트 루트에서 서버를 실행하지 않는다.
+- 영역 태그 없는 명령은 공식 실행으로 인정하지 않는다.
+- start:prod / next start 는
+  배포 단계 이전에는 사용 금지.
+
+────────────────────────────────
+[6. 기준 선언]
+
+본 문서에 정의된 서버 실행 절차만을
+공식 실행 절차로 인정한다.
+
+
+==================================================
+PROJECT SDK VERSION SNAPSHOT
+==================================================
+Snapshot Type : Runtime / Framework / Core SDK
+Source        : backend/package.json
+                frontend/package.json
+Status        : CONFIRMED (No Assumptions)
+==================================================
+
+
+[ BACKEND SERVER SDK SNAPSHOT ]
+--------------------------------------------------
+Platform        : Node.js
+Framework       : NestJS
+Language        : TypeScript
+
+Core Versions
+--------------------------------------------------
+Node.js (type)          : @types/node ^22.10.7
+NestJS Core             : @nestjs/core ^11.0.1
+NestJS Common           : @nestjs/common ^11.0.1
+NestJS Platform         : @nestjs/platform-express ^11.0.1
+NestJS CLI (dev)        : @nestjs/cli ^11.0.0
+
+Language / Runtime
+--------------------------------------------------
+TypeScript               : ^5.7.3
+RxJS                     : ^7.8.1
+Reflect Metadata         : ^0.2.2
+
+Auth / Security
+--------------------------------------------------
+JWT                      : @nestjs/jwt ^11.0.2
+bcrypt                   : ^6.0.0
+
+Database / SQLite(DB 엔진)
+--------------------------------------------------
+SQLite 사용 시 반드시 다음을 준수한다.
+
+- PostgreSQL 호환 SQL만 사용
+- SQLite 전용 함수 사용 금지
+- JSON 확장 사용 금지
+- Boolean은 INTEGER(0/1) 처리
+- UUID는 TEXT로 임시 저장
+- 고급 인덱스 사용 금지
+
+better-sqlite3 → Node 22 대응 빠름, 안정적
+sqlite3 → 네이티브 빌드 이슈 가능성 존재
+
+개발목표 1~2개월 MVP : better-sqlite3 최신 안정 버전
+
+Test / Tooling
+--------------------------------------------------
+Jest                     : ^30.0.0
+ts-jest                  : ^29.2.5
+ESLint                   : ^9.18.0
+Prettier                 : ^3.4.2
+
+Execution Entry
+--------------------------------------------------
+Dev Mode                 : nest start --watch
+Prod Entry               : node dist/main
+
+
+==================================================
+
+
+[ FRONTEND SERVER SDK SNAPSHOT ]
+--------------------------------------------------
+Platform        : Node.js
+Framework       : Next.js
+UI Library      : React
+Language        : TypeScript
+
+Core Versions
+--------------------------------------------------
+Next.js                 : 16.1.6
+React                   : 19.2.3
+React DOM               : 19.2.3
+
+Language / Runtime
+--------------------------------------------------
+TypeScript              : ^5.x
+@types/node             : ^20.x
+@types/react            : ^19.x
+@types/react-dom        : ^19.x
+
+Styling
+--------------------------------------------------
+Tailwind CSS            : ^4.x
+@tailwindcss/postcss    : ^4.x
+
+Lint / Tooling
+--------------------------------------------------
+ESLint                  : ^9.x
+eslint-config-next      : 16.1.6
+
+Execution Entry
+--------------------------------------------------
+Dev Mode                : next dev
+Prod Mode               : next build → next start
+
+
+==================================================
+GLOBAL COMPATIBILITY SUMMARY
+==================================================
+Node.js Runtime Target   : >= 20 LTS (22.x 권장)
+Backend / Frontend Sync : COMPATIBLE
+Experimental Mismatch   : NONE
+SDK Conflict Detected   : NONE
+
+==================================================
+END OF SNAPSHOT
+==================================================
+
+DB PostgreSQL 16

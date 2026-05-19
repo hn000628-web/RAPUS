@@ -1,0 +1,530 @@
+==================================================
+FILE : docs/MEDIA_STORAGE_ABSOLUTE_STRUCTURE.txt
+ROOT : C:\Users\kjm\social-platform\docs\MEDIA_STORAGE_ABSOLUTE_STRUCTURE.txt
+STATUS : PRODUCTION MEDIA STORAGE RULE
+ROLE : FILE STORAGE / IMAGE STRUCTURE / CHANNEL BASE STORAGE
+PRIORITY : ABSOLUTE RULE
+==================================================
+
+
+==================================================
+SECTION 01 : CORE PRINCIPLE
+==================================================
+
+RULE 01
+
+모든 파일은 channelCode 기준 저장
+
+금지:
+
+userId 폴더
+profileId 폴더
+random 폴더
+
+허용:
+
+channelCode only
+
+
+이유:
+
+channel = ownership root
+
+
+
+RULE 02
+
+flat uploads 금지
+
+금지:
+
+uploads/file.png
+
+허용:
+
+uploads/channelCode/file.png
+
+
+
+RULE 03
+
+usageType 기준 분리 필수
+
+혼합 저장 금지
+
+
+==================================================
+SECTION 02 : ROOT STRUCTURE
+==================================================
+
+uploads/
+
+CHANNELCODE/
+
+avatar/
+hero/
+posts/
+gallery/
+temp/
+
+
+
+예:
+
+uploads/
+
+A1B2C3D4E5F6/
+
+avatar/
+hero/
+posts/
+gallery/
+temp/
+
+
+
+==================================================
+SECTION 03 : PROFILE MEDIA STRUCTURE
+==================================================
+
+avatar:
+
+단일 파일 정책
+
+uploads/A1B2/avatar/avatar.webp
+
+
+hero:
+
+여러개 가능
+
+uploads/A1B2/hero/hero_1.webp
+uploads/A1B2/hero/hero_2.webp
+
+
+gallery:
+
+프로필 갤러리
+
+uploads/A1B2/gallery/img1.webp
+
+
+
+==================================================
+SECTION 04 : POST MEDIA STRUCTURE
+==================================================
+
+posts:
+
+postId 기반 분리
+
+
+uploads/A1B2/posts/
+
+post_100/
+
+1.webp
+2.webp
+
+
+post_101/
+
+1.webp
+
+
+
+이유:
+
+post 삭제시 폴더 삭제 가능
+
+
+
+==================================================
+SECTION 05 : TEMP STORAGE
+==================================================
+
+temp:
+
+임시 파일
+
+uploads/A1B2/temp/
+
+
+RULE:
+
+24시간 후 삭제 가능
+
+
+
+==================================================
+SECTION 06 : FILE NAMING RULE
+==================================================
+
+RULE 01
+
+공백 금지
+
+RULE 02
+
+한글 금지
+
+RULE 03
+
+lowercase only
+
+RULE 04
+
+확장자 normalize
+
+png → webp 권장
+
+
+==================================================
+SECTION 07 : FILE NAME POLICY
+==================================================
+
+avatar:
+
+avatar.webp
+
+
+hero:
+
+hero_1.webp
+hero_2.webp
+
+
+post:
+
+postId_index.webp
+
+예:
+
+post_100_1.webp
+
+
+
+gallery:
+
+gallery_timestamp.webp
+
+
+
+==================================================
+SECTION 08 : DB FILEPATH RULE
+==================================================
+
+image_assets.filePath:
+
+상대경로 저장
+
+
+예:
+
+A1B2C3D4E5F6/avatar/avatar.webp
+
+금지:
+
+절대경로
+
+금지:
+
+C:\uploads\file.webp
+
+
+
+이유:
+
+OS 독립성
+
+CDN 이전 가능
+
+
+
+==================================================
+SECTION 09 : STATIC ROUTE RULE
+==================================================
+
+media url:
+
+/media/{filePath}
+
+
+예:
+
+/media/A1B2/avatar/avatar.webp
+
+
+
+main.ts:
+
+app.use(
+
+'/media',
+
+express.static(
+
+uploads path
+
+)
+
+)
+
+
+
+==================================================
+SECTION 10 : MULTER DESTINATION RULE
+==================================================
+
+destination dynamic:
+
+uploads/channelCode/usageType
+
+
+예:
+
+uploads/A1B2/avatar
+
+
+RULE:
+
+upload 전에 mkdir recursive
+
+
+
+==================================================
+SECTION 11 : STORAGE SAFETY RULE
+==================================================
+
+RULE 01
+
+파일 overwrite 허용 (avatar)
+
+RULE 02
+
+hero 삭제시 file delete
+
+RULE 03
+
+post delete → folder delete
+
+RULE 04
+
+orphan file 금지
+
+
+
+RULE:
+
+DB row 삭제시 file 삭제
+
+
+
+==================================================
+SECTION 12 : SECURITY RULE
+==================================================
+
+RULE 01
+
+channelCode validate
+
+RULE 02
+
+path traversal 방지
+
+금지:
+
+../../file
+
+
+RULE 03
+
+mimeType validate
+
+허용:
+
+image/png
+image/jpeg
+image/webp
+
+
+금지:
+
+exe
+svg (optional)
+
+
+
+RULE 04
+
+file size 제한
+
+예:
+
+5MB
+
+
+
+==================================================
+SECTION 13 : IMAGE PROCESS RULE
+==================================================
+
+권장:
+
+upload 후 webp 변환
+
+sharp 사용
+
+
+resize:
+
+avatar:
+
+256x256
+
+hero:
+
+1200x600
+
+post:
+
+max 1600
+
+
+
+==================================================
+SECTION 14 : IMAGE ASSET DB RULE
+==================================================
+
+image_assets:
+
+ownerChannelCode
+
+usageType
+
+fileName
+
+filePath
+
+mimeType
+
+fileSize
+
+createdAt
+
+
+
+RULE:
+
+filePath UNIQUE 권장
+
+
+
+==================================================
+SECTION 15 : FUTURE CDN RULE
+==================================================
+
+filePath 유지
+
+base URL 변경 가능
+
+
+예:
+
+현재:
+
+/media/A1B2/avatar/avatar.webp
+
+CDN:
+
+https://cdn.xxx.com/A1B2/avatar/avatar.webp
+
+
+
+DB 변경 필요 없음
+
+
+
+==================================================
+SECTION 16 : PERFORMANCE RULE
+==================================================
+
+RULE:
+
+folder max 5000 files
+
+초과시:
+
+sub folder 분리
+
+
+예:
+
+posts/
+
+100/
+101/
+
+
+
+==================================================
+SECTION 17 : ABSOLUTE PROHIBITIONS
+==================================================
+
+금지:
+
+uploads flat storage
+
+금지:
+
+random folder
+
+금지:
+
+userId storage
+
+금지:
+
+profileId storage
+
+금지:
+
+absolute path DB 저장
+
+
+
+==================================================
+SECTION FINAL : STORAGE DESIGN SUMMARY
+==================================================
+
+IDENTITY ROOT:
+
+channelCode
+
+
+STORAGE ROOT:
+
+uploads/channelCode/
+
+
+MEDIA SPLIT:
+
+avatar
+hero
+posts
+gallery
+
+
+URL:
+
+/media/channelCode/file
+
+
+DB:
+
+relative path
+
+
+==================================================
+END OF MEDIA STORAGE RULE
+==================================================

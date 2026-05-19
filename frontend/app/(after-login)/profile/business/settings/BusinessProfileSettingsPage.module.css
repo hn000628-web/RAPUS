@@ -1,0 +1,820 @@
+/* FILE : frontend/app/(after-login)/profile/business/settings/BusinessProfileSettingsPage.module.css */
+/* ROOT : frontend/app/(after-login)/profile/business/settings/BusinessProfileSettingsPage.module.css */
+/* STATUS : MODIFY MODE */
+/* ROLE : BUSINESS PROFILE SETTINGS PAGE STYLE */
+/* CHANGE SUMMARY :
+- GENERAL ProfileSettingsPage.module.css 구조를 BUSINESS 전용으로 동일 적용
+- CoverSection / AvatarSection 감싸기 구조 제거 대응
+- heroPreview / heroMediaButton / avatarFrame 직접 구조 적용
+- 아바타 1/2 히어로 걸침 구조 적용
+- 아바타와 상호명 겹침 오류 제거
+- BUSINESS 전용 profileType / industryName 스타일 추가
+- previewActionGroup 3버튼 구조 유지
+- PC / 태블릿 / 모바일 반응형 유지
+- API / DB / Service 영향 없음
+*/
+
+/* SECTION 01 : PAGE */
+
+.page {
+  width: 100%;
+  min-height: calc(100vh - 80px);
+  background: #f5f6f7;
+  overflow-x: hidden;
+}
+
+.shell {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 20px 24px 64px;
+}
+
+.loadingBox {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* SECTION 02 : GRID */
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(360px, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.previewColumn {
+  min-width: 0;
+}
+
+.dashboardColumn {
+  min-width: 0;
+}
+
+/* SECTION 03 : PREVIEW CARD */
+
+.previewCard {
+  overflow: hidden;
+  border: 1px solid #eef0f3;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+}
+
+/* SECTION 04 : HERO PREVIEW */
+
+.heroPreview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 8;
+  overflow: visible;
+  background: #f3f4f6;
+}
+
+.heroMediaButton {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.heroMediaButton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(15, 23, 42, 0.04);
+  transition: background 0.16s ease;
+}
+
+.heroMediaButton:hover::after {
+  background: rgba(15, 23, 42, 0.28);
+}
+
+.heroMediaButton:active::after {
+  background: rgba(15, 23, 42, 0.34);
+}
+
+.heroMediaButton:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.55);
+  outline-offset: -3px;
+}
+
+.heroImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transform: scale(1);
+  transition:
+    transform 0.18s ease,
+    filter 0.18s ease;
+}
+
+.heroMediaButton:hover .heroImage {
+  transform: scale(1.018);
+  filter: brightness(0.9);
+}
+
+.heroPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(
+      135deg,
+      #f8fafc 0%,
+      #eef2f7 100%
+    );
+  color: #9ca3af;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.mediaEditBadge {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 2;
+  padding: 9px 13px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.86);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 1;
+  transform: translateY(0);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
+  transition:
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.heroMediaButton:hover .mediaEditBadge,
+.heroMediaButton:focus-visible .mediaEditBadge {
+  background: #2563eb;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.34);
+  transform: translateY(-2px);
+}
+
+/* SECTION 05 : AVATAR */
+
+.avatarFrame {
+  position: absolute;
+  left: 50%;
+  bottom: -44px;
+  width: 92px;
+  height: 92px;
+  overflow: hidden;
+  padding: 0;
+  border: 4px solid #ffffff;
+  border-radius: 50%;
+  appearance: none;
+  background: #f3f4f6;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.18);
+  transform: translateX(-50%);
+  cursor: pointer;
+}
+
+.avatarFrame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: rgba(15, 23, 42, 0.04);
+  transition: background 0.16s ease;
+}
+
+.avatarFrame:hover::after {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+.avatarFrame:active::after {
+  background: rgba(15, 23, 42, 0.36);
+}
+
+.avatarFrame:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.55);
+  outline-offset: 3px;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  transform: scale(1);
+  transition:
+    transform 0.18s ease,
+    filter 0.18s ease;
+}
+
+.avatarFrame:hover .avatarImage {
+  transform: scale(1.04);
+  filter: brightness(0.9);
+}
+
+.avatarPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(
+      135deg,
+      #f8fafc 0%,
+      #eef2f7 100%
+    );
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.avatarEditBadge {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  z-index: 2;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.88);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.24);
+  transition:
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.avatarFrame:hover .avatarEditBadge,
+.avatarFrame:focus-visible .avatarEditBadge {
+  background: #2563eb;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.32);
+  transform: translateX(-50%) translateY(-2px);
+}
+
+/* SECTION 06 : PROFILE SUMMARY */
+
+.profileSummary {
+  padding: 58px 22px 20px;
+  text-align: center;
+}
+
+.profileName {
+  margin: 0;
+  color: #111827;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.3;
+  letter-spacing: -0.4px;
+  word-break: keep-all;
+}
+
+.profileType {
+  margin: 7px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.industryName {
+  margin: 8px 0 0;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.regionName {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.channelCode {
+  margin-top: 16px;
+  color: #16a34a;
+  font-size: 14px;
+  font-weight: 900;
+  word-break: break-all;
+}
+
+/* SECTION 07 : STATUS CARD */
+
+.statusCard {
+  margin: 0 18px 18px;
+  padding: 18px;
+  border: 1px solid #eef0f3;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.statusHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.statusTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.statusDesc {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.statusPercent {
+  flex: 0 0 auto;
+  color: #2563eb;
+  font-size: 24px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 8px;
+  margin-top: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef2f7;
+}
+
+.progressBar {
+  height: 100%;
+  border-radius: 999px;
+  background: #2563eb;
+  transition: width 0.18s ease;
+}
+
+.statusList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.statusItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.statusLabel {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.statusComplete {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #16a34a;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.statusPending {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+/* SECTION 08 : PREVIEW ACTION */
+
+.previewActionGroup {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 18px 18px;
+}
+
+.previewButton {
+  width: 100%;
+  height: 42px;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.previewButton:hover {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+.previewButton:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.18);
+}
+
+/* SECTION 09 : DASHBOARD */
+
+.dashboardCard {
+  overflow: hidden;
+  border: 1px solid #eef0f3;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+}
+
+.dashboardHeader {
+  padding: 26px 26px 20px;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.kicker {
+  margin: 0 0 8px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+}
+
+.dashboardTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 26px;
+  font-weight: 950;
+  line-height: 1.28;
+  letter-spacing: -0.4px;
+}
+
+.dashboardDesc {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* SECTION 10 : FORM */
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+
+.formPanel {
+  padding: 18px;
+  border: 1px solid #eef0f3;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.formPanel :global(input),
+.formPanel :global(textarea),
+.formPanel :global(select) {
+  font-family: inherit;
+}
+
+.formPanel :global(button) {
+  font-family: inherit;
+}
+
+.saveArea {
+  padding-top: 4px;
+}
+
+.saveButton {
+  width: 100%;
+  height: 54px;
+  border: 0;
+  border-radius: 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.saveButton:hover {
+  background: #1d4ed8;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
+  transform: translateY(-1px);
+}
+
+.saveButton:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.18);
+}
+
+.saveButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+  box-shadow: none;
+  transform: none;
+}
+
+/* SECTION 11 : MODAL */
+
+.modalWrap {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.modalBox {
+  width: 320px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 32px 28px;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25);
+}
+
+.checkIcon {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #ffffff;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.modalTitle {
+  color: #111827;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.modalDesc {
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* SECTION 12 : TABLET */
+
+@media (max-width: 1023px) {
+  .shell {
+    max-width: 760px;
+    padding: 18px 16px 56px;
+  }
+
+  .settingsGrid {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .previewCard {
+    border-radius: 16px;
+  }
+
+  .dashboardCard {
+    border-radius: 16px;
+  }
+
+  .heroPreview {
+    aspect-ratio: 16 / 6;
+  }
+
+  .dashboardHeader {
+    padding: 24px 22px 18px;
+  }
+
+  .formStack {
+    padding: 18px;
+  }
+}
+
+/* SECTION 13 : MOBILE */
+
+@media (max-width: 767px) {
+  .page {
+    min-height: calc(100vh - 64px);
+  }
+
+  .shell {
+    max-width: none;
+    padding: 0 0 40px;
+  }
+
+  .settingsGrid {
+    gap: 0;
+  }
+
+  .previewCard {
+    border-width: 0 0 1px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .dashboardCard {
+    border-width: 1px 0 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .heroPreview {
+    aspect-ratio: 16 / 7;
+  }
+
+  .avatarFrame {
+    bottom: -38px;
+    width: 78px;
+    height: 78px;
+    border-width: 3px;
+  }
+
+  .profileSummary {
+    padding: 50px 18px 18px;
+  }
+
+  .profileName {
+    font-size: 22px;
+  }
+
+  .profileType,
+  .industryName,
+  .regionName {
+    font-size: 13px;
+  }
+
+  .statusCard {
+    margin: 0 14px 14px;
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .previewActionGroup {
+    padding: 0 14px 16px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .previewButton {
+    height: 40px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .dashboardHeader {
+    padding: 22px 18px 16px;
+  }
+
+  .dashboardTitle {
+    font-size: 24px;
+  }
+
+  .dashboardDesc {
+    font-size: 13px;
+  }
+
+  .formStack {
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .formPanel {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .saveButton {
+    height: 52px;
+    border-radius: 15px;
+    font-size: 15px;
+  }
+}
+
+/* SECTION 14 : SMALL MOBILE */
+
+@media (max-width: 420px) {
+  .heroPreview {
+    aspect-ratio: 16 / 8;
+  }
+
+  .avatarFrame {
+    bottom: -34px;
+    width: 70px;
+    height: 70px;
+  }
+
+  .profileSummary {
+    padding-top: 46px;
+  }
+
+  .profileName {
+    font-size: 20px;
+  }
+
+  .channelCode {
+    font-size: 13px;
+  }
+
+  .statusHeader {
+    align-items: flex-start;
+  }
+
+  .statusPercent {
+    font-size: 22px;
+  }
+
+  .previewActionGroup {
+    grid-template-columns: 1fr;
+  }
+
+  .previewButton {
+    height: 40px;
+  }
+
+  .formPanel {
+    padding: 14px;
+  }
+
+  .modalBox {
+    width: 300px;
+    padding: 28px 24px;
+  }
+}
+
+/* SECTION FINAL : VALIDATION */
+
+/*
+VALIDATION:
+- ROOT 포함 완료
+- BUSINESS 설정 page.tsx 전체 통코드 대응 완료
+- BUSINESS 설정 CSS 전체 통코드 대응 완료
+- GENERAL 프로필 설정 페이지와 동일 UI 구조 적용 완료
+- CoverSection / AvatarSection 제거 완료
+- 아바타 / 상호명 겹침 구조 제거 완료
+- channelURL 고정 원칙 적용 완료
+- API / DB / Service 신규 영향 없음
+*/

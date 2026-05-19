@@ -1,0 +1,791 @@
+//FILE: /docs/architecture/PLATFORM_ARCHITECTURE_ABSOLUTE_RULES.txt
+
+/* ==================================================
+PLATFORM ARCHITECTURE ABSOLUTE RULE SNAPSHOT
+DB → SERVICE → API → FRONTEND
+Version : v1.0
+STATUS : CORE STRUCTURE RULE
+================================================== */
+
+/* ==================================================
+SECTION 01 : CORE ARCHITECTURE FLOW
+================================================== */
+
+DATA FLOW (ABSOLUTE STRUCTURE)
+
+DB
+↓
+SERVICE (BUSINESS LOGIC CORE)
+↓
+API CONTROLLER (ROUTE LAYER)
+↓
+FRONTEND (VIEW LAYER)
+
+DIRECT ACCESS PROHIBITED.
+
+STANDARD FLOW:
+
+Frontend
+→ API Route
+→ Controller
+→ Service
+→ DB
+
+==================================================
+
+/* ==================================================
+SECTION 02 : DB ACCESS ABSOLUTE RULE
+================================================== */
+
+ABSOLUTE RULE:
+
+DB 접근은 Service Layer만 허용한다.
+
+허용:
+
+Controller → Service → DB
+
+금지:
+
+Controller → DB
+Frontend → DB
+Frontend → Service → DB
+Guard → DB
+Util → DB
+Module → DB
+DTO → DB
+
+DB ACCESS ENTRY POINT:
+
+Service Only.
+
+==================================================
+
+/* ==================================================
+SECTION 03 : DB IMPORT RESTRICTION RULE
+================================================== */
+
+db import 허용:
+
+*.service.ts
+
+db import 금지:
+
+*.controller.ts
+*.module.ts
+*.guard.ts
+*.dto.ts
+*.util.ts
+*.middleware.ts
+*.interceptor.ts
+
+VIOLATION 발생 시:
+
+구조 오류로 간주.
+
+==================================================
+
+/* ==================================================
+SECTION 04 : CONTROLLER RULE
+================================================== */
+
+Controller 역할:
+
+API route only.
+
+허용:
+
+Request receive
+Response return
+Service call
+
+금지:
+
+Business logic
+DB query
+Validation logic duplication
+Data processing logic
+
+Controller must remain thin layer.
+
+STANDARD:
+
+controller → service only
+
+==================================================
+
+/* ==================================================
+SECTION 05 : SERVICE RULE
+================================================== */
+
+Service 역할:
+
+Business logic core.
+
+허용:
+
+DB access
+Validation logic
+Domain logic
+Data transformation
+Transaction control
+
+Service must act as:
+
+Single Source of Truth.
+
+STANDARD:
+
+All business logic must exist in Service.
+
+==================================================
+
+/* ==================================================
+SECTION 06 : FRONTEND RULE
+================================================== */
+
+Frontend 역할:
+
+View layer only.
+
+허용:
+
+UI rendering
+API call
+State control
+UX flow
+
+금지:
+
+Business logic
+DB logic
+Validation duplication
+Ranking logic
+Permission logic
+
+STANDARD:
+
+Frontend must trust API only.
+
+==================================================
+
+/* ==================================================
+SECTION 07 : API CONTRACT RULE
+================================================== */
+
+API is:
+
+Public Contract.
+
+DB is:
+
+Private Structure.
+
+Rule:
+
+Frontend must depend on API response only.
+
+DB 변경 발생 시:
+
+Frontend 영향 없어야 한다.
+
+STANDARD:
+
+DB change
+→ Service mapping
+→ API 유지
+→ Front unchanged
+
+==================================================
+
+/* ==================================================
+SECTION 08 : BUSINESS LOGIC CENTRALIZATION RULE
+================================================== */
+
+모든 Business Logic 위치:
+
+Service Layer.
+
+금지:
+
+Controller logic duplication
+Frontend calculation logic
+
+허용:
+
+Service only.
+
+목표:
+
+Logic Single Location Principle.
+
+==================================================
+
+/* ==================================================
+SECTION 09 : STRUCTURE STABILITY RULE
+================================================== */
+
+Layer Isolation Rule:
+
+각 Layer 역할 분리.
+
+DB:
+
+Data storage only.
+
+Service:
+
+Logic only.
+
+Controller:
+
+Transport only.
+
+Frontend:
+
+View only.
+
+Layer crossing prohibited.
+
+==================================================
+
+/* ==================================================
+SECTION 10 : CHANGE IMPACT ORDER RULE
+================================================== */
+
+구조 변경 영향 순서:
+
+DB
+→ Service
+→ Controller
+→ Frontend
+
+수정 우선순위:
+
+1 DB Schema
+2 Service Logic
+3 API Controller
+4 Frontend UI
+
+순서 변경 금지.
+
+==================================================
+
+/* ==================================================
+SECTION 11 : FORBIDDEN STRUCTURE
+================================================== */
+
+금지 구조:
+
+Frontend → DB
+Frontend → Service direct
+Controller → DB
+Multiple DB access points
+
+금지 이유:
+
+Maintenance collapse risk.
+
+허용 구조:
+
+Single DB access channel.
+
+==================================================
+
+/* ==================================================
+SECTION 12 : PLATFORM STABILITY PRINCIPLE
+================================================== */
+
+Core Principle:
+
+DB is private.
+API is public.
+
+Service is core engine.
+
+Frontend is replaceable layer.
+
+목표:
+
+Backend 중심 구조 유지.
+
+==================================================
+
+/* ==================================================
+SECTION 13 : ARCHITECTURE ENFORCEMENT RULE
+================================================== */
+
+Mandatory rules:
+
+1 All DB access must go through Service
+2 Controller must call Service only
+3 Frontend must call API only
+4 Business logic only in Service
+5 DB import restricted to Service
+
+위반 시:
+
+Architecture violation.
+
+==================================================
+
+/* ==================================================
+SECTION 14 : FINAL STRUCTURE STANDARD
+================================================== */
+
+FINAL PLATFORM STRUCTURE:
+
+DB
+↓
+SERVICE (ONLY DB ACCESS)
+↓
+CONTROLLER (API ROUTE)
+↓
+FRONTEND (UI)
+
+STRUCTURE LOCK COMPLETE.
+
+==================================================
+
+/* ==================================================
+SECTION 15 : STATUS DECLARATION
+================================================== */
+
+본 규칙은:
+
+Platform Architecture Absolute Rule.
+
+이후:
+
+본 규칙 위반 코드:
+
+비공식 코드.
+
+Production 사용 금지.
+
+==================================================
+END OF ARCHITECTURE SNAPSHOT
+==================================================
+
+FILE : /docs/architecture/AUTH_LOGIN_FLOW_SNAPSHOT.txt
+
+/* ==================================================
+AUTH LOGIN FLOW ARCHITECTURE SNAPSHOT
+DB → SERVICE → API → FRONTEND
+LOGIN / SESSION / TOKEN STRUCTURE
+Version : v2.0 (RENEWAL)
+STATUS : STRUCTURE LOCK
+================================================== */
+
+/* ==================================================
+SECTION 01 : LOGIN CORE FLOW
+================================================== */
+
+STANDARD LOGIN FLOW:
+
+Frontend (Login Page)
+→ API Route (/auth/login)
+→ Auth Controller
+→ Auth Service
+→ DB (users / profiles / sessions)
+→ Service return
+→ Controller response
+→ Frontend state update
+
+ABSOLUTE RULE:
+
+Frontend → DB 접근 금지
+
+Frontend → Service direct 접근 금지
+
+Controller → DB 접근 금지
+
+Service only DB access allowed
+
+==================================================
+
+/* ==================================================
+SECTION 02 : LOGIN DATA FLOW
+================================================== */
+
+LOGIN REQUEST FLOW:
+
+Frontend:
+
+email
+password
+profileType
+
+↓
+
+POST /api/auth/login
+
+↓
+
+Controller:
+
+Request receive
+DTO mapping
+Service call only
+
+↓
+
+AuthService.login()
+
+↓
+
+DB QUERY:
+
+users table verify
+
+profiles table verify
+
+profile_sessions check
+
+↓
+
+JWT 생성
+
+↓
+
+Controller return:
+
+accessToken
+profileId
+profileType
+
+↓
+
+Frontend:
+
+localStorage save
+route decision
+
+==================================================
+
+/* ==================================================
+SECTION 03 : LOGIN DB ACCESS RULE
+================================================== */
+
+DB ACCESS LOCATION:
+
+auth.service.ts only
+
+ALLOWED:
+
+AuthService
+
+PROHIBITED:
+
+auth.controller.ts
+jwt.guard.ts
+auth.module.ts
+frontend
+utils
+
+STANDARD:
+
+Controller → Service → DB
+
+==================================================
+
+/* ==================================================
+SECTION 04 : LOGIN SERVICE RESPONSIBILITY
+================================================== */
+
+AuthService 역할:
+
+User verify
+
+Password verify
+
+Profile verify
+
+Session verify
+
+JWT issue
+
+허용:
+
+bcrypt compare
+DB select
+validation
+token generate
+
+금지:
+
+HTTP response control
+Request parsing
+
+==================================================
+
+/* ==================================================
+SECTION 05 : LOGIN CONTROLLER RESPONSIBILITY
+================================================== */
+
+AuthController 역할:
+
+Route handling
+
+Request receive
+
+Service call
+
+Response return
+
+허용:
+
+@Post login
+
+Body receive
+
+Service call
+
+JSON return
+
+금지:
+
+Password compare
+
+DB query
+
+JWT create
+
+Business logic
+
+STANDARD:
+
+controller = thin layer
+
+==================================================
+
+/* ==================================================
+SECTION 06 : LOGIN SESSION RULE
+================================================== */
+
+SESSION TABLE:
+
+profile_sessions
+
+목적:
+
+Active profile 관리
+
+LOGIN AFTER:
+
+profile session verify
+
+없으면 생성
+
+구조:
+
+userId
+profileId
+createdAt
+
+RULE:
+
+user active profile = 1
+
+UNIQUE(profileId)
+
+==================================================
+
+/* ==================================================
+SECTION 07 : TOKEN RULE
+================================================== */
+
+JWT CONTENT:
+
+sub = userId
+
+pid = profileId
+
+ptype = profileType
+
+iat
+
+exp
+
+RULE:
+
+Token contains:
+
+identity only
+
+NO business data
+
+TOKEN PURPOSE:
+
+Authentication only
+
+Authorization handled separately
+
+==================================================
+
+/* ==================================================
+SECTION 08 : FRONTEND LOGIN RULE
+================================================== */
+
+Frontend 역할:
+
+Login form UI
+
+API call
+
+Token save
+
+Route control
+
+허용:
+
+fetch login
+
+loading state
+
+error state
+
+router redirect
+
+금지:
+
+Password logic
+
+JWT decode business logic
+
+Permission check
+
+DB structure dependency
+
+STANDARD:
+
+Frontend trust API only
+
+==================================================
+
+/* ==================================================
+SECTION 09 : LOGIN ROUTING RULE
+================================================== */
+
+LOGIN SUCCESS:
+
+GENERAL:
+
+/profile/general
+
+BUSINESS:
+
+/profile/business
+
+NO TOKEN:
+
+redirect /
+
+TOKEN EXISTS:
+
+call /profiles/me
+
+==================================================
+
+/* ==================================================
+SECTION 10 : ERROR FLOW
+================================================== */
+
+LOGIN FAIL FLOW:
+
+Service:
+
+throw UnauthorizedException
+
+Controller:
+
+401 return
+
+Frontend:
+
+error message
+
+RULE:
+
+Error source:
+
+Service only
+
+Controller:
+
+transport only
+
+==================================================
+
+/* ==================================================
+SECTION 11 : FINAL STRUCTURE
+================================================== */
+
+LOGIN FINAL FLOW:
+
+UI (frontend)
+↓
+API ROUTE
+↓
+AUTH CONTROLLER
+↓
+AUTH SERVICE
+↓
+DATABASE
+
+STRUCTURE LOCK:
+
+DB
+→ SERVICE
+→ CONTROLLER
+→ FRONTEND
+
+LOGIN ALSO SAME RULE.
+
+==================================================
+
+/* ==================================================
+SECTION 12 : ARCHITECTURE PRINCIPLE
+================================================== */
+
+LOGIN is:
+
+Backend driven feature.
+
+Frontend is:
+
+consumer only.
+
+DB is:
+
+private structure.
+
+API is:
+
+public contract.
+
+==================================================
+
+/* ==================================================
+SECTION FINAL : STATUS
+================================================== */
+
+LOGIN STRUCTURE:
+
+PLATFORM STANDARD APPLIED.
+
+DB ACCESS:
+
+SERVICE ONLY.
+
+STRUCTURE:
+
+STABLE.
+
+STATUS:
+
+PRODUCTION READY STRUCTURE.
+
+==================================================
+END OF LOGIN ARCHITECTURE SNAPSHOT
+==================================================

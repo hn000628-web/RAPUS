@@ -1,0 +1,530 @@
+/* ==================================================
+
+BACKEND SERVICE DEPENDENCY GRAPH
+
+SERVICE CALL ORDER + FORBIDDEN LINE
+
+SNAPSHOT_BACKEND_SERVICE_DEPENDENCY_v1
+
+================================================== */
+
+
+/* ==================================================
+
+SERVICE LIST
+
+================================================== */
+
+region.service
+
+industry.service
+
+profile.service
+profileSession.service
+profileBlock.service
+
+image.service
+photo.service
+profileHero.service
+
+post.service
+
+postImage.service
+
+engagement.service
+
+feed.service
+
+
+
+/* ==================================================
+
+SERVICE DEPENDENCY GRAPH
+
+(Allowed call direction only)
+
+================================================== */
+
+
+region.service
+
+(no dependency)
+
+
+
+industry.service
+
+(no dependency)
+
+
+
+profile.service
+
+→ region.service (validation)
+→ industry.service (validation)
+
+
+
+profileSession.service
+
+→ profile.service
+
+
+
+profileBlock.service
+
+→ profile.service
+
+
+
+image.service
+
+(no dependency)
+
+
+
+photo.service
+
+→ profile.service (ownership validation)
+
+
+
+profileHero.service
+
+→ profile.service
+→ image.service
+
+
+
+post.service
+
+→ profile.service (ownership validation)
+→ region.service (region validation)
+
+
+
+postImage.service
+
+→ post.service (post validation)
+→ image.service (image validation)
+
+
+
+engagement.service
+
+→ post.service (post validation)
+
+
+
+feed.service
+
+→ post.service (READ ONLY)
+→ profile.service (READ ONLY)
+→ region.service (READ ONLY)
+→ image.service (READ ONLY)
+→ engagement.service (READ ONLY)
+
+
+
+/* ==================================================
+
+CALL ORDER HIERARCHY
+
+================================================== */
+
+
+FOUNDATION
+
+region.service
+industry.service
+
+
+
+IDENTITY
+
+profile.service
+profileSession.service
+profileBlock.service
+
+
+
+MEDIA
+
+image.service
+photo.service
+profileHero.service
+
+
+
+CONTENT
+
+post.service
+
+
+
+CONTENT MEDIA
+
+postImage.service
+
+
+
+METRICS
+
+engagement.service
+
+
+
+AGGREGATION
+
+feed.service
+
+
+
+/* ==================================================
+
+ABSOLUTE CALL ORDER
+
+================================================== */
+
+
+region.service
+
+↓
+
+profile.service
+
+↓
+
+image.service
+
+↓
+
+post.service
+
+↓
+
+postImage.service
+
+↓
+
+engagement.service
+
+↓
+
+feed.service
+
+
+
+/* ==================================================
+
+FORBIDDEN DEPENDENCY LINE
+
+================================================== */
+
+
+region.service → ANY SERVICE ❌
+
+
+
+profile.service → post.service ❌
+
+
+
+photo.service → post.service ❌
+
+
+
+image.service → post.service ❌
+
+
+
+feed.service → ANY WRITE FUNCTION ❌
+
+
+
+engagement.service → profile.service ❌
+
+
+
+post.service → image.service (direct insert) ❌
+
+
+
+profile.service → image.service (direct insert) ❌
+
+
+
+/* ==================================================
+
+STRICT SERVICE RULES
+
+================================================== */
+
+
+/* FEED RULE */
+
+
+feed.service must only call:
+
+read methods only.
+
+
+
+Forbidden:
+
+createPost ❌
+
+updatePost ❌
+
+deletePost ❌
+
+uploadImage ❌
+
+updateProfile ❌
+
+createRegion ❌
+
+
+
+/* POST RULE */
+
+
+post.service may call:
+
+profile validation
+region validation
+
+post.service must not call:
+
+image insert ❌
+
+profile update ❌
+
+
+
+/* PHOTO RULE */
+
+
+photo.service may call:
+
+profile validation
+post mapping validation
+
+photo.service must not call:
+
+post creation ❌
+
+
+
+/* PROFILE RULE */
+
+
+profile.service may call:
+
+region validation
+industry validation
+
+profile.service must not call:
+
+post creation ❌
+
+
+
+/* REGION RULE */
+
+
+region.service must be isolated.
+
+No service calls allowed.
+
+
+
+/* ==================================================
+
+SAFE SERVICE FLOW (REAL FLOW)
+
+================================================== */
+
+
+POST CREATE FLOW
+
+
+Controller
+
+↓
+
+post.service
+
+↓
+
+profile validation
+
+↓
+
+region validation
+
+↓
+
+create post
+
+↓
+
+engagement.service init
+
+↓
+
+return
+
+
+
+POST IMAGE FLOW
+
+
+Controller
+
+↓
+
+image.service upload
+
+↓
+
+postImage.service mapping
+
+↓
+
+return
+
+
+
+FEED LOAD FLOW
+
+
+Controller
+
+↓
+
+feed.service
+
+↓
+
+post.service (read)
+
+↓
+
+profile.service (read)
+
+↓
+
+image.service (read)
+
+↓
+
+engagement.service (read)
+
+↓
+
+return
+
+
+
+PROFILE CREATE FLOW
+
+
+Controller
+
+↓
+
+profile.service
+
+↓
+
+region validation
+
+↓
+
+industry validation
+
+↓
+
+create profile
+
+↓
+
+return
+
+
+
+/* ==================================================
+
+CRITICAL ERROR PATTERNS
+
+================================================== */
+
+
+Feed calling post.create = ARCHITECTURE ERROR
+
+Feed calling region.update = ARCHITECTURE ERROR
+
+Photo calling post.create = ARCHITECTURE ERROR
+
+Profile calling post.create = ARCHITECTURE ERROR
+
+Region calling post.update = ARCHITECTURE ERROR
+
+
+
+/* ==================================================
+
+SERVICE LAYER PRINCIPLE
+
+================================================== */
+
+
+Foundation services must not depend on upper domains.
+
+Content services may depend on foundation.
+
+Feed depends on everything.
+
+Nothing depends on Feed.
+
+
+
+/* ==================================================
+
+FINAL PRINCIPLE
+
+================================================== */
+
+
+Dependency direction must always be:
+
+FOUNDATION
+
+↓
+
+IDENTITY
+
+↓
+
+MEDIA
+
+↓
+
+CONTENT
+
+↓
+
+AGGREGATION
+
+
+
+Never reverse.
+
+
+
+/* ==================================================
+
+END OF SERVICE DEPENDENCY GRAPH
+
+================================================== */

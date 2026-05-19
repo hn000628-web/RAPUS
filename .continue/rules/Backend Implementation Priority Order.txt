@@ -1,0 +1,476 @@
+/* ==================================================
+
+BACKEND IMPLEMENTATION PRIORITY ORDER
+
+MVP SERVICE BUILD PRIORITY
+
+SNAPSHOT_BACKEND_PRIORITY_ORDER_v1
+
+================================================== */
+
+
+/* ==================================================
+
+PRIORITY PRINCIPLE
+
+================================================== */
+
+
+Goal:
+
+Make Feed working as fast as possible.
+
+
+
+Strategy:
+
+Build minimum required chain.
+
+
+
+Chain:
+
+Region → Profile → Post → Engagement → Feed
+
+
+
+Media later.
+
+
+
+/* ==================================================
+
+PRIORITY 01
+
+REGION SERVICE
+
+================================================== */
+
+
+SERVICE:
+
+region.service.ts
+
+
+
+REASON:
+
+All posts require region.
+
+Feed filter requires region.
+
+
+
+MINIMUM FEATURES:
+
+region list
+region validation
+
+
+
+RESULT:
+
+Platform scope defined.
+
+
+
+/* ==================================================
+
+PRIORITY 02
+
+PROFILE SERVICE
+
+================================================== */
+
+
+SERVICE:
+
+profile.service.ts
+
+
+
+REASON:
+
+Post requires profileId.
+
+
+
+MINIMUM FEATURES:
+
+profile create
+profile read
+
+
+
+RESULT:
+
+Content owner ready.
+
+
+
+/* ==================================================
+
+PRIORITY 03
+
+POST SERVICE
+
+================================================== */
+
+
+SERVICE:
+
+post.service.ts
+
+
+
+REASON:
+
+Core platform entity.
+
+
+
+MINIMUM FEATURES:
+
+create post
+get post
+
+
+
+RESULT:
+
+Content exists.
+
+
+
+/* ==================================================
+
+PRIORITY 04
+
+ENGAGEMENT SERVICE
+
+================================================== */
+
+
+SERVICE:
+
+engagement.service.ts
+
+
+
+REASON:
+
+Feed requires engagement row.
+
+
+
+MINIMUM FEATURES:
+
+create engagement row
+basic counters
+
+
+
+RESULT:
+
+Post becomes valid.
+
+
+
+/* ==================================================
+
+PRIORITY 05
+
+FEED SERVICE
+
+================================================== */
+
+
+SERVICE:
+
+feed.service.ts
+
+
+
+REASON:
+
+Platform must display content.
+
+
+
+MINIMUM FEATURES:
+
+simple feed query
+
+JOIN:
+
+posts
+profiles
+engagement
+
+
+
+RESULT:
+
+Platform visible.
+
+
+
+/* ==================================================
+
+PRIORITY 06
+
+IMAGE SERVICE
+
+================================================== */
+
+
+SERVICE:
+
+image.service.ts
+
+
+
+REASON:
+
+Media layer.
+
+
+
+MINIMUM FEATURES:
+
+upload image
+store metadata
+
+
+
+RESULT:
+
+Media storage ready.
+
+
+
+/* ==================================================
+
+PRIORITY 07
+
+POST IMAGE SERVICE
+
+================================================== */
+
+
+SERVICE:
+
+postImage.service.ts
+
+
+
+REASON:
+
+Attach images to posts.
+
+
+
+MINIMUM FEATURES:
+
+mapping
+
+
+
+RESULT:
+
+Visual content ready.
+
+
+
+/* ==================================================
+
+PRIORITY 08
+
+PHOTO SERVICE
+
+================================================== */
+
+
+SERVICE:
+
+photo.service.ts
+
+
+
+REASON:
+
+Profile media.
+
+
+
+RESULT:
+
+Profile visual ready.
+
+
+
+/* ==================================================
+
+PRIORITY 09
+
+PROFILE HERO SERVICE
+
+================================================== */
+
+
+SERVICE:
+
+profileHero.service.ts
+
+
+
+REASON:
+
+Profile presentation.
+
+
+
+RESULT:
+
+Business profile ready.
+
+
+
+/* ==================================================
+
+PRIORITY 10
+
+PROFILE BLOCK SERVICE
+
+================================================== */
+
+
+SERVICE:
+
+profileBlock.service.ts
+
+
+
+REASON:
+
+Profile content structure.
+
+
+
+RESULT:
+
+Profile layout ready.
+
+
+
+/* ==================================================
+
+FINAL PRIORITY ORDER
+
+================================================== */
+
+
+1 region.service
+
+2 profile.service
+
+3 post.service
+
+4 engagement.service
+
+5 feed.service
+
+6 image.service
+
+7 postImage.service
+
+8 photo.service
+
+9 profileHero.service
+
+10 profileBlock.service
+
+
+
+/* ==================================================
+
+MINIMUM PLATFORM BOOT ORDER
+
+================================================== */
+
+
+Absolute MVP:
+
+region
+
+profile
+
+post
+
+engagement
+
+feed
+
+
+
+Only 5 services required.
+
+
+
+/* ==================================================
+
+MVP COMPLETION STATE
+
+================================================== */
+
+
+If these exist:
+
+region
+
+profile
+
+post
+
+engagement
+
+feed
+
+
+
+Platform is functional.
+
+
+
+Images optional.
+
+
+
+/* ==================================================
+
+DEVELOPMENT STRATEGY RULE
+
+================================================== */
+
+
+Build platform core first.
+
+Add media second.
+
+Add enhancements last.
+
+
+
+RULE:
+
+Content platform first.
+
+Media platform second.
+
+
+
+/* ==================================================
+
+END OF PRIORITY ORDER
+
+================================================== */

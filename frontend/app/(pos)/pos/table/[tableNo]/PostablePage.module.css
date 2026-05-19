@@ -1,0 +1,1224 @@
+/* FILE : frontend/app/(pos)/pos/table/[tableNo]/PostablePage.module.css */
+/* ROOT : frontend/app/(pos)/pos/table/[tableNo]/PostablePage.module.css */
+/* STATUS : MODIFY MODE */
+/* ROLE : POS TABLE PAGE STYLE */
+/* CHANGE SUMMARY :
+- 테이블 주문 화면 헤더 우측 QR 오더 버튼 스타일 추가
+- 기존 POS viewport / shell / topbar / footer / 3컬럼 레이아웃 유지
+- 기존 메뉴 카드 / 수량 버튼 / 주문 패널 구조 유지
+- API 호출 없음
+- DB 직접 접근 없음
+*/
+
+.page {
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f7fb;
+}
+
+.posShell {
+  min-width: 100%;
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbarWrap {
+  flex: 0 0 64px;
+  height: 64px;
+  min-height: 64px;
+  width: 100%;
+  overflow: visible;
+}
+
+.topbarInner {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mainViewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.mainGrid {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 10px !important;
+  column-gap: 10px !important;
+  row-gap: 10px !important;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  box-sizing: border-box;
+  grid-template-columns: 160px minmax(0, 1fr) minmax(0, 1fr) minmax(240px, 240px);
+  min-width: 1032px;
+}
+
+.sidebar {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  width: 160px;
+  min-width: 160px;
+  max-width: 160px;
+  flex-shrink: 0;
+}
+
+.emptySidebarBox {
+  height: 100%;
+  min-height: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.emptySidebarTitle {
+  font-size: 15px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.main {
+  grid-column: 2 / 4;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.orderWorkspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(250px, 1fr) minmax(250px, 1fr);
+  gap: 10px !important;
+  column-gap: 10px !important;
+  row-gap: 10px !important;
+  align-items: start;
+}
+
+.menuColumn,
+.detailColumn {
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.menuColumn {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.detailColumn {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  justify-self: start;
+}
+
+.columnTitle {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  word-break: keep-all;
+}
+
+.header {
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+.headerTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  word-break: keep-all;
+}
+
+.description {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.qrOrderButton {
+  flex: 0 0 auto;
+  min-width: 104px;
+  height: 42px;
+  border: 1px solid #111827;
+  border-radius: 12px;
+  background-color: #111827;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.qrOrderButton:hover {
+  background-color: #020617;
+}
+
+.orderConfirmButton {
+  flex: 0 0 auto;
+  min-width: 104px;
+  height: 42px;
+  border: 1px solid #111827;
+  border-radius: 12px;
+  background-color: #ffffff;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.orderConfirmButtonDone {
+  border: none;
+  background-color: #111827;
+  color: #ffffff;
+  cursor: default;
+}
+
+.menuScrollArea {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+}
+
+.menuGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px !important;
+  align-content: start;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 1023px) {
+  .menuGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.emptyMenuState {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emptyMenuTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: #111827;
+}
+
+.emptyMenuText {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.5;
+}
+
+.emptyActionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.emptyActionButton {
+  min-width: 124px;
+  height: 40px;
+  border: 1px solid #111827;
+  border-radius: 10px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.emptySecondaryButton {
+  min-width: 148px;
+  height: 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.menuCard {
+  border: 1px solid #dbe2ea;
+  border-radius: 20px;
+  background-color: #ffffff;
+  padding: 16px;
+  min-height: 124px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.menuCardActive {
+  border-color: #111827;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.menuTop {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  min-width: 0;
+}
+
+.menuName {
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+.menuPrice {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  align-self: flex-end;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menuDescription {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.4;
+  min-height: 18px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailPanel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid #dbe2ea;
+  border-radius: 20px;
+  background: #f8fafc;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emptyDetailState {
+  border: 1px solid #dbe2ea;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.detailTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.detailTop > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.detailMenuName {
+  display: block;
+  font-size: 20px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detailMenuPrice {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: #475569;
+  font-weight: 800;
+}
+
+.optionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.optionTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.optionList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.optionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid #dbe2ea;
+  border-radius: 16px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.optionLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: normal;
+}
+
+.optionRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.optionQuantityRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.optionStepButton {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.optionStepButton:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.optionQuantityValue {
+  min-width: 20px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+@media (max-width: 1180px) {
+  .optionItem {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .optionLeft {
+    width: 100%;
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  .optionRight {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .optionPrice {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+}
+
+.optionPrice {
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.quantityRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.stepButton {
+  width: 46px;
+  height: 46px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background-color: #ffffff;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.quantityValue {
+  min-width: 34px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.orderPanel {
+  grid-column: 4;
+  margin-left: 0;
+  height: 100%;
+  min-height: 0;
+  min-width: 230px;
+  max-width: 230px;
+  width: 100%;
+  justify-self: start;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #dbe2ea;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 8px;
+}
+
+@media (max-width: 1400px) {
+  .mainGrid {
+    grid-template-columns: 160px minmax(0, 1fr) minmax(0, 1fr) minmax(240px, 240px);
+  }
+
+  .orderWorkspace {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1120px) {
+  .mainGrid {
+    gap: 10px !important;
+    column-gap: 10px !important;
+    row-gap: 10px !important;
+    padding: 10px;
+    grid-template-columns: 150px minmax(0, 1fr) minmax(0, 1fr) minmax(240px, 240px);
+  }
+
+  .sidebar {
+    width: 150px;
+    min-width: 150px;
+    max-width: 150px;
+  }
+
+  .menuColumn {
+    min-width: 0;
+    max-width: 100%;
+    padding: 12px;
+  }
+
+  .detailColumn {
+    min-width: 0;
+    max-width: 100%;
+    padding: 12px;
+  }
+
+  .orderWorkspace {
+    grid-template-columns: minmax(250px, 1fr) minmax(250px, 1fr);
+    gap: 10px !important;
+    column-gap: 10px !important;
+    row-gap: 10px !important;
+  }
+
+  .header {
+    margin-bottom: 6px;
+  }
+
+  .title {
+    font-size: 34px;
+    line-height: 1.02;
+  }
+
+  .columnTitle {
+    font-size: 20px;
+  }
+
+  .menuCard {
+    min-height: 112px;
+    padding: 12px;
+  }
+
+  .menuName,
+  .menuPrice {
+    font-size: 14px;
+  }
+
+  .orderPanel {
+    margin-left: 0;
+    min-width: 230px;
+    max-width: 230px;
+    padding: 8px;
+  }
+}
+
+.paymentGuideText {
+  flex-shrink: 0;
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #4b5563;
+}
+
+.footerWrap {
+  flex: 0 0 80px;
+  height: 80px;
+  min-height: 80px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.paymentModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(15, 23, 42, 0.58);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.paymentModal {
+  width: min(96vw, 1520px);
+  max-width: 1520px;
+  height: min(94vh, 980px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.22);
+  padding: 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.paymentModalHeader {
+  margin-bottom: 16px;
+  flex: 0 0 auto;
+}
+
+.paymentHeaderTop {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(620px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.paymentModalTitle {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.paymentModalDescription {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.paymentOrderNumber {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 30px;
+  margin: 8px 0 0;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.paymentOrderNumberLabel {
+  color: #475569;
+}
+
+.paymentOrderNumberValue {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.paymentModalContent {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(560px, 720px) minmax(400px, 460px);
+  gap: 36px;
+  align-items: start;
+  overflow: visible;
+  justify-content: center;
+}
+
+.cashSummaryGrid {
+  width: 100%;
+  max-width: 640px;
+  justify-self: end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid #cfe3fb;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #f8fbff;
+}
+
+.cashSummaryCard {
+  min-height: 118px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  background: #f8fbff;
+}
+
+.cashSummaryCard + .cashSummaryCard {
+  border-left: 1px solid #dbeafe;
+}
+
+.cashSummaryCardChange {
+  background: #f3fbf7;
+}
+
+.cashSummaryLabel {
+  font-size: 16px;
+  font-weight: 900;
+  color: #2563eb;
+}
+
+.cashSummaryCardChange .cashSummaryLabel {
+  color: #15803d;
+}
+
+.cashSummaryValue {
+  font-size: 54px;
+  line-height: 0.95;
+  font-weight: 1000;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.cashSummaryCardChange .cashSummaryValue {
+  color: #15803d;
+}
+
+.paymentMethodSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 560px;
+  max-width: 720px;
+  flex-shrink: 0;
+  min-height: auto;
+  overflow: visible;
+  align-items: stretch;
+}
+
+.paymentSummaryCard {
+  width: min(100%, 680px);
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 18px 16px;
+}
+
+.summaryLabel {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: #64748b;
+}
+
+.summaryAmount {
+  margin: 10px 0 6px;
+  font-size: 42px;
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.summarySubText {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.paymentMethodGrid {
+  width: min(100%, 720px);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.paymentMethodButton {
+  min-height: 102px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #111827;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 10px;
+  cursor: pointer;
+}
+
+.paymentMethodButtonActive {
+  border: 1px solid #020617;
+  background: #111827;
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px #020617;
+}
+
+.paymentMethodName {
+  font-size: 20px;
+  font-weight: 1000;
+  line-height: 1.1;
+}
+
+.paymentMethodKey {
+  font-size: 36px;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.paymentMethodGuide {
+  width: min(100%, 720px);
+  margin: 0;
+  min-height: 24px;
+  font-size: 15px;
+  color: #475569;
+  font-weight: 800;
+}
+
+.cashPaymentBox {
+  width: min(100%, 690px);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cashInputLabel {
+  font-size: 15px;
+  font-weight: 900;
+  color: #334155;
+  margin-bottom: 2px;
+}
+
+.cashAmountInput {
+  width: min(100%, 650px);
+  height: 56px;
+  border: 2px solid #0f172a;
+  border-radius: 12px;
+  padding: 0 16px;
+  font-size: 40px;
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+.cashWarningText {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 900;
+  color: #dc2626;
+}
+
+.changeAmountBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 48px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-right: 8px;
+}
+
+.changeAmountLabel {
+  font-size: 34px;
+  font-weight: 900;
+  line-height: 1;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+}
+
+.changeAmountValue {
+  font-size: 42px;
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: #15803d;
+  display: inline-flex;
+  align-items: center;
+}
+
+.paymentModalActions {
+  width: min(100%, 690px);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  flex: 0 0 auto;
+  margin-top: 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.paymentCancelButton,
+.cashDrawerButton,
+.paymentConfirmButton,
+.paymentOrderCancelButton,
+.keySettingButton {
+  appearance: none;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 10px;
+  font-weight: 900;
+}
+
+.paymentCancelButton {
+  min-width: 92px;
+  height: 46px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.paymentOrderCancelButton {
+  min-width: 110px;
+  height: 46px;
+  border: 1px solid #f59e0b;
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.paymentConfirmButton {
+  min-width: 110px;
+  height: 46px;
+  border: 1px solid #111827;
+  background: #111827;
+  color: #ffffff;
+}
+
+.paymentConfirmButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.paymentOrderCancelButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cashDrawerButton {
+  min-width: 110px;
+  height: 46px;
+  border: 1px solid #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.keypadPanel {
+  width: min(100%, 460px);
+  min-width: 400px;
+  max-width: 460px;
+  flex-shrink: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 14px 14px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: auto;
+  overflow: visible;
+}
+
+.keypadTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 900;
+  color: #0f172a;
+}
+
+.keypadDescription {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.keypadBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(170px, 180px);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.keypadGridMock {
+  width: 100%;
+  border: 1px solid #cfd8e3;
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: #ffffff;
+}
+
+.keypadCell {
+  height: 74px;
+  border-right: 1px solid #dbe3ee;
+  border-bottom: 1px solid #dbe3ee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1;
+  user-select: none;
+}
+
+.keypadCell:nth-child(3n) {
+  border-right: none;
+}
+
+.keypadCell:nth-child(n + 10) {
+  border-bottom: none;
+}
+
+.keypadList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.keypadItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.keyBadge {
+  display: inline-block;
+  min-width: auto;
+  height: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 900;
+  color: #0f172a;
+  white-space: nowrap;
+}
+
+.keySettingButton {
+  height: 36px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 768px) {
+  .paymentModal {
+    width: 100%;
+    padding: 16px;
+  }
+
+  .paymentHeaderTop {
+    grid-template-columns: 1fr;
+  }
+
+  .cashSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cashSummaryCard + .cashSummaryCard {
+    border-left: none;
+    border-top: 1px solid #dbeafe;
+  }
+
+  .paymentModalContent {
+    grid-template-columns: 1fr;
+  }
+
+  .paymentMethodSection {
+    min-width: 0;
+    max-width: none;
+    flex-shrink: 1;
+  }
+
+  .keypadPanel {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    flex-shrink: 1;
+  }
+
+  .paymentMethodGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .paymentModalActions {
+    grid-template-columns: 1fr;
+  }
+
+  .paymentCancelButton,
+  .cashDrawerButton,
+  .paymentConfirmButton,
+  .paymentOrderCancelButton,
+  .keySettingButton {
+    width: 100%;
+  }
+
+  .keypadItem {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

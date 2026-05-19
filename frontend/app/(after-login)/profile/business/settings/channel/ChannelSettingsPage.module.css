@@ -1,0 +1,521 @@
+/* FILE : frontend/app/(after-login)/profile/business/settings/channel/ChannelSettingsPage.module.css */
+/* ROOT : frontend/app/(after-login)/profile/business/settings/channel/ChannelSettingsPage.module.css */
+/* STATUS : CREATE MODE */
+/* ROLE : BUSINESS CHANNEL SETTINGS PAGE STYLE */
+/* CHANGE SUMMARY :
+- BUSINESS 채널 설정 페이지 CSS Module 신규 생성
+- GENERAL 채널 설정 페이지와 동일한 2컬럼 채널 설정 대시보드 구조 적용
+- 왼쪽 채널 설정 / 오른쪽 QR 코드 카드 구조 적용
+- inline style 제거 대응
+- 탑바와 카드 사이 간격 축소
+- PC / 태블릿 / 모바일 반응형 적용
+- 저장 / 복사 / 비활성 버튼 스타일 적용
+- API / DB / Service 영향 없음
+*/
+
+/* SECTION 01 : PAGE */
+
+.page {
+  width: 100%;
+  min-height: calc(100vh - 80px);
+  background: #f5f6f7;
+  overflow-x: hidden;
+}
+
+.shell {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 20px 24px 64px;
+}
+
+.loadingBox {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* SECTION 02 : GRID */
+
+.settingsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
+  gap: 32px;
+  align-items: start;
+}
+
+/* SECTION 03 : SETTINGS CARD */
+
+.settingsCard {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #eef0f3;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+}
+
+.dashboardHeader {
+  padding: 28px 28px 22px;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.kicker {
+  margin: 0 0 8px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+}
+
+.title {
+  margin: 0;
+  color: #111827;
+  font-size: 26px;
+  font-weight: 950;
+  line-height: 1.28;
+  letter-spacing: -0.4px;
+}
+
+.description {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* SECTION 04 : FORM */
+
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px 28px 28px;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.readonlyField,
+.inputField,
+.urlField {
+  width: 100%;
+  min-height: 56px;
+  box-sizing: border-box;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.readonlyField {
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.inputField {
+  padding: 0 16px;
+  outline: none;
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    background 0.16s ease;
+}
+
+.inputField:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.inputField::placeholder {
+  color: #9ca3af;
+  font-weight: 700;
+}
+
+.urlField {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 8px 16px;
+}
+
+.urlText {
+  min-width: 0;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.copyButton {
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.copyButton:hover {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+.copyButton:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.18);
+}
+
+/* SECTION 05 : SAVE */
+
+.saveArea {
+  padding-top: 8px;
+}
+
+.saveButton {
+  width: 100%;
+  height: 56px;
+  border: 0;
+  border-radius: 16px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.saveButton:hover {
+  background: #1d4ed8;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.24);
+  transform: translateY(-1px);
+}
+
+.saveButton:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.18);
+}
+
+.saveButtonDisabled {
+  cursor: not-allowed;
+  background: #9ca3af;
+  opacity: 0.75;
+  box-shadow: none;
+  transform: none;
+}
+
+.saveButtonDisabled:hover {
+  background: #9ca3af;
+  box-shadow: none;
+  transform: none;
+}
+
+/* SECTION 06 : QR CARD */
+
+.qrCard {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #eef0f3;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+}
+
+.qrHeader {
+  padding: 28px 24px 20px;
+  border-bottom: 1px solid #f1f3f5;
+  text-align: center;
+}
+
+.qrKicker {
+  margin: 0 0 8px;
+  color: #16a34a;
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+}
+
+.qrTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 24px;
+  font-weight: 950;
+  line-height: 1.28;
+  letter-spacing: -0.4px;
+}
+
+.qrDesc {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.qrBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 24px 24px 18px;
+  padding: 24px;
+  border: 1px solid #eef2f7;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.08);
+}
+
+.qrUrl {
+  margin: 0 24px;
+  padding: 14px 16px;
+  border: 1px solid #eef0f3;
+  border-radius: 16px;
+  background: #f9fafb;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+  text-align: center;
+  word-break: break-all;
+}
+
+.qrCopyButton {
+  width: calc(100% - 48px);
+  height: 46px;
+  margin: 18px 24px 24px;
+  border: 0;
+  border-radius: 999px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.qrCopyButton:hover {
+  background: #2563eb;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.28);
+  transform: translateY(-1px);
+}
+
+.qrCopyButton:active {
+  transform: translateY(0);
+  box-shadow: 0 5px 12px rgba(37, 99, 235, 0.2);
+}
+
+/* SECTION 07 : TABLET */
+
+@media (max-width: 1023px) {
+  .shell {
+    max-width: 760px;
+    padding: 18px 16px 56px;
+  }
+
+  .settingsGrid {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .settingsCard,
+  .qrCard {
+    border-radius: 16px;
+  }
+
+  .dashboardHeader {
+    padding: 24px 22px 18px;
+  }
+
+  .formStack {
+    padding: 20px 22px 24px;
+  }
+
+  .qrHeader {
+    padding: 24px 22px 18px;
+  }
+
+  .qrBox {
+    margin: 22px 22px 16px;
+  }
+
+  .qrUrl {
+    margin: 0 22px;
+  }
+
+  .qrCopyButton {
+    width: calc(100% - 44px);
+    margin: 18px 22px 22px;
+  }
+}
+
+/* SECTION 08 : MOBILE */
+
+@media (max-width: 767px) {
+  .page {
+    min-height: calc(100vh - 64px);
+  }
+
+  .shell {
+    max-width: none;
+    padding: 0 0 40px;
+  }
+
+  .settingsGrid {
+    gap: 0;
+  }
+
+  .settingsCard,
+  .qrCard {
+    border-width: 0 0 1px;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .dashboardHeader {
+    padding: 24px 18px 18px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .description {
+    font-size: 13px;
+  }
+
+  .formStack {
+    gap: 16px;
+    padding: 18px 18px 24px;
+  }
+
+  .readonlyField,
+  .inputField,
+  .urlField {
+    min-height: 54px;
+    border-radius: 15px;
+    font-size: 14px;
+  }
+
+  .urlField {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 14px;
+  }
+
+  .urlText {
+    font-size: 13px;
+  }
+
+  .copyButton {
+    width: 100%;
+    height: 40px;
+  }
+
+  .saveButton {
+    height: 52px;
+    border-radius: 15px;
+    font-size: 15px;
+  }
+
+  .qrHeader {
+    padding: 24px 18px 18px;
+  }
+
+  .qrTitle {
+    font-size: 22px;
+  }
+
+  .qrBox {
+    margin: 18px 18px 14px;
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .qrUrl {
+    margin: 0 18px;
+    font-size: 12px;
+  }
+
+  .qrCopyButton {
+    width: calc(100% - 36px);
+    height: 44px;
+    margin: 16px 18px 22px;
+  }
+}
+
+/* SECTION 09 : SMALL MOBILE */
+
+@media (max-width: 420px) {
+  .dashboardHeader {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .formStack {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .qrHeader {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .qrBox {
+    margin-left: 14px;
+    margin-right: 14px;
+    padding: 18px;
+  }
+
+  .qrUrl {
+    margin-left: 14px;
+    margin-right: 14px;
+  }
+
+  .qrCopyButton {
+    width: calc(100% - 28px);
+    margin-left: 14px;
+    margin-right: 14px;
+  }
+}
