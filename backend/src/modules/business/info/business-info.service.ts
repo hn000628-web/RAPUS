@@ -99,6 +99,8 @@ type BusinessHoursRow = {
   sun_isClosed: number
   sun_startTime: string | null
   sun_endTime: string | null
+  temporaryClosed: number
+  alwaysOpen: number
   updatedAt: string | null
 }
 
@@ -120,6 +122,8 @@ type BusinessInfoPayload = {
   hours: {
     weeklyHours: BusinessHoursDayPayload[]
     summary: string
+    temporaryClosed: boolean
+    alwaysOpen: boolean
     updatedAt: string | null
   }
   infoBlocks: ProfileBlockRow[]
@@ -260,6 +264,8 @@ export class BusinessInfoService {
         sun_isClosed,
         sun_startTime,
         sun_endTime,
+        temporaryClosed,
+        alwaysOpen,
         updatedAt
       FROM business_hours
       WHERE profileId = ?
@@ -274,8 +280,18 @@ export class BusinessInfoService {
   }
 
   private buildHoursSummary(
-    weeklyHours: BusinessHoursDayPayload[]
+    weeklyHours: BusinessHoursDayPayload[],
+    temporaryClosed = false,
+    alwaysOpen = false
   ): string {
+    if (temporaryClosed) {
+      return '전체 OFF'
+    }
+
+    if (alwaysOpen) {
+      return '24시간 영업'
+    }
+
     const todayIndex = new Date().getDay()
 
     const dayKeyMap: BusinessHoursDayKey[] = [
@@ -350,6 +366,8 @@ export class BusinessInfoService {
       return {
         weeklyHours: defaultWeeklyHours,
         summary: '영업시간 정보 없음',
+        temporaryClosed: false,
+        alwaysOpen: false,
         updatedAt: null
       }
     }
@@ -408,7 +426,13 @@ export class BusinessInfoService {
 
     return {
       weeklyHours,
-      summary: this.buildHoursSummary(weeklyHours),
+      summary: this.buildHoursSummary(
+        weeklyHours,
+        row.temporaryClosed === 1,
+        row.alwaysOpen === 1
+      ),
+      temporaryClosed: row.temporaryClosed === 1,
+      alwaysOpen: row.alwaysOpen === 1,
       updatedAt: row.updatedAt
     }
   }

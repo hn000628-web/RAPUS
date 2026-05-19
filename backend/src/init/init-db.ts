@@ -2538,6 +2538,147 @@ ON business_hours(alwaysOpen)
 `)
 
 //=====================================================
+// SECTION 06-16 : PROFILE DELIVERY SETTINGS (1 PROFILE = 1 ROW)
+//=====================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS profile_delivery_settings(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profileId INTEGER NOT NULL,
+  channelCode TEXT NOT NULL,
+  deliveryAddress TEXT,
+  deliveryDetailAddress TEXT,
+  entrancePassword TEXT,
+  deliveryMemo TEXT,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN (0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(profileId),
+  FOREIGN KEY(profileId) REFERENCES profiles(id),
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode)
+)
+`)
+
+safeAddColumn('profile_delivery_settings', 'channelCode', 'TEXT')
+safeAddColumn('profile_delivery_settings', 'deliveryAddress', 'TEXT')
+safeAddColumn('profile_delivery_settings', 'deliveryDetailAddress', 'TEXT')
+safeAddColumn('profile_delivery_settings', 'entrancePassword', 'TEXT')
+safeAddColumn('profile_delivery_settings', 'deliveryMemo', 'TEXT')
+safeAddColumn('profile_delivery_settings', 'isActive', 'INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN (0,1))')
+safeAddColumn('profile_delivery_settings', 'createdAt', 'TEXT DEFAULT CURRENT_TIMESTAMP')
+safeAddColumn('profile_delivery_settings', 'updatedAt', 'TEXT DEFAULT CURRENT_TIMESTAMP')
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_settings_profile
+ON profile_delivery_settings(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_settings_channel
+ON profile_delivery_settings(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_settings_active
+ON profile_delivery_settings(isActive)
+`)
+
+//=====================================================
+// SECTION 06-17 : PROFILE DELIVERY ADDRESSES (1 PROFILE = N ROWS)
+//=====================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS profile_delivery_addresses(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profileId INTEGER NOT NULL,
+  channelCode TEXT NOT NULL,
+  label TEXT NOT NULL,
+  recipientName TEXT,
+  recipientPhone TEXT,
+  deliveryAddress TEXT NOT NULL,
+  deliveryDetailAddress TEXT,
+  entrancePassword TEXT,
+  deliveryMemo TEXT,
+  isDefault INTEGER NOT NULL DEFAULT 0 CHECK(isDefault IN (0,1)),
+  sortOrder INTEGER NOT NULL DEFAULT 0,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN (0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(profileId) REFERENCES profiles(id),
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  CHECK(length(trim(label)) > 0),
+  CHECK(length(trim(deliveryAddress)) > 0)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_addresses_profile
+ON profile_delivery_addresses(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_addresses_channel
+ON profile_delivery_addresses(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_addresses_active
+ON profile_delivery_addresses(isActive)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_addresses_sort
+ON profile_delivery_addresses(profileId, sortOrder)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_delivery_addresses_default
+ON profile_delivery_addresses(profileId)
+WHERE isDefault = 1
+  AND isActive = 1
+`)
+
+db.exec(`
+INSERT INTO profile_delivery_addresses(
+  profileId,
+  channelCode,
+  label,
+  deliveryAddress,
+  deliveryDetailAddress,
+  entrancePassword,
+  deliveryMemo,
+  isDefault,
+  sortOrder,
+  isActive,
+  createdAt,
+  updatedAt
+)
+SELECT
+  pds.profileId,
+  pds.channelCode,
+  '기본 배송지',
+  pds.deliveryAddress,
+  pds.deliveryDetailAddress,
+  pds.entrancePassword,
+  pds.deliveryMemo,
+  1,
+  0,
+  1,
+  COALESCE(pds.createdAt, CURRENT_TIMESTAMP),
+  CURRENT_TIMESTAMP
+FROM profile_delivery_settings pds
+WHERE COALESCE(pds.isActive, 1) = 1
+  AND pds.deliveryAddress IS NOT NULL
+  AND trim(pds.deliveryAddress) <> ''
+  AND NOT EXISTS (
+    SELECT 1
+    FROM profile_delivery_addresses pda
+    WHERE pda.profileId = pds.profileId
+      AND pda.isActive = 1
+  )
+`)
+
+//=====================================================
 // SECTION 07 : CHANNELS
 
 db.exec(`

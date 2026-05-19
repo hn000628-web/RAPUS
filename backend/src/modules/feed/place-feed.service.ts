@@ -181,6 +181,7 @@ export class PlaceFeedService {
         ist.name AS industrySubtypeName,
         CASE
           WHEN COALESCE(bhp.temporaryClosed, bhc.temporaryClosed, 0) = 1 THEN '영업종료 · 휴무'
+          WHEN COALESCE(bhp.alwaysOpen, bhc.alwaysOpen, 0) = 1 THEN NULL
           WHEN strftime('%w', 'now', 'localtime') = '0' AND COALESCE(bhp.sun_isClosed, bhc.sun_isClosed, 0) = 1 THEN '영업종료 · 일요일 휴무'
           WHEN strftime('%w', 'now', 'localtime') = '1' AND COALESCE(bhp.mon_isClosed, bhc.mon_isClosed, 0) = 1 THEN '영업종료 · 월요일 휴무'
           WHEN strftime('%w', 'now', 'localtime') = '2' AND COALESCE(bhp.tue_isClosed, bhc.tue_isClosed, 0) = 1 THEN '영업종료 · 화요일 휴무'
@@ -325,6 +326,7 @@ export class PlaceFeedService {
         SELECT
           channelCode,
           MAX(COALESCE(temporaryClosed, 0)) AS temporaryClosed,
+          MAX(COALESCE(alwaysOpen, 0)) AS alwaysOpen,
           MAX(COALESCE(mon_isClosed, 0)) AS mon_isClosed,
           MAX(COALESCE(tue_isClosed, 0)) AS tue_isClosed,
           MAX(COALESCE(wed_isClosed, 0)) AS wed_isClosed,

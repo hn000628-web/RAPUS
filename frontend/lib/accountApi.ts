@@ -120,9 +120,82 @@ export type VerifyAdultForDevResponseData = {
   adultVerificationExpiresAt: null
 }
 
+export type DeliverySettingsResponseData = {
+  profileId: number
+  channelCode: string
+  deliveryAddress: string | null
+  deliveryDetailAddress: string | null
+  hasEntrancePassword: boolean
+  deliveryMemo: string | null
+  isRegistered: boolean
+}
+
+export type UpdateDeliverySettingsPayload = {
+  profileId: number
+  channelCode: string
+  deliveryAddress?: string | null
+  deliveryDetailAddress?: string | null
+  entrancePassword?: string | null
+  deliveryMemo?: string | null
+}
+
+export type DeliveryAddressItem = {
+  id: number
+  label: string
+  recipientName: string | null
+  recipientPhone: string | null
+  deliveryAddress: string
+  deliveryDetailAddress: string | null
+  hasEntrancePassword: boolean
+  deliveryMemo: string | null
+  isDefault: 0 | 1
+  sortOrder: number
+  isActive: 0 | 1
+}
+
+export type DeliveryAddressListResponseData = {
+  addresses: DeliveryAddressItem[]
+  totalCount: number
+  defaultAddressId: number | null
+  isRegistered: boolean
+}
+
+export type CreateDeliveryAddressPayload = {
+  profileId: number
+  channelCode: string
+  label: string
+  recipientName?: string | null
+  recipientPhone?: string | null
+  deliveryAddress: string
+  deliveryDetailAddress?: string | null
+  entrancePassword?: string | null
+  deliveryMemo?: string | null
+  isDefault?: boolean | number
+}
+
+export type UpdateDeliveryAddressPayload = {
+  profileId: number
+  channelCode: string
+  label?: string
+  recipientName?: string | null
+  recipientPhone?: string | null
+  deliveryAddress?: string
+  deliveryDetailAddress?: string | null
+  entrancePassword?: string | null
+  deliveryMemo?: string | null
+  isDefault?: boolean | number
+}
+
+export type DeliveryAddressIdentityPayload = {
+  profileId: number
+  channelCode: string
+}
+
 type RequestMethod =
   | 'GET'
+  | 'POST'
   | 'PATCH'
+  | 'DELETE'
 
 type RequestOptions = {
   method: RequestMethod
@@ -224,6 +297,124 @@ export async function verifyAdultForDev(
       `${PROFILE_ACCOUNT_API_PATH}/adult-verification/dev`,
       {
         method: 'PATCH',
+        body: payload
+      }
+    )
+
+  return response.data
+}
+
+export async function getMyDeliverySettings(
+  params: GetProfileAccountParams
+): Promise<DeliverySettingsResponseData> {
+  const query =
+    new URLSearchParams({
+      profileId: String(params.profileId),
+      channelCode: params.channelCode
+    })
+
+  const response =
+    await requestProfileAccountApi<DeliverySettingsResponseData>(
+      `${PROFILE_ACCOUNT_API_PATH}/delivery-settings?${query.toString()}`,
+      {
+        method: 'GET'
+      }
+    )
+
+  return response.data
+}
+
+export async function updateMyDeliverySettings(
+  payload: UpdateDeliverySettingsPayload
+): Promise<DeliverySettingsResponseData> {
+  const response =
+    await requestProfileAccountApi<DeliverySettingsResponseData>(
+      `${PROFILE_ACCOUNT_API_PATH}/delivery-settings`,
+      {
+        method: 'PATCH',
+        body: payload
+      }
+    )
+
+  return response.data
+}
+
+export async function listMyDeliveryAddresses(
+  params: GetProfileAccountParams
+): Promise<DeliveryAddressListResponseData> {
+  const query =
+    new URLSearchParams({
+      profileId: String(params.profileId),
+      channelCode: params.channelCode
+    })
+
+  const response =
+    await requestProfileAccountApi<DeliveryAddressListResponseData>(
+      `${PROFILE_ACCOUNT_API_PATH}/delivery-addresses?${query.toString()}`,
+      {
+        method: 'GET'
+      }
+    )
+
+  return response.data
+}
+
+export async function createMyDeliveryAddress(
+  payload: CreateDeliveryAddressPayload
+): Promise<DeliveryAddressListResponseData> {
+  const response =
+    await requestProfileAccountApi<DeliveryAddressListResponseData>(
+      `${PROFILE_ACCOUNT_API_PATH}/delivery-addresses`,
+      {
+        method: 'POST',
+        body: payload
+      }
+    )
+
+  return response.data
+}
+
+export async function updateMyDeliveryAddress(
+  addressId: number,
+  payload: UpdateDeliveryAddressPayload
+): Promise<DeliveryAddressListResponseData> {
+  const response =
+    await requestProfileAccountApi<DeliveryAddressListResponseData>(
+      `${PROFILE_ACCOUNT_API_PATH}/delivery-addresses/${addressId}`,
+      {
+        method: 'PATCH',
+        body: payload
+      }
+    )
+
+  return response.data
+}
+
+export async function setDefaultDeliveryAddress(
+  addressId: number,
+  payload: DeliveryAddressIdentityPayload
+): Promise<DeliveryAddressListResponseData> {
+  const response =
+    await requestProfileAccountApi<DeliveryAddressListResponseData>(
+      `${PROFILE_ACCOUNT_API_PATH}/delivery-addresses/${addressId}/default`,
+      {
+        method: 'PATCH',
+        body: payload
+      }
+    )
+
+  return response.data
+}
+
+export async function deleteMyDeliveryAddress(
+  addressId: number,
+  payload: DeliveryAddressIdentityPayload
+): Promise<DeliveryAddressListResponseData> {
+  const response =
+    await requestProfileAccountApi<DeliveryAddressListResponseData>(
+      `${PROFILE_ACCOUNT_API_PATH}/delivery-addresses/${addressId}`,
+      {
+        method: 'DELETE',
         body: payload
       }
     )

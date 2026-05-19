@@ -49,6 +49,8 @@ type ChannelHoursDay = {
 type ChannelHoursPayload = {
   summary?: string | null
   weeklyHours?: ChannelHoursDay[] | null
+  temporaryClosed?: boolean | number | null
+  alwaysOpen?: boolean | number | null
 }
 
 type ChannelInfoProps = {
@@ -92,6 +94,12 @@ export default function ChannelInfo({
 
   const hasWeeklyHours =
     weeklyHours.length > 0
+
+  const isTemporaryClosed =
+    Boolean(hours?.temporaryClosed)
+
+  const isAlwaysOpen =
+    Boolean(hours?.alwaysOpen)
 
   // SECTION 04 : SORT
 
@@ -193,22 +201,44 @@ export default function ChannelInfo({
                 </div>
 
                 <div style={hoursTableStyle}>
-                  {weeklyHours.map((day) => (
-                    <div
-                      key={day.dayKey}
-                      style={hoursRowStyle}
-                    >
+                  {isTemporaryClosed ? (
+                    <div style={hoursRowStyle}>
                       <div style={hoursDayStyle}>
-                        {day.dayLabel}
+                        상태
                       </div>
 
                       <div style={hoursValueStyle}>
-                        {day.isClosed
-                          ? '휴무'
-                          : `${day.openTime} - ${day.closeTime}`}
+                        전체 OFF
                       </div>
                     </div>
-                  ))}
+                  ) : isAlwaysOpen ? (
+                    <div style={hoursRowStyle}>
+                      <div style={hoursDayStyle}>
+                        상태
+                      </div>
+
+                      <div style={hoursValueStyle}>
+                        24시간 영업
+                      </div>
+                    </div>
+                  ) : (
+                    weeklyHours.map((day) => (
+                      <div
+                        key={day.dayKey}
+                        style={hoursRowStyle}
+                      >
+                        <div style={hoursDayStyle}>
+                          {day.dayLabel}
+                        </div>
+
+                        <div style={hoursValueStyle}>
+                          {day.isClosed
+                            ? '휴무'
+                            : `${day.openTime} - ${day.closeTime}`}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}

@@ -71,6 +71,57 @@ export type VerifyAdultForDevRequest = {
   channelCode: string
 }
 
+export type GetDeliverySettingsRequest = {
+  profileId: number | string
+  channelCode: string
+}
+
+export type UpdateDeliverySettingsRequest = {
+  profileId: number | string
+  channelCode: string
+  deliveryAddress?: string | null
+  deliveryDetailAddress?: string | null
+  entrancePassword?: string | null
+  deliveryMemo?: string | null
+}
+
+export type ListDeliveryAddressesRequest = {
+  profileId: number | string
+  channelCode: string
+}
+
+export type DeliveryAddressPayload = {
+  profileId: number | string
+  channelCode: string
+  label: string
+  recipientName?: string | null
+  recipientPhone?: string | null
+  deliveryAddress: string
+  deliveryDetailAddress?: string | null
+  entrancePassword?: string | null
+  deliveryMemo?: string | null
+  isDefault?: boolean | number
+}
+
+export type UpdateDeliveryAddressPayload = {
+  profileId: number | string
+  channelCode: string
+  label?: string
+  recipientName?: string | null
+  recipientPhone?: string | null
+  deliveryAddress?: string
+  deliveryDetailAddress?: string | null
+  entrancePassword?: string | null
+  deliveryMemo?: string | null
+  isDefault?: boolean | number
+}
+
+export type DeliveryAddressIdentityRequest = {
+  profileId: number | string
+  channelCode: string
+  addressId: number | string
+}
+
 type ProfileAccountContext = {
   profileId: number
   userId: number
@@ -89,6 +140,53 @@ type ProfileAccountResponse = {
   primaryPasswordStatus: PasswordStatus
   paymentPasswordStatus: PasswordStatus
   paymentPasswordLockedUntil: string | null
+}
+
+type DeliverySettingsResponse = {
+  profileId: number
+  channelCode: string
+  deliveryAddress: string | null
+  deliveryDetailAddress: string | null
+  hasEntrancePassword: boolean
+  deliveryMemo: string | null
+  isRegistered: boolean
+}
+
+type DeliveryAddressItem = {
+  id: number
+  profileId: number
+  channelCode: string
+  label: string
+  recipientName: string | null
+  recipientPhone: string | null
+  deliveryAddress: string
+  deliveryDetailAddress: string | null
+  entrancePassword: string | null
+  deliveryMemo: string | null
+  isDefault: 0 | 1
+  sortOrder: number
+  isActive: 0 | 1
+  createdAt: string | null
+  updatedAt: string | null
+}
+
+type DeliveryAddressListResponse = {
+  addresses: Array<{
+    id: number
+    label: string
+    recipientName: string | null
+    recipientPhone: string | null
+    deliveryAddress: string
+    deliveryDetailAddress: string | null
+    hasEntrancePassword: boolean
+    deliveryMemo: string | null
+    isDefault: 0 | 1
+    sortOrder: number
+    isActive: 0 | 1
+  }>
+  totalCount: number
+  defaultAddressId: number | null
+  isRegistered: boolean
 }
 
 type ProfileAccountRow = {
@@ -123,6 +221,16 @@ type UserBirthDateRow = {
 type AdultVerificationRow = {
   birthDate: string
   adultVerifiedAt: string
+}
+
+type DeliverySettingsRow = {
+  profileId: number
+  channelCode: string
+  deliveryAddress: string | null
+  deliveryDetailAddress: string | null
+  entrancePassword: string | null
+  deliveryMemo: string | null
+  isActive: number
 }
 
 export type VerifyAdultForDevResponse = {
@@ -195,6 +303,85 @@ export class ProfileAccountService {
       paymentPasswordLockedUntil:
         row.paymentPasswordLockedUntil
     }
+  }
+
+  // SECTION 04-1 : READ DELIVERY SETTINGS
+
+  async getMyDeliverySettings(
+    input: GetDeliverySettingsRequest
+  ): Promise<DeliverySettingsResponse> {
+    const context =
+      this.resolveProfileContext({
+        profileId: input.profileId,
+        channelCode: input.channelCode
+      })
+
+    const row =
+      db.prepare(`
+        SELECT
+          profileId AS profileId,
+          channelCode AS channelCode,
+          deliveryAddress AS deliveryAddress,
+          deliveryDetailAddress AS deliveryDetailAddress,
+          entrancePassword AS entrancePassword,
+          deliveryMemo AS deliveryMemo,
+          isActive AS isActive
+        FROM profile_delivery_settings
+        WHERE profileId = ?
+          AND channelCode = ?
+        LIMIT 1
+      `).get(
+        context.profileId,
+        context.channelCode
+      ) as DeliverySettingsRow | undefined
+
+    return this.buildDeliverySettingsResponse({
+      profileId: context.profileId,
+      channelCode: context.channelCode,
+      row
+    })
+  }
+
+  // SECTION 04-2 : LIST DELIVERY ADDRESSES
+
+  async listMyDeliveryAddresses(
+    input: ListDeliveryAddressesRequest
+  ): Promise<DeliveryAddressListResponse> {
+    const context =
+      this.resolveProfileContext({
+        profileId: input.profileId,
+        channelCode: input.channelCode
+      })
+
+    const rows =
+      db.prepare(`
+        SELECT
+          id,
+          profileId,
+          channelCode,
+          label,
+          recipientName,
+          recipientPhone,
+          deliveryAddress,
+          deliveryDetailAddress,
+          entrancePassword,
+          deliveryMemo,
+          isDefault,
+          sortOrder,
+          isActive,
+          createdAt,
+          updatedAt
+        FROM profile_delivery_addresses
+        WHERE profileId = ?
+          AND channelCode = ?
+          AND isActive = 1
+        ORDER BY isDefault DESC, sortOrder ASC, id ASC
+      `).all(
+        context.profileId,
+        context.channelCode
+      ) as DeliveryAddressItem[]
+
+    return this.buildDeliveryAddressListResponse(rows)
   }
 
   // SECTION 05 : UPDATE BASIC INFO
@@ -406,6 +593,474 @@ export class ProfileAccountService {
       paymentPasswordStatus: 'SET' as const,
       paymentPasswordLockedUntil: null
     }
+  }
+
+  // SECTION 08-1 : UPDATE DELIVERY SETTINGS
+
+  async updateMyDeliverySettings(
+    input: UpdateDeliverySettingsRequest
+  ): Promise<DeliverySettingsResponse> {
+    const context =
+      this.resolveProfileContext({
+        profileId: input.profileId,
+        channelCode: input.channelCode
+      })
+
+    const current =
+      db.prepare(`
+        SELECT
+          profileId AS profileId,
+          channelCode AS channelCode,
+          deliveryAddress AS deliveryAddress,
+          deliveryDetailAddress AS deliveryDetailAddress,
+          entrancePassword AS entrancePassword,
+          deliveryMemo AS deliveryMemo,
+          isActive AS isActive
+        FROM profile_delivery_settings
+        WHERE profileId = ?
+          AND channelCode = ?
+        LIMIT 1
+      `).get(
+        context.profileId,
+        context.channelCode
+      ) as DeliverySettingsRow | undefined
+
+    const nextDeliveryAddress =
+      input.deliveryAddress === undefined
+        ? current?.deliveryAddress ?? null
+        : this.normalizeNullableText(input.deliveryAddress)
+
+    const nextDeliveryDetailAddress =
+      input.deliveryDetailAddress === undefined
+        ? current?.deliveryDetailAddress ?? null
+        : this.normalizeNullableText(input.deliveryDetailAddress)
+
+    const nextEntrancePassword =
+      input.entrancePassword === undefined
+        ? current?.entrancePassword ?? null
+        : this.normalizeNullableText(input.entrancePassword)
+
+    const nextDeliveryMemo =
+      input.deliveryMemo === undefined
+        ? current?.deliveryMemo ?? null
+        : this.normalizeNullableText(input.deliveryMemo)
+
+    if (current) {
+      db.prepare(`
+        UPDATE profile_delivery_settings
+        SET
+          deliveryAddress = ?,
+          deliveryDetailAddress = ?,
+          entrancePassword = ?,
+          deliveryMemo = ?,
+          isActive = 1,
+          updatedAt = CURRENT_TIMESTAMP
+        WHERE profileId = ?
+          AND channelCode = ?
+      `).run(
+        nextDeliveryAddress,
+        nextDeliveryDetailAddress,
+        nextEntrancePassword,
+        nextDeliveryMemo,
+        context.profileId,
+        context.channelCode
+      )
+    } else {
+      db.prepare(`
+        INSERT INTO profile_delivery_settings(
+          profileId,
+          channelCode,
+          deliveryAddress,
+          deliveryDetailAddress,
+          entrancePassword,
+          deliveryMemo,
+          isActive
+        ) VALUES(?,?,?,?,?,?,1)
+      `).run(
+        context.profileId,
+        context.channelCode,
+        nextDeliveryAddress,
+        nextDeliveryDetailAddress,
+        nextEntrancePassword,
+        nextDeliveryMemo
+      )
+    }
+
+    const refreshed =
+      db.prepare(`
+        SELECT
+          profileId AS profileId,
+          channelCode AS channelCode,
+          deliveryAddress AS deliveryAddress,
+          deliveryDetailAddress AS deliveryDetailAddress,
+          entrancePassword AS entrancePassword,
+          deliveryMemo AS deliveryMemo,
+          isActive AS isActive
+        FROM profile_delivery_settings
+        WHERE profileId = ?
+          AND channelCode = ?
+        LIMIT 1
+      `).get(
+        context.profileId,
+        context.channelCode
+      ) as DeliverySettingsRow | undefined
+
+    return this.buildDeliverySettingsResponse({
+      profileId: context.profileId,
+      channelCode: context.channelCode,
+      row: refreshed
+    })
+  }
+
+  // SECTION 08-2 : CREATE DELIVERY ADDRESS
+
+  async createMyDeliveryAddress(
+    input: DeliveryAddressPayload
+  ): Promise<DeliveryAddressListResponse> {
+    const context =
+      this.resolveProfileContext({
+        profileId: input.profileId,
+        channelCode: input.channelCode
+      })
+
+    const label =
+      this.normalizeRequiredText(input.label, 'DELIVERY_LABEL_REQUIRED')
+
+    const deliveryAddress =
+      this.normalizeRequiredText(input.deliveryAddress, 'DELIVERY_ADDRESS_REQUIRED')
+
+    const recipientName =
+      this.normalizeNullableText(input.recipientName)
+    const recipientPhone =
+      this.normalizeNullableText(input.recipientPhone)
+    const deliveryDetailAddress =
+      this.normalizeNullableText(input.deliveryDetailAddress)
+    const entrancePassword =
+      this.normalizeNullableText(input.entrancePassword)
+    const deliveryMemo =
+      this.normalizeNullableText(input.deliveryMemo)
+
+    const activeCountRow =
+      db.prepare(`
+        SELECT COUNT(*) AS count
+        FROM profile_delivery_addresses
+        WHERE profileId = ?
+          AND channelCode = ?
+          AND isActive = 1
+      `).get(
+        context.profileId,
+        context.channelCode
+      ) as { count: number } | undefined
+
+    const activeCount = Number(activeCountRow?.count ?? 0)
+
+    const nextIsDefault =
+      activeCount === 0
+        ? 1
+        : this.normalizeFlag(input.isDefault, 0)
+
+    if (nextIsDefault === 1) {
+      db.prepare(`
+        UPDATE profile_delivery_addresses
+        SET
+          isDefault = 0,
+          updatedAt = CURRENT_TIMESTAMP
+        WHERE profileId = ?
+          AND channelCode = ?
+          AND isActive = 1
+      `).run(
+        context.profileId,
+        context.channelCode
+      )
+    }
+
+    const sortOrderRow =
+      db.prepare(`
+        SELECT COALESCE(MAX(sortOrder), -1) AS maxSortOrder
+        FROM profile_delivery_addresses
+        WHERE profileId = ?
+          AND channelCode = ?
+      `).get(
+        context.profileId,
+        context.channelCode
+      ) as { maxSortOrder: number } | undefined
+
+    const nextSortOrder =
+      Number(sortOrderRow?.maxSortOrder ?? -1) + 1
+
+    db.prepare(`
+      INSERT INTO profile_delivery_addresses(
+        profileId,
+        channelCode,
+        label,
+        recipientName,
+        recipientPhone,
+        deliveryAddress,
+        deliveryDetailAddress,
+        entrancePassword,
+        deliveryMemo,
+        isDefault,
+        sortOrder,
+        isActive
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,1)
+    `).run(
+      context.profileId,
+      context.channelCode,
+      label,
+      recipientName,
+      recipientPhone,
+      deliveryAddress,
+      deliveryDetailAddress,
+      entrancePassword,
+      deliveryMemo,
+      nextIsDefault,
+      nextSortOrder
+    )
+
+    return this.listMyDeliveryAddresses({
+      profileId: context.profileId,
+      channelCode: context.channelCode
+    })
+  }
+
+  // SECTION 08-3 : UPDATE DELIVERY ADDRESS
+
+  async updateMyDeliveryAddress(
+    input: UpdateDeliveryAddressPayload & { addressId: number | string }
+  ): Promise<DeliveryAddressListResponse> {
+    const context =
+      this.resolveProfileContext({
+        profileId: input.profileId,
+        channelCode: input.channelCode
+      })
+
+    const addressId =
+      this.normalizeProfileId(input.addressId)
+
+    const current = this.getActiveDeliveryAddressOrThrow(
+      context.profileId,
+      context.channelCode,
+      addressId
+    )
+
+    const nextLabel =
+      input.label === undefined
+        ? current.label
+        : this.normalizeRequiredText(input.label, 'DELIVERY_LABEL_REQUIRED')
+
+    const nextDeliveryAddress =
+      input.deliveryAddress === undefined
+        ? current.deliveryAddress
+        : this.normalizeRequiredText(input.deliveryAddress, 'DELIVERY_ADDRESS_REQUIRED')
+
+    const nextRecipientName =
+      input.recipientName === undefined
+        ? current.recipientName
+        : this.normalizeNullableText(input.recipientName)
+
+    const nextRecipientPhone =
+      input.recipientPhone === undefined
+        ? current.recipientPhone
+        : this.normalizeNullableText(input.recipientPhone)
+
+    const nextDeliveryDetailAddress =
+      input.deliveryDetailAddress === undefined
+        ? current.deliveryDetailAddress
+        : this.normalizeNullableText(input.deliveryDetailAddress)
+
+    const nextDeliveryMemo =
+      input.deliveryMemo === undefined
+        ? current.deliveryMemo
+        : this.normalizeNullableText(input.deliveryMemo)
+
+    const nextEntrancePassword =
+      input.entrancePassword === undefined
+        ? current.entrancePassword
+        : this.normalizeNullableText(input.entrancePassword)
+
+    const nextIsDefault =
+      input.isDefault === undefined
+        ? current.isDefault
+        : this.normalizeFlag(input.isDefault, current.isDefault)
+
+    if (nextIsDefault === 1) {
+      db.prepare(`
+        UPDATE profile_delivery_addresses
+        SET
+          isDefault = 0,
+          updatedAt = CURRENT_TIMESTAMP
+        WHERE profileId = ?
+          AND channelCode = ?
+          AND isActive = 1
+      `).run(
+        context.profileId,
+        context.channelCode
+      )
+    }
+
+    db.prepare(`
+      UPDATE profile_delivery_addresses
+      SET
+        label = ?,
+        recipientName = ?,
+        recipientPhone = ?,
+        deliveryAddress = ?,
+        deliveryDetailAddress = ?,
+        entrancePassword = ?,
+        deliveryMemo = ?,
+        isDefault = ?,
+        updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+        AND profileId = ?
+        AND channelCode = ?
+        AND isActive = 1
+    `).run(
+      nextLabel,
+      nextRecipientName,
+      nextRecipientPhone,
+      nextDeliveryAddress,
+      nextDeliveryDetailAddress,
+      nextEntrancePassword,
+      nextDeliveryMemo,
+      nextIsDefault,
+      addressId,
+      context.profileId,
+      context.channelCode
+    )
+
+    return this.listMyDeliveryAddresses({
+      profileId: context.profileId,
+      channelCode: context.channelCode
+    })
+  }
+
+  // SECTION 08-4 : DELETE DELIVERY ADDRESS (SOFT)
+
+  async deleteMyDeliveryAddress(
+    input: DeliveryAddressIdentityRequest
+  ): Promise<DeliveryAddressListResponse> {
+    const context =
+      this.resolveProfileContext({
+        profileId: input.profileId,
+        channelCode: input.channelCode
+      })
+
+    const addressId =
+      this.normalizeProfileId(input.addressId)
+
+    const current = this.getActiveDeliveryAddressOrThrow(
+      context.profileId,
+      context.channelCode,
+      addressId
+    )
+
+    db.prepare(`
+      UPDATE profile_delivery_addresses
+      SET
+        isActive = 0,
+        isDefault = 0,
+        updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+        AND profileId = ?
+        AND channelCode = ?
+        AND isActive = 1
+    `).run(
+      addressId,
+      context.profileId,
+      context.channelCode
+    )
+
+    if (current.isDefault === 1) {
+      const nextDefault =
+        db.prepare(`
+          SELECT id
+          FROM profile_delivery_addresses
+          WHERE profileId = ?
+            AND channelCode = ?
+            AND isActive = 1
+          ORDER BY sortOrder ASC, id ASC
+          LIMIT 1
+        `).get(
+          context.profileId,
+          context.channelCode
+        ) as { id: number } | undefined
+
+      if (nextDefault?.id) {
+        db.prepare(`
+          UPDATE profile_delivery_addresses
+          SET
+            isDefault = 1,
+            updatedAt = CURRENT_TIMESTAMP
+          WHERE id = ?
+            AND profileId = ?
+            AND channelCode = ?
+            AND isActive = 1
+        `).run(
+          nextDefault.id,
+          context.profileId,
+          context.channelCode
+        )
+      }
+    }
+
+    return this.listMyDeliveryAddresses({
+      profileId: context.profileId,
+      channelCode: context.channelCode
+    })
+  }
+
+  // SECTION 08-5 : SET DEFAULT DELIVERY ADDRESS
+
+  async setDefaultDeliveryAddress(
+    input: DeliveryAddressIdentityRequest
+  ): Promise<DeliveryAddressListResponse> {
+    const context =
+      this.resolveProfileContext({
+        profileId: input.profileId,
+        channelCode: input.channelCode
+      })
+
+    const addressId =
+      this.normalizeProfileId(input.addressId)
+
+    this.getActiveDeliveryAddressOrThrow(
+      context.profileId,
+      context.channelCode,
+      addressId
+    )
+
+    db.prepare(`
+      UPDATE profile_delivery_addresses
+      SET
+        isDefault = 0,
+        updatedAt = CURRENT_TIMESTAMP
+      WHERE profileId = ?
+        AND channelCode = ?
+        AND isActive = 1
+    `).run(
+      context.profileId,
+      context.channelCode
+    )
+
+    db.prepare(`
+      UPDATE profile_delivery_addresses
+      SET
+        isDefault = 1,
+        updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+        AND profileId = ?
+        AND channelCode = ?
+        AND isActive = 1
+    `).run(
+      addressId,
+      context.profileId,
+      context.channelCode
+    )
+
+    return this.listMyDeliveryAddresses({
+      profileId: context.profileId,
+      channelCode: context.channelCode
+    })
   }
 
   // SECTION 09 : VERIFY ADULT FOR DEV
@@ -731,6 +1386,67 @@ export class ProfileAccountService {
     }
   }
 
+  private normalizeFlag(
+    value: boolean | number | undefined,
+    fallback: 0 | 1
+  ): 0 | 1 {
+    if (value === undefined) {
+      return fallback
+    }
+
+    if (value === true || value === 1) {
+      return 1
+    }
+
+    if (value === false || value === 0) {
+      return 0
+    }
+
+    return fallback
+  }
+
+  private getActiveDeliveryAddressOrThrow(
+    profileId: number,
+    channelCode: string,
+    addressId: number
+  ): DeliveryAddressItem {
+    const row =
+      db.prepare(`
+        SELECT
+          id,
+          profileId,
+          channelCode,
+          label,
+          recipientName,
+          recipientPhone,
+          deliveryAddress,
+          deliveryDetailAddress,
+          entrancePassword,
+          deliveryMemo,
+          isDefault,
+          sortOrder,
+          isActive,
+          createdAt,
+          updatedAt
+        FROM profile_delivery_addresses
+        WHERE id = ?
+          AND profileId = ?
+          AND channelCode = ?
+          AND isActive = 1
+        LIMIT 1
+      `).get(
+        addressId,
+        profileId,
+        channelCode
+      ) as DeliveryAddressItem | undefined
+
+    if (!row) {
+      throw new NotFoundException('DELIVERY_ADDRESS_NOT_FOUND')
+    }
+
+    return row
+  }
+
   // SECTION 12 : STATUS / SECURITY HELPER
 
   private buildPasswordStatus(
@@ -739,6 +1455,69 @@ export class ProfileAccountService {
     return hash
       ? 'SET'
       : 'NOT_SET'
+  }
+
+  private buildDeliverySettingsResponse(input: {
+    profileId: number
+    channelCode: string
+    row?: DeliverySettingsRow
+  }): DeliverySettingsResponse {
+    const deliveryAddress =
+      input.row?.deliveryAddress ?? null
+
+    const deliveryDetailAddress =
+      input.row?.deliveryDetailAddress ?? null
+
+    const entrancePassword =
+      input.row?.entrancePassword ?? null
+
+    const deliveryMemo =
+      input.row?.deliveryMemo ?? null
+
+    const isRegistered =
+      Boolean(deliveryAddress)
+      || Boolean(deliveryDetailAddress)
+      || Boolean(entrancePassword)
+      || Boolean(deliveryMemo)
+
+    return {
+      profileId: input.profileId,
+      channelCode: input.channelCode,
+      deliveryAddress,
+      deliveryDetailAddress,
+      hasEntrancePassword: Boolean(entrancePassword),
+      deliveryMemo,
+      isRegistered
+    }
+  }
+
+  private buildDeliveryAddressListResponse(
+    rows: DeliveryAddressItem[]
+  ): DeliveryAddressListResponse {
+    const addresses =
+      rows.map((row) => ({
+        id: row.id,
+        label: row.label,
+        recipientName: row.recipientName,
+        recipientPhone: row.recipientPhone,
+        deliveryAddress: row.deliveryAddress,
+        deliveryDetailAddress: row.deliveryDetailAddress,
+        hasEntrancePassword: Boolean(row.entrancePassword),
+        deliveryMemo: row.deliveryMemo,
+        isDefault: row.isDefault,
+        sortOrder: row.sortOrder,
+        isActive: row.isActive
+      }))
+
+    const defaultAddressId =
+      rows.find((row) => row.isDefault === 1)?.id ?? null
+
+    return {
+      addresses,
+      totalCount: addresses.length,
+      defaultAddressId,
+      isRegistered: addresses.length > 0
+    }
   }
 
   private async hashPassword(

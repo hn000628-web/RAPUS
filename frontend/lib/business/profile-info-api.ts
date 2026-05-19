@@ -46,6 +46,8 @@ export type BusinessInfoView = {
   hours: {
     summary: string
     weeklyHours: BusinessInfoHoursDay[]
+    temporaryClosed: boolean
+    alwaysOpen: boolean
     updatedAt: string | null
   } | null
   sections: BusinessInfoBlock[]
@@ -93,6 +95,8 @@ type BusinessInfoApiResponse = {
       closeTime: string
     }>
     summary: string
+    temporaryClosed?: boolean | number
+    alwaysOpen?: boolean | number
     updatedAt: string | null
   }
   infoBlocks: Array<{
@@ -144,6 +148,8 @@ function mapHours(
 
   return {
     summary: hours.summary ?? '',
+    temporaryClosed: Boolean(hours.temporaryClosed),
+    alwaysOpen: Boolean(hours.alwaysOpen),
     updatedAt: hours.updatedAt ?? null,
     weeklyHours: Array.isArray(hours.weeklyHours)
       ? hours.weeklyHours.map((day) => ({

@@ -1,6 +1,9 @@
 'use client'
 
-import type { CSSProperties } from 'react'
+import {
+  useState,
+  type CSSProperties
+} from 'react'
 import { useRouter } from 'next/navigation'
 
 type Props = {
@@ -20,6 +23,13 @@ const orderCardStyle: CSSProperties = {
   border: '1px solid #e5e7eb',
   backgroundColor: '#ffffff',
   boxShadow: '0 8px 24px rgba(15, 23, 42, 0.06)'
+}
+
+const headerRowStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '10px'
 }
 
 const titleStyle: CSSProperties = {
@@ -64,6 +74,23 @@ const reservationOrderButtonStyle: CSSProperties = {
   backgroundColor: '#1f2937'
 }
 
+const inlineActionButtonStyle: CSSProperties = {
+  ...orderButtonStyle,
+  flex: '1 1 160px'
+}
+
+const backButtonStyle: CSSProperties = {
+  height: '40px',
+  padding: '0 14px',
+  border: '1px solid #d1d5db',
+  borderRadius: '12px',
+  backgroundColor: '#ffffff',
+  color: '#111827',
+  fontSize: '13px',
+  fontWeight: 700,
+  cursor: 'pointer'
+}
+
 const noticeStyle: CSSProperties = {
   marginTop: '12px',
   fontSize: '12px',
@@ -76,14 +103,11 @@ export default function ChannelOrder({
   channelCode
 }: Props) {
   const router = useRouter()
+  const [isGeneralOrderSelected, setIsGeneralOrderSelected] =
+    useState(false)
 
   function handleGeneralOrderClick() {
-    const safeChannelCode = String(channelCode || '').trim()
-    if (!safeChannelCode) {
-      return
-    }
-
-    router.push(`/channel/${safeChannelCode}/order`)
+    setIsGeneralOrderSelected(true)
   }
 
   function handleReservationOrderClick() {
@@ -95,43 +119,100 @@ export default function ChannelOrder({
     router.push(`/channel/${safeChannelCode}/reservation`)
   }
 
+  function handlePickupOrderClick() {
+    const safeChannelCode = String(channelCode || '').trim()
+    if (!safeChannelCode) {
+      return
+    }
+
+    router.push(`/channel/${safeChannelCode}/order/pickup`)
+  }
+
+  function handleDeliveryOrderClick() {
+    const safeChannelCode = String(channelCode || '').trim()
+    if (!safeChannelCode) {
+      return
+    }
+
+    router.push(`/channel/${safeChannelCode}/order/delivery`)
+  }
+
+  function handleResetGeneralOrderSelection() {
+    setIsGeneralOrderSelected(false)
+  }
+
   return (
     <section
       style={sectionStyle}
       data-channel-code={channelCode}
     >
       <div style={orderCardStyle}>
-        <h2 style={titleStyle}>
-          오더
-        </h2>
+        <div style={headerRowStyle}>
+          <h2 style={titleStyle}>
+            오더
+          </h2>
+
+          {isGeneralOrderSelected && (
+            <button
+              type="button"
+              style={backButtonStyle}
+              onClick={handleResetGeneralOrderSelection}
+            >
+              이전
+            </button>
+          )}
+        </div>
 
         <p style={descriptionStyle}>
-          주문할 메뉴를 선택하면 상세 화면에서 수량, 옵션, 픽업 / 매장이용 / 배달 방식을 선택할 수 있습니다.
+          일반주문을 선택하면 픽업주문 또는 배달주문으로 바로 진행할 수 있습니다.
         </p>
 
         <div style={buttonWrapStyle}>
-          <button
-            type="button"
-            style={orderButtonStyle}
-            onClick={handleGeneralOrderClick}
-          >
-            일반주문
-          </button>
+          {isGeneralOrderSelected ? (
+            <>
+              <button
+                type="button"
+                style={inlineActionButtonStyle}
+                onClick={handlePickupOrderClick}
+              >
+                픽업주문
+              </button>
 
-          <button
-            type="button"
-            style={reservationOrderButtonStyle}
-            onClick={handleReservationOrderClick}
-          >
-            예약주문
-          </button>
+              <button
+                type="button"
+                style={reservationOrderButtonStyle}
+                onClick={handleDeliveryOrderClick}
+              >
+                배달주문
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                style={orderButtonStyle}
+                onClick={handleGeneralOrderClick}
+              >
+                일반주문
+              </button>
+
+              <button
+                type="button"
+                style={reservationOrderButtonStyle}
+                onClick={handleReservationOrderClick}
+              >
+                예약주문
+              </button>
+            </>
+          )}
         </div>
 
         <div style={noticeStyle}>
-          일반주문은 즉시 주문, 예약주문은 미리 주문 또는 다음 일정 주문으로 진행됩니다.
+          {isGeneralOrderSelected
+            ? '원하는 주문 방식을 선택해 주세요.'
+            : '일반주문은 즉시 주문, 예약주문은 미리 주문 또는 다음 일정 주문으로 진행됩니다.'}
         </div>
       </div>
     </section>
   )
 }
-

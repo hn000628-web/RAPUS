@@ -173,6 +173,8 @@ export type BusinessHoursDay = {
 export type BusinessHoursPayload = {
   weeklyHours: BusinessHoursDay[]
   summary: string
+  temporaryClosed?: boolean | number
+  alwaysOpen?: boolean | number
   updatedAt: string | null
 }
 

@@ -28,8 +28,13 @@ import {
 } from '@/lib/authApi'
 
 import {
+  createMyDeliveryAddress,
+  deleteMyDeliveryAddress,
   getProfileAccount,
+  listMyDeliveryAddresses,
+  setDefaultDeliveryAddress,
   verifyAdultForDev,
+  updateMyDeliveryAddress,
   updatePaymentPassword,
   updatePrimaryPassword,
   updateProfileAccountBasic,
@@ -37,6 +42,8 @@ import {
 } from '@/lib/accountApi'
 
 import type {
+  DeliveryAddressItem,
+  DeliveryAddressListResponseData,
   ProfileAccountResponseData
 } from '@/lib/accountApi'
 
@@ -46,6 +53,7 @@ import AdultBirthDateModal from './components/AdultBirthDateModal'
 import AdultVerificationModal from './components/AdultVerificationModal'
 import PrimaryPasswordModal from './components/PrimaryPasswordModal'
 import PaymentPasswordModal from './components/PaymentPasswordModal'
+import DeliverySettingsModal from './components/DeliverySettingsModal'
 
 import styles from './AccountPrivacyPage.module.css'
 
@@ -94,6 +102,18 @@ type PaymentPasswordSavePayload = {
   confirmPaymentPassword: string
 }
 
+type DeliveryAddressSavePayload = {
+  id?: number
+  label: string
+  recipientName: string | null
+  recipientPhone: string | null
+  deliveryAddress: string
+  deliveryDetailAddress: string | null
+  entrancePassword: string | null
+  deliveryMemo: string | null
+  isDefault: boolean
+}
+
 // SECTION 03 : CONSTANT
 
 const DEFAULT_ADDRESS_EMPTY_TEXT = '미등록'
@@ -110,6 +130,8 @@ export default function AccountPrivacyPage() {
 
   const [accountData, setAccountData] =
     useState<ProfileAccountResponseData | null>(null)
+  const [deliveryAddresses, setDeliveryAddresses] =
+    useState<DeliveryAddressListResponseData | null>(null)
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -121,6 +143,7 @@ export default function AccountPrivacyPage() {
   const [isAdultVerificationModalOpen, setIsAdultVerificationModalOpen] = useState(false)
   const [isPrimaryPasswordModalOpen, setIsPrimaryPasswordModalOpen] = useState(false)
   const [isPaymentPasswordModalOpen, setIsPaymentPasswordModalOpen] = useState(false)
+  const [isDeliverySettingsModalOpen, setIsDeliverySettingsModalOpen] = useState(false)
 
   // SECTION 05 : DATA LOAD
 
@@ -137,8 +160,14 @@ export default function AccountPrivacyPage() {
         channelCode: context.channelCode
       })
 
+      const nextDeliveryAddresses = await listMyDeliveryAddresses({
+        profileId: context.profileId,
+        channelCode: context.channelCode
+      })
+
       setAccountContext(context)
       setAccountData(nextAccountData)
+      setDeliveryAddresses(nextDeliveryAddresses)
     } catch {
       setErrorMessage('프로필 컨텍스트를 확인하지 못했습니다.')
     } finally {
@@ -163,6 +192,7 @@ export default function AccountPrivacyPage() {
     setIsAdultVerificationModalOpen(false)
     setIsPrimaryPasswordModalOpen(false)
     setIsPaymentPasswordModalOpen(false)
+    setIsDeliverySettingsModalOpen(false)
   }
 
   // SECTION 07 : SAVE FUNCTION
@@ -334,6 +364,88 @@ export default function AccountPrivacyPage() {
     }
   }
 
+  async function saveDeliveryAddress(payload: DeliveryAddressSavePayload) {
+    if (!accountContext) {
+      setErrorMessage('프로필 컨텍스트가 없습니다.')
+      return
+    }
+
+    setIsSaving(true)
+    setErrorMessage(null)
+
+    try {
+      const basePayload = {
+        profileId: accountContext.profileId,
+        channelCode: accountContext.channelCode,
+        label: payload.label,
+        recipientName: payload.recipientName,
+        recipientPhone: payload.recipientPhone,
+        deliveryAddress: payload.deliveryAddress,
+        deliveryDetailAddress: payload.deliveryDetailAddress,
+        entrancePassword: payload.entrancePassword,
+        deliveryMemo: payload.deliveryMemo,
+        isDefault: payload.isDefault ? 1 : 0
+      }
+
+      const updated =
+        payload.id
+          ? await updateMyDeliveryAddress(payload.id, basePayload)
+          : await createMyDeliveryAddress(basePayload)
+
+      setDeliveryAddresses(updated)
+    } catch {
+      setErrorMessage('배송정보 저장에 실패했습니다.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function removeDeliveryAddress(addressId: number) {
+    if (!accountContext) {
+      setErrorMessage('프로필 컨텍스트가 없습니다.')
+      return
+    }
+
+    setIsSaving(true)
+    setErrorMessage(null)
+
+    try {
+      const updated = await deleteMyDeliveryAddress(addressId, {
+        profileId: accountContext.profileId,
+        channelCode: accountContext.channelCode
+      })
+
+      setDeliveryAddresses(updated)
+    } catch {
+      setErrorMessage('배송주소 삭제에 실패했습니다.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function makeDefaultDeliveryAddress(addressId: number) {
+    if (!accountContext) {
+      setErrorMessage('프로필 컨텍스트가 없습니다.')
+      return
+    }
+
+    setIsSaving(true)
+    setErrorMessage(null)
+
+    try {
+      const updated = await setDefaultDeliveryAddress(addressId, {
+        profileId: accountContext.profileId,
+        channelCode: accountContext.channelCode
+      })
+
+      setDeliveryAddresses(updated)
+    } catch {
+      setErrorMessage('기본 배송지 설정에 실패했습니다.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   async function saveAdultVerificationForDev() {
     if (!accountContext) {
       setErrorMessage('프로필 컨텍스트가 없습니다.')
@@ -386,6 +498,14 @@ export default function AccountPrivacyPage() {
   const primaryPasswordText = buildPasswordStatusText(accountData?.primaryPasswordStatus ?? 'NOT_SET')
   const paymentPasswordText = buildPasswordStatusText(accountData?.paymentPasswordStatus ?? 'NOT_SET')
   const paymentPasswordBadgeTone: StatusTone = accountData?.paymentPasswordStatus === 'SET' ? 'SAFE' : 'READY'
+  const isDeliveryRegistered = Boolean(deliveryAddresses?.isRegistered)
+  const defaultDeliveryAddress = getDefaultDeliveryAddress(deliveryAddresses?.addresses ?? [])
+  const hasEntrancePassword = Boolean(
+    defaultDeliveryAddress?.hasEntrancePassword
+  )
+  const deliveryAddressSummary = isDeliveryRegistered
+    ? `기본 배송지: ${defaultDeliveryAddress?.label || defaultDeliveryAddress?.deliveryAddress || '주소 미입력'} · 등록 배송지: ${deliveryAddresses?.totalCount ?? 0}개`
+    : '등록된 배송주소가 없습니다.'
 
   // SECTION 09 : UI BLOCK
 
@@ -438,6 +558,16 @@ export default function AccountPrivacyPage() {
               badgeTone={accountData?.contactPhone ? 'SAFE' : 'WARNING'}
               buttonText="연락처 관리"
               onButtonClick={() => setIsContactPhoneModalOpen(true)}
+            />
+
+            <InfoCard
+              title="배송정보관리"
+              value={deliveryAddressSummary}
+              description={`주문, 배달, 배송 요청에 사용할 기본 배송정보입니다. 공동현관 비밀번호 ${hasEntrancePassword ? '등록됨' : '미등록'}.`}
+              badgeText={isDeliveryRegistered ? '등록됨' : '미등록'}
+              badgeTone={isDeliveryRegistered ? 'SAFE' : 'WARNING'}
+              buttonText="배송정보 관리"
+              onButtonClick={() => setIsDeliverySettingsModalOpen(true)}
             />
           </div>
         </section>
@@ -557,6 +687,18 @@ export default function AccountPrivacyPage() {
           paymentPasswordStatus={paymentPasswordText}
           isSaving={isSaving}
           onSave={savePaymentPassword}
+          onClose={closeAllModals}
+        />
+      ) : null}
+
+      {isDeliverySettingsModalOpen ? (
+        <DeliverySettingsModal
+          isOpen={isDeliverySettingsModalOpen}
+          addresses={deliveryAddresses?.addresses ?? []}
+          isSaving={isSaving}
+          onSave={saveDeliveryAddress}
+          onDelete={removeDeliveryAddress}
+          onSetDefault={makeDefaultDeliveryAddress}
           onClose={closeAllModals}
         />
       ) : null}
@@ -716,4 +858,18 @@ function buildAdultVerificationErrorMessage(
   }
 
   return '개발용 임시 성인인증 처리에 실패했습니다.'
+}
+
+function getDefaultDeliveryAddress(
+  addresses: DeliveryAddressItem[]
+): DeliveryAddressItem | null {
+  if (addresses.length < 1) {
+    return null
+  }
+
+  return (
+    addresses.find((item) => item.isDefault === 1)
+    ?? addresses[0]
+    ?? null
+  )
 }

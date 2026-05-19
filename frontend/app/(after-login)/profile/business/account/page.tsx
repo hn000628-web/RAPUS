@@ -1627,7 +1627,7 @@ export default function BusinessAccountPage() {
                         }}
                         aria-pressed={businessHoursTemporaryClosed}
                       >
-                        {businessHoursTemporaryClosed ? 'OFF' : 'ON'}
+                        {businessHoursTemporaryClosed ? 'ON' : 'OFF'}
                       </button>
                     </section>
 

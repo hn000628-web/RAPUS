@@ -48,11 +48,12 @@ export default function DeliveryOrderPage() {
   return (
     <OrderLayout
       channelCode={channelCode}
-      customSidebar={sidebar}
+      hideSidebar
     >
       <DeliveryOrderContent
         channelCode={channelCode}
         activeCategoryKey={activeCategoryKey}
+        categorySidebar={sidebar}
       />
     </OrderLayout>
   )

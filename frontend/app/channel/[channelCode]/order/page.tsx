@@ -1,6 +1,9 @@
 ﻿'use client'
 
-import type { CSSProperties } from 'react'
+import {
+  useState,
+  type CSSProperties
+} from 'react'
 import { useParams, useRouter } from 'next/navigation'
 
 import OrderLayout from './components/OrderLayout'
@@ -8,34 +11,6 @@ import OrderLayout from './components/OrderLayout'
 type RouteParams = {
   channelCode?: string
 }
-
-type OrderModeItem = {
-  id: string
-  title: string
-  description: string
-  detail: string
-  path: string
-  actionLabel: string
-}
-
-const ORDER_MODE_ITEMS: OrderModeItem[] = [
-  {
-    id: 'pickup',
-    title: '픽업주문',
-    description: '고객이 주문 후 매장에서 직접 수령합니다.',
-    detail: '메뉴 선택, 수량, 옵션, 픽업 예정 시간을 입력합니다.',
-    path: 'pickup',
-    actionLabel: '픽업주문 선택'
-  },
-  {
-    id: 'delivery',
-    title: '배달주문',
-    description: '고객 주소지를 기준으로 배달 주문을 진행합니다.',
-    detail: '메뉴 선택, 수량, 옵션, 배송지, 연락처, 배달 요청사항을 입력합니다.',
-    path: 'delivery',
-    actionLabel: '배달주문 선택'
-  }
-]
 
 const contentStyle: CSSProperties = {
   width: '100%',
@@ -88,47 +63,8 @@ const descriptionStyle: CSSProperties = {
 const modeGridStyle: CSSProperties = {
   width: '100%',
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
   gap: '14px'
-}
-
-const modeCardStyle: CSSProperties = {
-  width: '100%',
-  minHeight: '210px',
-  padding: '22px',
-  borderRadius: '20px',
-  border: '1px solid #e5e7eb',
-  backgroundColor: '#ffffff',
-  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.05)',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'stretch',
-  justifyContent: 'space-between',
-  gap: '18px',
-  textAlign: 'left',
-  cursor: 'pointer'
-}
-
-const modeTitleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: '20px',
-  fontWeight: 900,
-  color: '#111827',
-  letterSpacing: '-0.02em'
-}
-
-const modeDescriptionStyle: CSSProperties = {
-  margin: '10px 0 0',
-  fontSize: '14px',
-  lineHeight: 1.55,
-  color: '#4b5563'
-}
-
-const modeDetailStyle: CSSProperties = {
-  margin: '8px 0 0',
-  fontSize: '12px',
-  lineHeight: 1.5,
-  color: '#9ca3af'
 }
 
 const modeButtonStyle: CSSProperties = {
@@ -152,6 +88,18 @@ const modeButtonStyle: CSSProperties = {
   cursor: 'pointer'
 }
 
+const secondaryModeButtonStyle: CSSProperties = {
+  ...modeButtonStyle,
+  backgroundColor: '#1f2937'
+}
+
+const backButtonStyle: CSSProperties = {
+  ...modeButtonStyle,
+  backgroundColor: '#ffffff',
+  color: '#111827',
+  border: '1px solid #d1d5db'
+}
+
 const noticeCardStyle: CSSProperties = {
   width: '100%',
   padding: '18px 20px',
@@ -167,6 +115,8 @@ export default function ChannelOrderPage() {
   const router = useRouter()
   const params = useParams<RouteParams>()
   const channelCode = String(params?.channelCode || '').trim()
+  const [isGeneralOrderSelected, setIsGeneralOrderSelected] =
+    useState(false)
 
   function handleMoveOrderMode(path: string) {
     if (!channelCode) {
@@ -174,6 +124,14 @@ export default function ChannelOrderPage() {
     }
 
     router.push(`/channel/${channelCode}/order/${path}`)
+  }
+
+  function handleSelectGeneralOrder() {
+    setIsGeneralOrderSelected(true)
+  }
+
+  function handleBackOrderMode() {
+    setIsGeneralOrderSelected(false)
   }
 
   const IntroUI = (
@@ -191,31 +149,49 @@ export default function ChannelOrderPage() {
     </section>
   )
 
-  const OrderModeUI = (
+  const OrderModeUI = isGeneralOrderSelected ? (
     <section style={modeGridStyle}>
-      {ORDER_MODE_ITEMS.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          style={modeCardStyle}
-          onClick={() => handleMoveOrderMode(item.path)}
-        >
-          <span>
-            <h3 style={modeTitleStyle}>{item.title}</h3>
-            <p style={modeDescriptionStyle}>{item.description}</p>
-            <p style={modeDetailStyle}>{item.detail}</p>
-          </span>
+      <button
+        type="button"
+        style={modeButtonStyle}
+        onClick={() => handleMoveOrderMode('pickup')}
+      >
+        픽업주문
+      </button>
 
-          <span style={modeButtonStyle}>{item.actionLabel}</span>
-        </button>
-      ))}
+      <button
+        type="button"
+        style={secondaryModeButtonStyle}
+        onClick={() => handleMoveOrderMode('delivery')}
+      >
+        배달주문
+      </button>
+
+      <button
+        type="button"
+        style={backButtonStyle}
+        onClick={handleBackOrderMode}
+      >
+        이전
+      </button>
+    </section>
+  ) : (
+    <section>
+      <button
+        type="button"
+        style={modeButtonStyle}
+        onClick={handleSelectGeneralOrder}
+      >
+        일반주문
+      </button>
     </section>
   )
 
   const NoticeUI = (
     <section style={noticeCardStyle}>
-      현재는 UI 구성 단계입니다.
-      실제 주문 생성, 고객 주소 조회, 결제, 사장님 주문관리는 이후 API / DB / Service 연동에서 처리합니다.
+      {isGeneralOrderSelected
+        ? '일반 주문 선택 상태입니다. 픽업주문 또는 배달주문을 선택해 주세요.'
+        : '일반주문을 선택하면 해당 영역에서 픽업주문/배달주문을 선택할 수 있습니다.'}
     </section>
   )
 
@@ -223,15 +199,11 @@ export default function ChannelOrderPage() {
     <OrderLayout
       channelCode={channelCode}
       hideSidebar
-      headerMode="PROFILE_LEFT"
-      headerLeftBottomContent={IntroUI}
-      headerRightContent={
-        <section style={contentStyle}>
-          {OrderModeUI}
-        </section>
-      }
+      headerMode="DEFAULT"
     >
       <section style={contentStyle}>
+        {IntroUI}
+        {OrderModeUI}
         {NoticeUI}
       </section>
     </OrderLayout>

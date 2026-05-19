@@ -15,6 +15,7 @@
 // SECTION 01 : IMPORT
 
 import {
+  type ReactNode,
   useEffect,
   useMemo,
   useState
@@ -29,6 +30,7 @@ import type {
 type Props = {
   channelCode: string
   activeCategoryKey: string
+  categorySidebar?: ReactNode
 }
 
 type OrderMenuItem = {
@@ -363,6 +365,7 @@ const inputGroupStyle: CSSProperties = {
 const inputStyle: CSSProperties = {
   width: '100%',
   height: '46px',
+  boxSizing: 'border-box',
   padding: '0 14px',
   border: '1px solid #dbe2ea',
   borderRadius: '12px',
@@ -375,12 +378,18 @@ const inputStyle: CSSProperties = {
 const addressButtonStyle: CSSProperties = {
   width: '100%',
   height: '46px',
-  border: '1px solid #111827',
+  padding: '0 14px',
+  boxSizing: 'border-box',
+  border: '1px solid #dbe2ea',
   borderRadius: '12px',
-  backgroundColor: '#111827',
+  backgroundColor: '#0f172a',
   color: '#ffffff',
   fontSize: '15px',
-  fontWeight: 900,
+  fontWeight: 800,
+  lineHeight: 1,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   cursor: 'pointer'
 }
 
@@ -424,6 +433,7 @@ const paymentDescStyle: CSSProperties = {
 const memoStyle: CSSProperties = {
   width: '100%',
   minHeight: '82px',
+  boxSizing: 'border-box',
   padding: '14px',
   border: '1px solid #dbe2ea',
   borderRadius: '12px',
@@ -626,7 +636,8 @@ function formatPrice(
 
 export default function DeliveryOrderContent({
   channelCode,
-  activeCategoryKey
+  activeCategoryKey,
+  categorySidebar
 }: Props) {
   // SECTION 07 : STATE
 
@@ -1334,6 +1345,7 @@ export default function DeliveryOrderContent({
   return (
     <section style={contentStyle}>
       {IntroUI}
+      {categorySidebar}
 
       <section style={responsiveOrderGridStyle}>
         <section style={columnStyle}>

@@ -14,13 +14,20 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Patch,
+  Post,
   Query
 } from '@nestjs/common'
 
 import {
+  DeliveryAddressIdentityRequest,
+  DeliveryAddressPayload,
   ProfileAccountService,
+  UpdateDeliverySettingsRequest,
+  UpdateDeliveryAddressPayload,
   VerifyAdultForDevRequest,
   UpdateBirthDateRequest,
   UpdatePaymentPasswordRequest,
@@ -116,6 +123,123 @@ export class ProfileAccountController {
       await this.profileAccountService.updatePaymentPassword(
         body
       )
+
+    return {
+      ok: true,
+      data
+    }
+  }
+
+  // SECTION 08-1 : GET DELIVERY SETTINGS
+
+  @Get('delivery-settings')
+  async getMyDeliverySettings(
+    @Query('profileId') profileId: string,
+    @Query('channelCode') channelCode: string
+  ) {
+    const data =
+      await this.profileAccountService.getMyDeliverySettings({
+        profileId,
+        channelCode
+      })
+
+    return {
+      ok: true,
+      data
+    }
+  }
+
+  // SECTION 08-2 : PATCH DELIVERY SETTINGS
+
+  @Patch('delivery-settings')
+  async updateMyDeliverySettings(
+    @Body() body: UpdateDeliverySettingsRequest
+  ) {
+    const data =
+      await this.profileAccountService.updateMyDeliverySettings(
+        body
+      )
+
+    return {
+      ok: true,
+      data
+    }
+  }
+
+  @Get('delivery-addresses')
+  async listMyDeliveryAddresses(
+    @Query('profileId') profileId: string,
+    @Query('channelCode') channelCode: string
+  ) {
+    const data =
+      await this.profileAccountService.listMyDeliveryAddresses({
+        profileId,
+        channelCode
+      })
+
+    return {
+      ok: true,
+      data
+    }
+  }
+
+  @Post('delivery-addresses')
+  async createMyDeliveryAddress(
+    @Body() body: DeliveryAddressPayload
+  ) {
+    const data =
+      await this.profileAccountService.createMyDeliveryAddress(body)
+
+    return {
+      ok: true,
+      data
+    }
+  }
+
+  @Patch('delivery-addresses/:addressId')
+  async updateMyDeliveryAddress(
+    @Param('addressId') addressId: string,
+    @Body() body: UpdateDeliveryAddressPayload
+  ) {
+    const data =
+      await this.profileAccountService.updateMyDeliveryAddress({
+        ...body,
+        addressId
+      })
+
+    return {
+      ok: true,
+      data
+    }
+  }
+
+  @Patch('delivery-addresses/:addressId/default')
+  async setDefaultDeliveryAddress(
+    @Param('addressId') addressId: string,
+    @Body() body: Omit<DeliveryAddressIdentityRequest, 'addressId'>
+  ) {
+    const data =
+      await this.profileAccountService.setDefaultDeliveryAddress({
+        ...body,
+        addressId
+      })
+
+    return {
+      ok: true,
+      data
+    }
+  }
+
+  @Delete('delivery-addresses/:addressId')
+  async deleteMyDeliveryAddress(
+    @Param('addressId') addressId: string,
+    @Body() body: Omit<DeliveryAddressIdentityRequest, 'addressId'>
+  ) {
+    const data =
+      await this.profileAccountService.deleteMyDeliveryAddress({
+        ...body,
+        addressId
+      })
 
     return {
       ok: true,
