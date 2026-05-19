@@ -153,7 +153,9 @@ const contentStyle: CSSProperties = {
   width: '100%',
   display: 'flex',
   flexDirection: 'column',
-  gap: '10px'
+  gap: '10px',
+  paddingBottom: '118px',
+  boxSizing: 'border-box'
 }
 
 const introCardStyle: CSSProperties = {
@@ -464,17 +466,35 @@ const totalRowStyle: CSSProperties = {
 }
 
 const footerBarStyle: CSSProperties = {
-  position: 'sticky',
-  bottom: 0,
-  zIndex: 20,
   width: '100%',
-  minHeight: '70px',
-  marginTop: '2px',
-  padding: '10px 12px',
-  border: '1px solid #dbe2ea',
-  borderRadius: '20px',
+  minHeight: '56px',
+  padding: '0',
+  border: 'none',
+  backgroundColor: 'transparent',
+  boxShadow: 'none',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '14px',
+  boxSizing: 'border-box'
+}
+
+const footerBarViewportStyle: CSSProperties = {
+  position: 'fixed',
+  left: 0,
+  right: 0,
+  bottom: 0,
+  zIndex: 90,
+  borderTop: '1px solid #dbe2ea',
   backgroundColor: '#ffffff',
-  boxShadow: '0 -8px 24px rgba(15, 23, 42, 0.08)',
+  boxShadow: '0 -8px 24px rgba(15, 23, 42, 0.08)'
+}
+
+const footerBarInnerStyle: CSSProperties = {
+  width: '100%',
+  maxWidth: '1120px',
+  margin: '0 auto',
+  padding: '10px 24px calc(10px + env(safe-area-inset-bottom))',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
@@ -1194,40 +1214,56 @@ export default function DeliveryOrderContent({
 
   const FooterBarUI = (
     <footer
-      style={
-        isCompactLayout
-          ? {
-              ...footerBarStyle,
-              alignItems: 'stretch',
-              flexDirection: 'column'
-            }
-          : footerBarStyle
-      }
+      style={footerBarViewportStyle}
     >
-      <div style={footerTotalStyle}>
-        <span style={footerTotalLabelStyle}>
-          합계 :
-        </span>
-
-        <strong style={footerTotalAmountStyle}>
-          {formatPrice(totalAmount)}
-        </strong>
-      </div>
-
-      <button
-        type="button"
+      <div
         style={
           isCompactLayout
             ? {
-                ...footerOrderButtonStyle,
-                width: '100%'
+                ...footerBarInnerStyle,
+                alignItems: 'stretch',
+                flexDirection: 'column'
               }
-            : footerOrderButtonStyle
+            : footerBarInnerStyle
         }
-        onClick={handleOpenDeliveryModal}
       >
-        배달주문등록
-      </button>
+        <div
+          style={
+            isCompactLayout
+              ? {
+                  ...footerBarStyle,
+                  alignItems: 'stretch',
+                  flexDirection: 'column'
+                }
+              : footerBarStyle
+          }
+        >
+          <div style={footerTotalStyle}>
+            <span style={footerTotalLabelStyle}>
+              합계 :
+            </span>
+
+            <strong style={footerTotalAmountStyle}>
+              {formatPrice(totalAmount)}
+            </strong>
+          </div>
+
+          <button
+            type="button"
+            style={
+              isCompactLayout
+                ? {
+                    ...footerOrderButtonStyle,
+                    width: '100%'
+                  }
+                : footerOrderButtonStyle
+            }
+            onClick={handleOpenDeliveryModal}
+          >
+            배달주문등록
+          </button>
+        </div>
+      </div>
     </footer>
   )
 

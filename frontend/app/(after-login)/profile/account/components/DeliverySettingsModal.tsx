@@ -1,4 +1,4 @@
-// FILE : frontend/app/(after-login)/profile/account/components/DeliverySettingsModal.tsx
+﻿// FILE : frontend/app/(after-login)/profile/account/components/DeliverySettingsModal.tsx
 // ROOT : frontend/app/(after-login)/profile/account/components/DeliverySettingsModal.tsx
 // STATUS : MODIFY MODE
 // ROLE : DELIVERY ADDRESS BOOK LIST + CREATE/EDIT MODAL
@@ -7,6 +7,7 @@
 
 import {
   useEffect,
+  useRef,
   useMemo,
   useState,
   type MouseEvent
@@ -68,18 +69,18 @@ const INITIAL_FORM: DeliveryFormState = {
   isDefault: false
 }
 
-function normalizeNullableText(value: string): string | null {
-  const trimmed = value.trim()
+function normalizeNullableText(value: string | null | undefined): string | null {
+  const trimmed = (value ?? '').trim()
   return trimmed || null
 }
 
 function buildFormFromItem(item: DeliveryAddressItem): DeliveryFormState {
   return {
     id: item.id,
-    label: item.label,
+    label: item.label ?? '',
     recipientName: item.recipientName ?? '',
     recipientPhone: item.recipientPhone ?? '',
-    deliveryAddress: item.deliveryAddress,
+    deliveryAddress: item.deliveryAddress ?? '',
     deliveryDetailAddress: item.deliveryDetailAddress ?? '',
     entrancePassword: '',
     deliveryMemo: item.deliveryMemo ?? '',
@@ -96,8 +97,10 @@ export default function DeliverySettingsModal({
   onSetDefault,
   onClose
 }: DeliverySettingsModalProps) {
+  const panelRef = useRef<HTMLDivElement | null>(null)
   const [mode, setMode] = useState<DeliveryModalMode>('list')
   const [form, setForm] = useState<DeliveryFormState>(INITIAL_FORM)
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
 
   const hasAddresses = addresses.length > 0
 
@@ -110,8 +113,24 @@ export default function DeliverySettingsModal({
       return
     }
     setMode('list')
+    setSelectedAddressId(null)
     setForm(INITIAL_FORM)
+    if (panelRef.current) {
+      panelRef.current.scrollTop = 0
+    }
   }, [isOpen])
+
+  useEffect(() => {
+    if (!selectedAddressId) {
+      return
+    }
+
+    const isExisting = addresses.some((item) => item.id === selectedAddressId)
+
+    if (!isExisting) {
+      setSelectedAddressId(null)
+    }
+  }, [selectedAddressId, addresses])
 
   if (!isOpen) {
     return null
@@ -124,10 +143,16 @@ export default function DeliverySettingsModal({
       ? Boolean(addresses.find((item) => item.id === form.id)?.hasEntrancePassword)
       : false
 
+  const selectedAddress = selectedAddressId
+    ? addresses.find((item) => item.id === selectedAddressId) ?? null
+    : null
+
+  const normalizedLabel = (form.label ?? '').trim()
+  const normalizedDeliveryAddress = (form.deliveryAddress ?? '').trim()
   const isSaveDisabled =
     isSaving
-    || !form.label.trim()
-    || !form.deliveryAddress.trim()
+    || !normalizedLabel
+    || !normalizedDeliveryAddress
 
   function handlePanelClick(event: MouseEvent<HTMLDivElement>) {
     event.stopPropagation()
@@ -148,6 +173,7 @@ export default function DeliverySettingsModal({
 
   function handleBackToList() {
     setMode('list')
+    setSelectedAddressId(null)
   }
 
   function handleChange<K extends keyof DeliveryFormState>(
@@ -160,22 +186,31 @@ export default function DeliverySettingsModal({
     }))
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (isSaveDisabled) {
       return
     }
 
-    void onSave({
+    const payload = {
       id: form.id,
-      label: form.label.trim(),
+      label: normalizedLabel,
       recipientName: normalizeNullableText(form.recipientName),
       recipientPhone: normalizeNullableText(form.recipientPhone),
-      deliveryAddress: form.deliveryAddress.trim(),
+      deliveryAddress: normalizedDeliveryAddress,
       deliveryDetailAddress: normalizeNullableText(form.deliveryDetailAddress),
       entrancePassword: normalizeNullableText(form.entrancePassword),
       deliveryMemo: normalizeNullableText(form.deliveryMemo),
       isDefault: form.isDefault
-    })
+    }
+
+    try {
+      await Promise.resolve(onSave(payload))
+      setForm(INITIAL_FORM)
+      setSelectedAddressId(null)
+      setMode('list')
+    } catch {
+      // 저장 실패 시 폼 화면에 머무르게 유지한다.
+    }
   }
 
   function handleDelete() {
@@ -187,6 +222,31 @@ export default function DeliverySettingsModal({
     setMode('list')
   }
 
+  function handleDeleteAddress(addressId: number) {
+    if (isSaving) {
+      return
+    }
+
+    void onDelete(addressId)
+
+    if (selectedAddressId === addressId) {
+      setSelectedAddressId(null)
+    }
+  }
+
+  function handleAddressSelect(addressId: number) {
+    setSelectedAddressId(addressId)
+  }
+
+  async function handleSetDefaultAddress() {
+    if (!selectedAddress || isSaving || selectedAddress.isDefault === 1) {
+      return
+    }
+
+    await onSetDefault(selectedAddress.id)
+    setSelectedAddressId(null)
+  }
+
   return (
     <div
       className={styles.modalOverlay}
@@ -194,7 +254,8 @@ export default function DeliverySettingsModal({
       role="presentation"
     >
       <div
-        className={styles.modalPanel}
+        ref={panelRef}
+        className={`${styles.modalPanel} ${styles.deliveryModalPanel}`}
         onClick={handlePanelClick}
         role="dialog"
         aria-modal="true"
@@ -227,17 +288,25 @@ export default function DeliverySettingsModal({
           {mode === 'list' ? (
             <>
               <div className={styles.modalInfoBox}>
-                <span className={styles.modalLabel}>메모</span>
-
                 {hasAddresses ? (
                   <div className={styles.inputGrid}>
                     {addresses.map((item, index) => (
-                      <button
+                      <div
                         key={item.id}
-                        type="button"
                         className={styles.modalMethodCard}
-                        onClick={() => handleOpenEdit(item)}
-                        disabled={isSaving}
+                        style={{
+                          backgroundColor: selectedAddressId === item.id ? '#eff3ff' : undefined,
+                          borderColor: selectedAddressId === item.id ? '#3b82f6' : undefined
+                        }}
+                        onClick={() => handleAddressSelect(item.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            handleAddressSelect(item.id)
+                          }
+                        }}
                       >
                         <p className={styles.modalMethodTitle}>
                           {index + 1}. {item.deliveryAddress} {item.deliveryDetailAddress ?? ''} [{item.label}]
@@ -246,23 +315,36 @@ export default function DeliverySettingsModal({
                         <p className={styles.modalMethodDescription}>
                           {item.deliveryMemo || '메모 없음'}
                         </p>
-                      </button>
+                        <div className={styles.modalActions}>
+                          <button
+                            type="button"
+                            className={styles.modalCancelButton}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleOpenEdit(item)
+                            }}
+                            disabled={isSaving}
+                          >
+                            수정
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.modalCancelButton}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleDeleteAddress(item.id)
+                            }}
+                            disabled={isSaving}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 ) : (
                   <span className={styles.modalValue}>등록된 배송주소가 없습니다.</span>
                 )}
-              </div>
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  className={styles.actionButton}
-                  onClick={handleOpenCreate}
-                  disabled={isSaving}
-                >
-                  배송주소지 등록
-                </button>
               </div>
             </>
           ) : (
@@ -273,7 +355,7 @@ export default function DeliverySettingsModal({
                   type="text"
                   className={styles.modalInput}
                   value={form.label}
-                  placeholder="예) 회사, 어머니집, 자녀집"
+                  placeholder="예) 자택,회사"
                   onChange={(event) => handleChange('label', event.target.value)}
                   disabled={isSaving}
                 />
@@ -329,16 +411,19 @@ export default function DeliverySettingsModal({
 
               <label className={styles.modalInputGroup}>
                 <span className={styles.modalLabel}>
-                  공동현관 비밀번호 {hasStoredEntrancePassword ? '(등록됨)' : '(미등록)'}
+                  건물 공동현관 출입정보 {hasStoredEntrancePassword ? '(등록됨)' : '(미등록)'}
                 </span>
                 <input
                   type="text"
                   className={styles.modalInput}
                   value={form.entrancePassword}
-                  placeholder={mode === 'create' ? '공동현관 비밀번호를 입력하세요' : '변경할 비밀번호만 입력하세요'}
+                  placeholder="예) #1234, 경비실 호출, 공동현관 없음"
                   onChange={(event) => handleChange('entrancePassword', event.target.value)}
                   disabled={isSaving}
                 />
+                <span className={styles.modalMethodDescription}>
+                  배송 시 라이더에게 전달될 수 있는 건물 출입구 진입 정보입니다.
+                </span>
               </label>
 
               <label className={styles.modalInputGroup}>
@@ -353,15 +438,17 @@ export default function DeliverySettingsModal({
                 />
               </label>
 
-              <label className={styles.modalInputGroup}>
-                <span className={styles.modalLabel}>기본 배송지</span>
-                <input
-                  type="checkbox"
-                  checked={form.isDefault}
-                  onChange={(event) => handleChange('isDefault', event.target.checked)}
-                  disabled={isSaving}
-                />
-              </label>
+              {isEditMode ? (
+                <label className={styles.modalInputGroup}>
+                  <span className={styles.modalLabel}>기본 배송지</span>
+                  <input
+                    type="checkbox"
+                    checked={form.isDefault}
+                    onChange={(event) => handleChange('isDefault', event.target.checked)}
+                    disabled={isSaving}
+                  />
+                </label>
+              ) : null}
 
               <div className={styles.modalActions}>
                 <button
@@ -409,6 +496,31 @@ export default function DeliverySettingsModal({
             </>
           )}
         </div>
+
+        {mode === 'list' ? (
+          <div className={styles.modalFooter}>
+            <div className={styles.modalFooterActions}>
+              <button
+                type="button"
+                className={styles.actionButton}
+                onClick={handleOpenCreate}
+                disabled={isSaving}
+              >
+                배송주소지 등록
+              </button>
+              <button
+                type="button"
+                className={isSaving || !selectedAddress || selectedAddress.isDefault === 1
+                  ? styles.modalDisabledButton
+                  : styles.actionButton}
+                onClick={() => void handleSetDefaultAddress()}
+                disabled={isSaving || !selectedAddress || selectedAddress.isDefault === 1}
+              >
+                기본주소 선택
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   )

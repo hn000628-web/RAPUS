@@ -2611,6 +2611,20 @@ CREATE TABLE IF NOT EXISTS profile_delivery_addresses(
 )
 `)
 
+safeAddColumn('profile_delivery_addresses', 'channelCode', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'label', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'recipientName', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'recipientPhone', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'deliveryAddress', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'deliveryDetailAddress', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'entrancePassword', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'deliveryMemo', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'isDefault', 'INTEGER NOT NULL DEFAULT 0 CHECK(isDefault IN (0,1))')
+safeAddColumn('profile_delivery_addresses', 'sortOrder', 'INTEGER NOT NULL DEFAULT 0')
+safeAddColumn('profile_delivery_addresses', 'isActive', 'INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN (0,1))')
+safeAddColumn('profile_delivery_addresses', 'createdAt', 'TEXT DEFAULT CURRENT_TIMESTAMP')
+safeAddColumn('profile_delivery_addresses', 'updatedAt', 'TEXT DEFAULT CURRENT_TIMESTAMP')
+
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_profile_delivery_addresses_profile
 ON profile_delivery_addresses(profileId)
@@ -2636,6 +2650,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_delivery_addresses_default
 ON profile_delivery_addresses(profileId)
 WHERE isDefault = 1
   AND isActive = 1
+`)
+
+db.exec(`
+UPDATE profile_delivery_addresses
+SET
+  channelCode = COALESCE(
+    channelCode,
+    (
+      SELECT p.channelCode
+      FROM profiles p
+      WHERE p.id = profile_delivery_addresses.profileId
+      LIMIT 1
+    )
+  ),
+  label = COALESCE(NULLIF(trim(label), ''), '기본 배송지'),
+  isDefault = COALESCE(isDefault, 0),
+  sortOrder = COALESCE(sortOrder, 0),
+  isActive = COALESCE(isActive, 1),
+  updatedAt = COALESCE(updatedAt, CURRENT_TIMESTAMP)
 `)
 
 db.exec(`
@@ -2674,7 +2707,6 @@ WHERE COALESCE(pds.isActive, 1) = 1
     SELECT 1
     FROM profile_delivery_addresses pda
     WHERE pda.profileId = pds.profileId
-      AND pda.isActive = 1
   )
 `)
 

@@ -114,6 +114,11 @@ type DeliveryAddressSavePayload = {
   isDefault: boolean
 }
 
+function normalizeNullableText(value: string | null | undefined): string | null {
+  const trimmed = (value ?? '').trim()
+  return trimmed || null
+}
+
 // SECTION 03 : CONSTANT
 
 const DEFAULT_ADDRESS_EMPTY_TEXT = '미등록'
@@ -367,13 +372,14 @@ export default function AccountPrivacyPage() {
   async function saveDeliveryAddress(payload: DeliveryAddressSavePayload) {
     if (!accountContext) {
       setErrorMessage('프로필 컨텍스트가 없습니다.')
-      return
+      throw new Error('프로필 컨텍스트가 없습니다.')
     }
 
     setIsSaving(true)
     setErrorMessage(null)
 
     try {
+      const normalizedEntrancePassword = normalizeNullableText(payload.entrancePassword)
       const basePayload = {
         profileId: accountContext.profileId,
         channelCode: accountContext.channelCode,
@@ -382,7 +388,7 @@ export default function AccountPrivacyPage() {
         recipientPhone: payload.recipientPhone,
         deliveryAddress: payload.deliveryAddress,
         deliveryDetailAddress: payload.deliveryDetailAddress,
-        entrancePassword: payload.entrancePassword,
+        entrancePassword: normalizedEntrancePassword,
         deliveryMemo: payload.deliveryMemo,
         isDefault: payload.isDefault ? 1 : 0
       }
@@ -395,6 +401,7 @@ export default function AccountPrivacyPage() {
       setDeliveryAddresses(updated)
     } catch {
       setErrorMessage('배송정보 저장에 실패했습니다.')
+      throw new Error('배송정보 저장에 실패했습니다.')
     } finally {
       setIsSaving(false)
     }
@@ -563,7 +570,7 @@ export default function AccountPrivacyPage() {
             <InfoCard
               title="배송정보관리"
               value={deliveryAddressSummary}
-              description={`주문, 배달, 배송 요청에 사용할 기본 배송정보입니다. 공동현관 비밀번호 ${hasEntrancePassword ? '등록됨' : '미등록'}.`}
+              description={`주문, 배달, 배송 요청에 사용할 기본 배송정보입니다. 공동현관 출입정보 ${hasEntrancePassword ? '등록됨' : '미등록'}.`}
               badgeText={isDeliveryRegistered ? '등록됨' : '미등록'}
               badgeTone={isDeliveryRegistered ? 'SAFE' : 'WARNING'}
               buttonText="배송정보 관리"
