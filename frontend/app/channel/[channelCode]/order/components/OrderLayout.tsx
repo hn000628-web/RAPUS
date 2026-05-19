@@ -29,6 +29,10 @@ import {
   getBusinessProfileDetail,
   type BusinessProfileDetail
 } from '@/lib/business/profileApi'
+import {
+  getBusinessInfoView,
+  type BusinessInfoView
+} from '@/lib/business/profile-info-api'
 
 import OrderSidebar from './OrderSidebar'
 
@@ -42,6 +46,14 @@ type Props = {
   headerMode?: 'DEFAULT' | 'PROFILE_LEFT'
   headerRightContent?: ReactNode
   headerLeftBottomContent?: ReactNode
+}
+
+type WeeklyHoursDay = {
+  dayKey: 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN'
+  dayLabel: string
+  isClosed: boolean
+  openTime: string
+  closeTime: string
 }
 
 // SECTION 03 : CONSTANT
@@ -238,6 +250,51 @@ const primaryButtonStyle: CSSProperties = {
   cursor: 'pointer'
 }
 
+const basicInfoCardStyle: CSSProperties = {
+  border: '1px solid #e5e7eb',
+  borderRadius: '14px',
+  backgroundColor: '#ffffff',
+  padding: '14px 16px',
+  marginTop: '8px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '10px'
+}
+
+const basicInfoTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: '16px',
+  fontWeight: 900,
+  color: '#111827'
+}
+
+const basicInfoListStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '8px'
+}
+
+const basicInfoRowStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '90px minmax(0, 1fr)',
+  alignItems: 'start',
+  gap: '8px'
+}
+
+const basicInfoLabelStyle: CSSProperties = {
+  color: '#6b7280',
+  fontSize: '13px',
+  fontWeight: 800
+}
+
+const basicInfoValueStyle: CSSProperties = {
+  color: '#111827',
+  fontSize: '13px',
+  fontWeight: 600,
+  lineHeight: 1.45,
+  wordBreak: 'break-word'
+}
+
 const sidebarColumnStyle: CSSProperties = {
   width: '260px',
   minWidth: '260px'
@@ -325,6 +382,32 @@ function resolveBusinessTypeLabel(
   return '스토어'
 }
 
+function formatWeeklyHoursValue(
+  weeklyHours: WeeklyHoursDay[],
+  temporaryClosed: boolean,
+  alwaysOpen: boolean
+): string {
+  if (temporaryClosed) {
+    return '\uC804\uCCB4 OFF'
+  }
+
+  if (alwaysOpen) {
+    return '24\uC2DC\uAC04 \uC601\uC5C5'
+  }
+
+  if (!Array.isArray(weeklyHours) || weeklyHours.length === 0) {
+    return '\uC815\uBCF4 \uC5C6\uC74C'
+  }
+
+  return weeklyHours
+    .map((day) => {
+      return day.isClosed
+        ? `${day.dayLabel} \uD734\uBB34`
+        : `${day.dayLabel} ${day.openTime}-${day.closeTime}`
+    })
+    .join(' / ')
+}
+
 // SECTION 05 : COMPONENT
 
 export default function OrderLayout({
@@ -343,6 +426,8 @@ export default function OrderLayout({
 
   const [profileDetail, setProfileDetail] =
     useState<BusinessProfileDetail | null>(null)
+  const [profileInfoView, setProfileInfoView] =
+    useState<BusinessInfoView | null>(null)
 
   // SECTION 07 : EFFECT
 
@@ -376,21 +461,27 @@ export default function OrderLayout({
 
       if (!safeChannelCode) {
         setProfileDetail(null)
+        setProfileInfoView(null)
         return
       }
 
       try {
-        const detail =
-          await getBusinessProfileDetail(safeChannelCode)
+        const [detail, infoView] =
+          await Promise.all([
+            getBusinessProfileDetail(safeChannelCode),
+            getBusinessInfoView(safeChannelCode)
+          ])
 
         if (!cancelled) {
           setProfileDetail(detail)
+          setProfileInfoView(infoView)
         }
       } catch (error) {
         console.error('ORDER PROFILE HEADER LOAD FAILED ->', error)
 
         if (!cancelled) {
           setProfileDetail(null)
+          setProfileInfoView(null)
         }
       }
     }
@@ -464,6 +555,78 @@ export default function OrderLayout({
       profileDetail?.media?.heroImages?.[0]?.filePath ||
       null
     )
+
+  const contactPhone =
+    String(
+      profileInfoView?.contactPhone ||
+      profileDetail?.placeMeta?.contactPhone ||
+      ''
+    ).trim() || '-'
+
+  const regionText =
+    String(
+      profileDetail?.placeMeta?.activityRegion?.fullName ||
+      profileDetail?.placeMeta?.activityRegion?.name ||
+      profileDetail?.placeMeta?.feedRegion?.fullName ||
+      profileDetail?.placeMeta?.feedRegion?.name ||
+      profileInfoView?.detailAddress ||
+      profileDetail?.placeMeta?.detailAddress ||
+      ''
+    ).trim() || '-'
+
+  const hoursSummaryText =
+    String(profileInfoView?.hours?.summary || '').trim() || '-'
+
+  const weeklyHoursText =
+    formatWeeklyHoursValue(
+      Array.isArray(profileInfoView?.hours?.weeklyHours)
+        ? profileInfoView.hours.weeklyHours
+        : [],
+      Boolean(profileInfoView?.hours?.temporaryClosed),
+      Boolean(profileInfoView?.hours?.alwaysOpen)
+    )
+
+  const statusText =
+    Boolean(profileInfoView?.hours?.temporaryClosed)
+      ? '\uC804\uCCB4 OFF'
+      : Boolean(profileInfoView?.hours?.alwaysOpen)
+        ? '24\uC2DC\uAC04 \uC601\uC5C5'
+        : '\uC77C\uBC18 \uC6B4\uC601'
+
+  const BasicInfoCardUI = (
+    <section style={basicInfoCardStyle}>
+      <h2 style={basicInfoTitleStyle}>
+        {'\uAE30\uBCF8 \uC815\uBCF4'}
+      </h2>
+
+      <div style={basicInfoListStyle}>
+        <div style={basicInfoRowStyle}>
+          <span style={basicInfoLabelStyle}>{'\uC804\uD654'}</span>
+          <span style={basicInfoValueStyle}>{contactPhone}</span>
+        </div>
+
+        <div style={basicInfoRowStyle}>
+          <span style={basicInfoLabelStyle}>{'\uC9C0\uC5ED'}</span>
+          <span style={basicInfoValueStyle}>{regionText}</span>
+        </div>
+
+        <div style={basicInfoRowStyle}>
+          <span style={basicInfoLabelStyle}>{'\uC601\uC5C5 \uC548\uB0B4'}</span>
+          <span style={basicInfoValueStyle}>{hoursSummaryText}</span>
+        </div>
+
+        <div style={basicInfoRowStyle}>
+          <span style={basicInfoLabelStyle}>{'\uC8FC\uAC04 \uC601\uC5C5\uC2DC\uAC04'}</span>
+          <span style={basicInfoValueStyle}>{weeklyHoursText}</span>
+        </div>
+
+        <div style={basicInfoRowStyle}>
+          <span style={basicInfoLabelStyle}>{'\uC0C1\uD0DC'}</span>
+          <span style={basicInfoValueStyle}>{statusText}</span>
+        </div>
+      </div>
+    </section>
+  )
 
   // SECTION 09 : UI BLOCK
 
@@ -551,6 +714,8 @@ export default function OrderLayout({
           지도보기
         </button>
         </div>
+
+        {BasicInfoCardUI}
 
         {headerLeftBottomContent}
       </section>
@@ -655,6 +820,8 @@ export default function OrderLayout({
             지도보기
           </button>
         </div>
+
+        {BasicInfoCardUI}
       </section>
     </header>
   )
