@@ -548,6 +548,9 @@ export class AdminService {
     const posInvalidLocationRelationIssues =
       await this.findPosInvalidLocationRelationIssues()
 
+    const profileDeliveryAddressSoftDeletedIssues =
+      await this.findProfileDeliveryAddressSoftDeletedIssues()
+
     const merged = [
       ...duplicateIssues,
       ...deletedPosIssues,
@@ -557,7 +560,8 @@ export class AdminService {
       ...posOrphanOrderItemIssues,
       ...posOrphanOrderItemOptionIssues,
       ...posInvalidProductRelationIssues,
-      ...posInvalidLocationRelationIssues
+      ...posInvalidLocationRelationIssues,
+      ...profileDeliveryAddressSoftDeletedIssues
     ]
 
     const issuesMap =
@@ -1049,6 +1053,88 @@ export class AdminService {
       updatedAt: row.updatedAt,
       deletedAt: row.deletedAt
     }))
+  }
+
+  private async findProfileDeliveryAddressSoftDeletedIssues(): Promise<CleanupIssueItem[]> {
+    if (!this.tableExists('profile_delivery_addresses')) {
+      return []
+    }
+
+    const rows = this.db.prepare(`
+      SELECT
+        id,
+        profileId,
+        channelCode,
+        label,
+        deliveryAddress,
+        isActive,
+        createdAt,
+        updatedAt
+      FROM profile_delivery_addresses
+      WHERE COALESCE(isActive, 1) = 0
+      ORDER BY id DESC
+    `).all() as Array<{
+      id: number
+      profileId: number | null
+      channelCode: string | null
+      label: string | null
+      deliveryAddress: string | null
+      isActive: number | null
+      createdAt: string | null
+      updatedAt: string | null
+    }>
+
+    return rows.map((row) => {
+      const label =
+        (row.label || '').trim()
+      const deliveryAddress =
+        (row.deliveryAddress || '').trim()
+
+      const displayName =
+        label.length > 0
+          ? label
+          : deliveryAddress.length > 0
+            ? deliveryAddress
+            : `delivery_address:${row.id}`
+
+      const descriptionParts: string[] = [
+        '배송주소 soft deleted row입니다. 개인정보/주문 연결 가능성이 있어 hard delete 보호 대상입니다.'
+      ]
+
+      if (row.profileId !== null && row.profileId !== undefined) {
+        descriptionParts.push(`profileId=${row.profileId}`)
+      }
+
+      if (row.channelCode) {
+        descriptionParts.push(`channelCode=${row.channelCode}`)
+      }
+
+      if (label.length > 0) {
+        descriptionParts.push(`label=${label}`)
+      }
+
+      if (deliveryAddress.length > 0) {
+        descriptionParts.push(`address=${deliveryAddress}`)
+      }
+
+      descriptionParts.push(`isActive=${Number(row.isActive ?? 0)}`)
+
+      return {
+        issueId: `SOFT_DELETED:profile_delivery_addresses:${row.id}`,
+        issueType: 'SOFT_DELETED' as const,
+        tableName: 'profile_delivery_addresses',
+        targetId: row.id,
+        displayName,
+        channelCode: row.channelCode ?? null,
+        description: descriptionParts.join(' / '),
+        referenceCount: 0,
+        canHardDelete: false,
+        protectReason: 'profile delivery address history is protected from hard delete',
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        deletedAt: null
+      }
+    })
   }
 
   private canHardDeleteIssue(issue: CleanupIssueItem): {
