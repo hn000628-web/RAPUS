@@ -1,16 +1,16 @@
-// FILE : backend/src/modules/feed/place-feed.service.ts
+﻿// FILE : backend/src/modules/feed/place-feed.service.ts
 // ROOT : backend/src/modules/feed/place-feed.service.ts
 // STATUS : CREATE MODE
 // ROLE : PLACE FEED READ SERVICE
 // CHANGE SUMMARY :
-// - PLACE ?쇰뱶 ?꾩떆 READ ?꾩슜 Service ?앹꽦
-// - 濡쒓렇??/ 鍮꾨줈洹몄씤 怨듯넻 議고쉶 援ъ“
-// - profiles 湲곗? BUSINESS ?꾨줈??議고쉶
-// - regionId 湲곗? activityRegionId / feedRegionId 留ㅼ묶
-// - regions / industries / industry_subtypes / image_assets 湲곗〈 DB留??ъ슜
-// - DB ?ㅽ궎留?蹂寃??놁쓬
-// - JWT / getMe ?ъ슜 ?놁쓬
-// - DB ?묎렐? Service ?대??먯꽌留??섑뻾
+// - PLACE ??곕굡 ?袁⑸뻻 READ ?袁⑹뒠 Service ??밴쉐
+// - 嚥≪뮄???/ ??쑬以덃뉩紐꾩뵥 ?⑤벏??鈺곌퀬???닌듼?
+// - profiles 疫꿸퀣? BUSINESS ?袁⑥쨮??鈺곌퀬??
+// - regionId 疫꿸퀣? activityRegionId / feedRegionId 筌띲끉臾?
+// - regions / industries / industry_subtypes / image_assets 疫꿸퀣??DB筌?????
+// - DB ??쎄텕筌?癰궰野???곸벉
+// - JWT / getMe ??????곸벉
+// - DB ?臾롫젏?? Service ????癒?퐣筌???묐뻬
 
 // SECTION 01 : IMPORT
 
@@ -27,6 +27,17 @@ import db from '../../config/database'
 export type GetPlaceFeedInput = {
   regionId?: number | string | null
   keyword?: string | null
+  limit?: number | string | null
+  searchScope?: 'ALL' | 'POST' | 'PRODUCT' | string | null
+}
+
+export type GetPlaceProductPreviewInput = {
+  channelCode?: string | null
+  limit?: number | string | null
+}
+
+export type GetPlaceRepresentativeImagesInput = {
+  channelCode?: string | null
   limit?: number | string | null
 }
 
@@ -45,6 +56,7 @@ type PlaceFeedRow = {
   keywordPostImageFilePath: string | null
   keywordPostTitle: string | null
   keywordPostPriceAmount: number | null
+  keywordPostId: number | null
   heroFilePath: string | null
   avatarFilePath: string | null
   adSettingId: number | null
@@ -71,6 +83,7 @@ export type PlaceFeedItem = {
   closedOverlayText: string | null
   matchedProductTitle: string | null
   matchedProductPriceAmount: number | null
+  matchedProductPostId: number | null
   distanceKm: number | null
   distanceLabel: string | null
   adSlotNo: number
@@ -83,6 +96,53 @@ export type PlaceFeedResult = {
   places: PlaceFeedItem[]
 }
 
+type PlaceFeedProductPreviewRow = {
+  productId: number
+  productCode: string
+  productName: string | null
+  basePrice: number | null
+  categoryName: string | null
+  menuStatus: string | null
+  isSoldOut: number | null
+  thumbnailFilePath: string | null
+  linkedPostId: number | null
+}
+
+export type PlaceFeedProductPreviewItem = {
+  productId: number
+  productCode: string
+  productName: string
+  priceAmount: number | null
+  priceLabel: string | null
+  thumbnailUrl: string | null
+  categoryName: string | null
+  menuStatus: string | null
+  isSoldOut: boolean
+  matchedProductPostId: number | null
+}
+
+export type PlaceFeedProductPreviewResult = {
+  ok: boolean
+  channelCode: string
+  items: PlaceFeedProductPreviewItem[]
+}
+
+type PlaceFeedRepresentativeImageRow = {
+  filePath: string | null
+  sourceType: 'PROFILE' | 'HERO' | 'FALLBACK'
+}
+
+export type PlaceFeedRepresentativeImageItem = {
+  imageUrl: string
+  sourceType: 'PROFILE' | 'HERO' | 'FALLBACK'
+}
+
+export type PlaceFeedRepresentativeImagesResult = {
+  ok: boolean
+  channelCode: string
+  items: PlaceFeedRepresentativeImageItem[]
+}
+
 // SECTION 03 : CONSTANT
 
 const DEFAULT_LIMIT =
@@ -90,6 +150,18 @@ const DEFAULT_LIMIT =
 
 const MAX_LIMIT =
   16
+
+const PREVIEW_DEFAULT_LIMIT =
+  5
+
+const PREVIEW_MAX_LIMIT =
+  5
+
+const REPRESENTATIVE_DEFAULT_LIMIT =
+  6
+
+const REPRESENTATIVE_MAX_LIMIT =
+  6
 
 const FETCH_POOL_LIMIT =
   100
@@ -112,12 +184,16 @@ export class PlaceFeedService {
     const limit =
       this.normalizeLimit(input.limit)
 
+    const searchScope =
+      this.normalizeSearchScope(input.searchScope)
+
     try {
       let rows =
         this.findPlaceRows({
           regionId,
           keyword,
-          limit: FETCH_POOL_LIMIT
+          limit: FETCH_POOL_LIMIT,
+          searchScope
         })
 
       if (
@@ -128,7 +204,8 @@ export class PlaceFeedService {
           this.findPlaceRows({
             regionId: null,
             keyword,
-            limit: FETCH_POOL_LIMIT
+            limit: FETCH_POOL_LIMIT,
+            searchScope
           })
       }
 
@@ -155,12 +232,142 @@ export class PlaceFeedService {
     }
   }
 
-  // SECTION 06 : DB QUERY
+  // SECTION 06 : GET PLACE PRODUCT PREVIEW
+
+  async getPlaceProductPreview(
+    input: GetPlaceProductPreviewInput
+  ): Promise<PlaceFeedProductPreviewResult> {
+    const channelCode =
+      this.normalizeChannelCode(input.channelCode)
+
+    const limit =
+      this.normalizePreviewLimit(input.limit)
+
+    try {
+      const rows =
+        this.findPlaceProductPreviewRows({
+          channelCode,
+          limit
+        })
+
+      const items =
+        rows.map((row) => ({
+          productId: row.productId,
+          productCode: row.productCode,
+          productName: String(row.productName || '').trim() || '상품',
+          priceAmount:
+            typeof row.basePrice === 'number'
+              ? row.basePrice
+              : null,
+          priceLabel:
+            typeof row.basePrice === 'number'
+              ? `${row.basePrice.toLocaleString()}원`
+              : null,
+          thumbnailUrl: this.buildMediaUrl(row.thumbnailFilePath),
+          categoryName: row.categoryName,
+          menuStatus: row.menuStatus,
+          isSoldOut: Number(row.isSoldOut ?? 0) === 1,
+          matchedProductPostId:
+            typeof row.linkedPostId === 'number'
+              ? row.linkedPostId
+              : null
+        }))
+
+      return {
+        ok: true,
+        channelCode,
+        items
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error
+      }
+
+      console.error(
+        '[PLACE PRODUCT PREVIEW LOAD ERROR]',
+        error
+      )
+
+      throw new InternalServerErrorException(
+        'place product preview load failed'
+      )
+    }
+  }
+
+  // SECTION 07 : GET PLACE REPRESENTATIVE IMAGES
+
+  async getPlaceRepresentativeImages(
+    input: GetPlaceRepresentativeImagesInput
+  ): Promise<PlaceFeedRepresentativeImagesResult> {
+    const channelCode =
+      this.normalizeChannelCode(input.channelCode)
+
+    const limit =
+      this.normalizeRepresentativeLimit(input.limit)
+
+    try {
+      const rows =
+        this.findPlaceRepresentativeImageRows({
+          channelCode,
+          limit
+        })
+
+      const dedupe =
+        new Set<string>()
+      const items: PlaceFeedRepresentativeImageItem[] =
+        []
+
+      for (const row of rows) {
+        const imageUrl =
+          this.buildMediaUrl(row.filePath)
+
+        if (!imageUrl) {
+          continue
+        }
+
+        if (dedupe.has(imageUrl)) {
+          continue
+        }
+
+        dedupe.add(imageUrl)
+        items.push({
+          imageUrl,
+          sourceType: row.sourceType
+        })
+
+        if (items.length >= limit) {
+          break
+        }
+      }
+
+      return {
+        ok: true,
+        channelCode,
+        items
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error
+      }
+
+      console.error(
+        '[PLACE REPRESENTATIVE IMAGES LOAD ERROR]',
+        error
+      )
+
+      throw new InternalServerErrorException(
+        'place representative images load failed'
+      )
+    }
+  }
+
+  // SECTION 08 : DB QUERY
 
   private findPlaceRows(params: {
     regionId: number | null
     keyword: string | null
     limit: number
+    searchScope: 'ALL' | 'POST' | 'PRODUCT'
   }): PlaceFeedRow[] {
     const keyword =
       params.keyword || null
@@ -180,81 +387,162 @@ export class PlaceFeedService {
         i.name AS industryName,
         ist.name AS industrySubtypeName,
         CASE
-          WHEN COALESCE(bhp.temporaryClosed, bhc.temporaryClosed, 0) = 1 THEN '영업종료 · 휴무'
+          WHEN COALESCE(bhp.temporaryClosed, bhc.temporaryClosed, 0) = 1 THEN '?곸뾽醫낅즺 쨌 ?대Т'
           WHEN COALESCE(bhp.alwaysOpen, bhc.alwaysOpen, 0) = 1 THEN NULL
-          WHEN strftime('%w', 'now', 'localtime') = '0' AND COALESCE(bhp.sun_isClosed, bhc.sun_isClosed, 0) = 1 THEN '영업종료 · 일요일 휴무'
-          WHEN strftime('%w', 'now', 'localtime') = '1' AND COALESCE(bhp.mon_isClosed, bhc.mon_isClosed, 0) = 1 THEN '영업종료 · 월요일 휴무'
-          WHEN strftime('%w', 'now', 'localtime') = '2' AND COALESCE(bhp.tue_isClosed, bhc.tue_isClosed, 0) = 1 THEN '영업종료 · 화요일 휴무'
-          WHEN strftime('%w', 'now', 'localtime') = '3' AND COALESCE(bhp.wed_isClosed, bhc.wed_isClosed, 0) = 1 THEN '영업종료 · 수요일 휴무'
-          WHEN strftime('%w', 'now', 'localtime') = '4' AND COALESCE(bhp.thu_isClosed, bhc.thu_isClosed, 0) = 1 THEN '영업종료 · 목요일 휴무'
-          WHEN strftime('%w', 'now', 'localtime') = '5' AND COALESCE(bhp.fri_isClosed, bhc.fri_isClosed, 0) = 1 THEN '영업종료 · 금요일 휴무'
-          WHEN strftime('%w', 'now', 'localtime') = '6' AND COALESCE(bhp.sat_isClosed, bhc.sat_isClosed, 0) = 1 THEN '영업종료 · 토요일 휴무'
+          WHEN strftime('%w', 'now', 'localtime') = '0' AND COALESCE(bhp.sun_isClosed, bhc.sun_isClosed, 0) = 1 THEN '?곸뾽醫낅즺 쨌 ?쇱슂???대Т'
+          WHEN strftime('%w', 'now', 'localtime') = '1' AND COALESCE(bhp.mon_isClosed, bhc.mon_isClosed, 0) = 1 THEN '?곸뾽醫낅즺 쨌 ?붿슂???대Т'
+          WHEN strftime('%w', 'now', 'localtime') = '2' AND COALESCE(bhp.tue_isClosed, bhc.tue_isClosed, 0) = 1 THEN '?곸뾽醫낅즺 쨌 ?붿슂???대Т'
+          WHEN strftime('%w', 'now', 'localtime') = '3' AND COALESCE(bhp.wed_isClosed, bhc.wed_isClosed, 0) = 1 THEN '?곸뾽醫낅즺 쨌 ?섏슂???대Т'
+          WHEN strftime('%w', 'now', 'localtime') = '4' AND COALESCE(bhp.thu_isClosed, bhc.thu_isClosed, 0) = 1 THEN '?곸뾽醫낅즺 쨌 紐⑹슂???대Т'
+          WHEN strftime('%w', 'now', 'localtime') = '5' AND COALESCE(bhp.fri_isClosed, bhc.fri_isClosed, 0) = 1 THEN '?곸뾽醫낅즺 쨌 湲덉슂???대Т'
+          WHEN strftime('%w', 'now', 'localtime') = '6' AND COALESCE(bhp.sat_isClosed, bhc.sat_isClosed, 0) = 1 THEN '?곸뾽醫낅즺 쨌 ?좎슂???대Т'
           ELSE NULL
         END AS closedOverlayText,
 
         (
-          SELECT ia_post.filePath
-          FROM posts ps
-          JOIN post_images pi
-            ON pi.postId = ps.id
-          JOIN image_assets ia_post
-            ON ia_post.id = pi.imageAssetId
+          SELECT ia_thumb.filePath
+          FROM pos_products pp
+          LEFT JOIN pos_product_categories ppc
+            ON ppc.id = pp.categoryId
+            AND ppc.channelCode = pp.channelCode
+            AND ppc.isActive = 1
+          LEFT JOIN pos_product_thumbnails ppt
+            ON ppt.productId = pp.id
+            AND ppt.isActive = 1
+          LEFT JOIN image_assets ia_thumb
+            ON ia_thumb.id = ppt.imageAssetId
+            AND ia_thumb.usageType = 'pos-product-thumbnail'
+            AND ia_thumb.isActive = 1
           WHERE ? IS NOT NULL
-            AND ps.profileId = p.id
-            AND ps.channelCode = p.channelCode
-            AND ps.status = 'ACTIVE'
+            AND pp.profileId = p.id
+            AND pp.channelCode = p.channelCode
+            AND pp.isActive = 1
+            AND pp.deletedAt IS NULL
+            AND pp.menuStatus = 'ON_SALE'
+            AND pp.showOnTableOrder = 1
+            AND COALESCE(pp.isSoldOut, 0) = 0
             AND (
-              instr(lower(COALESCE(ps.title, '')), lower(?)) > 0
-              OR instr(lower(COALESCE(ps.content, '')), lower(?)) > 0
-            )
-            AND (
-              ia_post.isActive = 1
-              OR ia_post.isActive IS NULL
+              instr(lower(COALESCE(pp.productName, '')), lower(?)) > 0
+              OR instr(lower(COALESCE(pp.productDescription, '')), lower(?)) > 0
+              OR instr(lower(COALESCE(ppc.categoryName, '')), lower(?)) > 0
             )
           ORDER BY
-            ps.updatedAt DESC,
-            ps.createdAt DESC,
-            ps.id DESC,
-            pi.sortOrder ASC,
-            pi.id ASC
+            COALESCE(pp.isRepresentative, 0) DESC,
+            COALESCE(pp.isFeatured, 0) DESC,
+            COALESCE(pp.sortOrder, 999999) ASC,
+            pp.createdAt DESC,
+            pp.id DESC
           LIMIT 1
         ) AS keywordPostImageFilePath,
 
         (
-          SELECT ps.title
-          FROM posts ps
+          SELECT pp.productName
+          FROM pos_products pp
+          LEFT JOIN pos_product_categories ppc
+            ON ppc.id = pp.categoryId
+            AND ppc.channelCode = pp.channelCode
+            AND ppc.isActive = 1
           WHERE ? IS NOT NULL
-            AND ps.profileId = p.id
-            AND ps.channelCode = p.channelCode
-            AND ps.status = 'ACTIVE'
+            AND pp.profileId = p.id
+            AND pp.channelCode = p.channelCode
+            AND pp.isActive = 1
+            AND pp.deletedAt IS NULL
+            AND pp.menuStatus = 'ON_SALE'
+            AND pp.showOnTableOrder = 1
+            AND COALESCE(pp.isSoldOut, 0) = 0
             AND (
-              instr(lower(COALESCE(ps.title, '')), lower(?)) > 0
-              OR instr(lower(COALESCE(ps.content, '')), lower(?)) > 0
+              instr(lower(COALESCE(pp.productName, '')), lower(?)) > 0
+              OR instr(lower(COALESCE(pp.productDescription, '')), lower(?)) > 0
+              OR instr(lower(COALESCE(ppc.categoryName, '')), lower(?)) > 0
             )
           ORDER BY
-            ps.updatedAt DESC,
-            ps.createdAt DESC,
-            ps.id DESC
+            CASE
+              WHEN lower(COALESCE(pp.productName, '')) = lower(?) THEN 0
+              WHEN instr(lower(COALESCE(pp.productName, '')), lower(?)) > 0 THEN 1
+              ELSE 2
+            END ASC,
+            COALESCE(pp.isSoldOut, 0) ASC,
+            COALESCE(pp.isRepresentative, 0) DESC,
+            COALESCE(pp.isFeatured, 0) DESC,
+            COALESCE(pp.sortOrder, 999999) ASC,
+            pp.createdAt DESC,
+            pp.id DESC
           LIMIT 1
         ) AS keywordPostTitle,
 
         (
-          SELECT ps.priceAmount
-          FROM posts ps
+          SELECT pp.basePrice
+          FROM pos_products pp
+          LEFT JOIN pos_product_categories ppc
+            ON ppc.id = pp.categoryId
+            AND ppc.channelCode = pp.channelCode
+            AND ppc.isActive = 1
           WHERE ? IS NOT NULL
-            AND ps.profileId = p.id
-            AND ps.channelCode = p.channelCode
-            AND ps.status = 'ACTIVE'
+            AND pp.profileId = p.id
+            AND pp.channelCode = p.channelCode
+            AND pp.isActive = 1
+            AND pp.deletedAt IS NULL
+            AND pp.menuStatus = 'ON_SALE'
+            AND pp.showOnTableOrder = 1
+            AND COALESCE(pp.isSoldOut, 0) = 0
             AND (
-              instr(lower(COALESCE(ps.title, '')), lower(?)) > 0
-              OR instr(lower(COALESCE(ps.content, '')), lower(?)) > 0
+              instr(lower(COALESCE(pp.productName, '')), lower(?)) > 0
+              OR instr(lower(COALESCE(pp.productDescription, '')), lower(?)) > 0
+              OR instr(lower(COALESCE(ppc.categoryName, '')), lower(?)) > 0
             )
           ORDER BY
-            ps.updatedAt DESC,
-            ps.createdAt DESC,
-            ps.id DESC
+            CASE
+              WHEN lower(COALESCE(pp.productName, '')) = lower(?) THEN 0
+              WHEN instr(lower(COALESCE(pp.productName, '')), lower(?)) > 0 THEN 1
+              ELSE 2
+            END ASC,
+            COALESCE(pp.isSoldOut, 0) ASC,
+            COALESCE(pp.isRepresentative, 0) DESC,
+            COALESCE(pp.isFeatured, 0) DESC,
+            COALESCE(pp.sortOrder, 999999) ASC,
+            pp.createdAt DESC,
+            pp.id DESC
           LIMIT 1
         ) AS keywordPostPriceAmount,
+
+        (
+          SELECT ppl.postId
+          FROM pos_products pp
+          LEFT JOIN pos_product_categories ppc
+            ON ppc.id = pp.categoryId
+            AND ppc.channelCode = pp.channelCode
+            AND ppc.isActive = 1
+          LEFT JOIN pos_product_post_links ppl
+            ON ppl.posProductId = pp.id
+            AND ppl.channelCode = pp.channelCode
+            AND ppl.syncStatus = 'LINKED'
+          WHERE ? IS NOT NULL
+            AND pp.profileId = p.id
+            AND pp.channelCode = p.channelCode
+            AND pp.isActive = 1
+            AND pp.deletedAt IS NULL
+            AND pp.menuStatus = 'ON_SALE'
+            AND pp.showOnTableOrder = 1
+            AND COALESCE(pp.isSoldOut, 0) = 0
+            AND (
+              instr(lower(COALESCE(pp.productName, '')), lower(?)) > 0
+              OR instr(lower(COALESCE(pp.productDescription, '')), lower(?)) > 0
+              OR instr(lower(COALESCE(ppc.categoryName, '')), lower(?)) > 0
+            )
+          ORDER BY
+            CASE
+              WHEN lower(COALESCE(pp.productName, '')) = lower(?) THEN 0
+              WHEN instr(lower(COALESCE(pp.productName, '')), lower(?)) > 0 THEN 1
+              ELSE 2
+            END ASC,
+            COALESCE(pp.isSoldOut, 0) ASC,
+            COALESCE(pp.isRepresentative, 0) DESC,
+            COALESCE(pp.isFeatured, 0) DESC,
+            COALESCE(pp.sortOrder, 999999) ASC,
+            pp.createdAt DESC,
+            pp.id DESC
+          LIMIT 1
+        ) AS keywordPostId,
 
         (
           SELECT ia.filePath
@@ -372,13 +660,46 @@ export class PlaceFeedService {
           OR instr(lower(COALESCE(ist.name, '')), lower(?)) > 0
           OR EXISTS (
             SELECT 1
-            FROM posts ps
-            WHERE ps.profileId = p.id
-              AND ps.channelCode = p.channelCode
-              AND ps.status = 'ACTIVE'
+            FROM posts bp
+            WHERE bp.profileId = p.id
+              AND bp.channelCode = p.channelCode
+              AND bp.contentType = 'PLACE'
+              AND bp.status = 'ACTIVE'
               AND (
-                instr(lower(COALESCE(ps.title, '')), lower(?)) > 0
-                OR instr(lower(COALESCE(ps.content, '')), lower(?)) > 0
+                (? = 'ALL')
+                OR (
+                  ? = 'POST'
+                  AND COALESCE(bp.postType, 'GENERAL') NOT IN ('PRODUCT', 'EVENT')
+                )
+                OR (
+                  ? = 'PRODUCT'
+                  AND COALESCE(bp.postType, 'GENERAL') IN ('PRODUCT', 'EVENT')
+                )
+              )
+              AND (
+                instr(lower(COALESCE(bp.content, '')), lower(?)) > 0
+                OR instr(lower(COALESCE(bp.content, '')), lower(?)) > 0
+              )
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM pos_products pp
+            LEFT JOIN pos_product_categories ppc
+              ON ppc.id = pp.categoryId
+              AND ppc.channelCode = pp.channelCode
+              AND ppc.isActive = 1
+            WHERE pp.profileId = p.id
+              AND pp.channelCode = p.channelCode
+              AND ? IN ('ALL', 'PRODUCT')
+              AND pp.isActive = 1
+              AND pp.deletedAt IS NULL
+              AND pp.menuStatus = 'ON_SALE'
+              AND pp.showOnTableOrder = 1
+              AND COALESCE(pp.isSoldOut, 0) = 0
+              AND (
+                instr(lower(COALESCE(pp.productName, '')), lower(?)) > 0
+                OR instr(lower(COALESCE(pp.productDescription, '')), lower(?)) > 0
+                OR instr(lower(COALESCE(ppc.categoryName, '')), lower(?)) > 0
               )
           )
         )
@@ -388,18 +709,37 @@ export class PlaceFeedService {
         p.id DESC
       LIMIT ?
     `).all(
+      // keywordPostImageFilePath
+      keyword,
+      keyword,
+      keyword,
+      keyword,
+      // keywordPostTitle
       keyword,
       keyword,
       keyword,
       keyword,
       keyword,
       keyword,
+      // keywordPostPriceAmount
       keyword,
       keyword,
       keyword,
+      keyword,
+      keyword,
+      keyword,
+      // keywordPostId
+      keyword,
+      keyword,
+      keyword,
+      keyword,
+      keyword,
+      keyword,
+      // region filter
       params.regionId,
       params.regionId,
       params.regionId,
+      // keyword root filter
       keyword,
       keyword,
       keyword,
@@ -409,26 +749,160 @@ export class PlaceFeedService {
       keyword,
       keyword,
       keyword,
-
+      keyword,
+      params.searchScope,
+      params.searchScope,
+      params.searchScope,
+      keyword,
+      keyword,
+      params.searchScope,
+      // limit
       params.limit
     ) as PlaceFeedRow[]
   }
 
-  // SECTION 07 : MAPPER
+  private findPlaceProductPreviewRows(params: {
+    channelCode: string
+    limit: number
+  }): PlaceFeedProductPreviewRow[] {
+    return db.prepare(`
+      SELECT
+        pp.id AS productId,
+        pp.productCode AS productCode,
+        pp.productName AS productName,
+        pp.basePrice AS basePrice,
+        ppc.categoryName AS categoryName,
+        pp.menuStatus AS menuStatus,
+        COALESCE(pp.isSoldOut, 0) AS isSoldOut,
+        ia.filePath AS thumbnailFilePath,
+        ppl.postId AS linkedPostId
+      FROM pos_products pp
+      INNER JOIN profiles p
+        ON p.id = pp.profileId
+        AND p.channelCode = pp.channelCode
+        AND p.profileType = 'BUSINESS'
+      LEFT JOIN pos_product_categories ppc
+        ON ppc.id = pp.categoryId
+        AND ppc.channelCode = pp.channelCode
+        AND ppc.isActive = 1
+      LEFT JOIN pos_product_thumbnails ppt
+        ON ppt.productId = pp.id
+        AND ppt.isActive = 1
+      LEFT JOIN image_assets ia
+        ON ia.id = ppt.imageAssetId
+        AND ia.isActive = 1
+        AND ia.usageType = 'pos-product-thumbnail'
+      LEFT JOIN pos_product_post_links ppl
+        ON ppl.posProductId = pp.id
+        AND ppl.channelCode = pp.channelCode
+        AND ppl.syncStatus = 'LINKED'
+      WHERE pp.channelCode = ?
+        AND pp.isActive = 1
+        AND pp.deletedAt IS NULL
+        AND pp.showOnTableOrder = 1
+        AND COALESCE(pp.isSoldOut, 0) = 0
+        AND COALESCE(pp.menuStatus, 'ON_SALE') = 'ON_SALE'
+      ORDER BY
+        CASE
+          WHEN lower(COALESCE(ppc.categoryName, '')) = '메인 메뉴' THEN 0
+          WHEN lower(COALESCE(ppc.categoryName, '')) = 'main menu' THEN 0
+          ELSE 1
+        END ASC,
+        COALESCE(pp.isRepresentative, 0) DESC,
+        COALESCE(pp.isFeatured, 0) DESC,
+        CASE WHEN ia.filePath IS NULL OR trim(ia.filePath) = '' THEN 1 ELSE 0 END ASC,
+        COALESCE(pp.sortOrder, 999999) ASC,
+        pp.createdAt DESC,
+        pp.id DESC
+      LIMIT ?
+    `).all(
+      params.channelCode,
+      params.limit
+    ) as PlaceFeedProductPreviewRow[]
+  }
+
+  private findPlaceRepresentativeImageRows(params: {
+    channelCode: string
+    limit: number
+  }): PlaceFeedRepresentativeImageRow[] {
+    const heroLimit =
+      Math.max(0, params.limit - 1)
+
+    return db.prepare(`
+      WITH target_profile AS (
+        SELECT p.id, p.channelCode
+        FROM profiles p
+        WHERE p.channelCode = ?
+          AND p.profileType = 'BUSINESS'
+        ORDER BY p.id ASC
+        LIMIT 1
+      ),
+      profile_image AS (
+        SELECT
+          ia.filePath AS filePath,
+          'PROFILE' AS sourceType
+        FROM target_profile tp
+        JOIN image_assets ia
+          ON ia.channelCode = tp.channelCode
+        WHERE ia.usageType = 'avatar'
+          AND COALESCE(ia.isActive, 1) = 1
+        ORDER BY ia.createdAt DESC, ia.id DESC
+        LIMIT 1
+      ),
+      hero_images AS (
+        SELECT
+          ia.filePath AS filePath,
+          'HERO' AS sourceType
+        FROM target_profile tp
+        JOIN profile_hero_images ph
+          ON ph.profileId = tp.id
+          AND ph.channelCode = tp.channelCode
+        JOIN image_assets ia
+          ON ia.id = ph.imageAssetId
+        WHERE COALESCE(ph.isActive, 1) = 1
+          AND COALESCE(ia.isActive, 1) = 1
+        ORDER BY ph.sortOrder ASC, ph.id ASC
+        LIMIT ?
+      )
+      SELECT filePath, sourceType FROM profile_image
+      UNION ALL
+      SELECT filePath, sourceType FROM hero_images
+    `).all(
+      params.channelCode,
+      heroLimit
+    ) as PlaceFeedRepresentativeImageRow[]
+  }
+
+  // SECTION 09 : MAPPER
 
   private mapPlaceRowToItem(
     row: PlaceFeedRow,
     effectiveAdSlotNo: number = 0
   ): PlaceFeedItem {
+    const hasMatchedProduct =
+      Boolean(row.keywordPostTitle) ||
+      typeof row.keywordPostPriceAmount === 'number' ||
+      typeof row.keywordPostId === 'number'
+
+    const prioritizedImagePath =
+      hasMatchedProduct
+        ? (
+            row.keywordPostImageFilePath ||
+            row.avatarFilePath ||
+            row.heroFilePath
+          )
+        : (
+            row.avatarFilePath ||
+            row.heroFilePath
+          )
+
     return {
       channelCode: row.channelCode,
-      displayName: row.displayName || '이름 없음',
+      displayName: row.displayName || '?대쫫 ?놁쓬',
       bio: row.bio || '',
       imageUrl:
         this.buildMediaUrl(
-          row.keywordPostImageFilePath ||
-          row.heroFilePath ||
-          row.avatarFilePath
+          prioritizedImagePath
         ),
       regionName: row.regionName,
       regionFullName: row.regionFullName,
@@ -439,6 +913,10 @@ export class PlaceFeedService {
       matchedProductPriceAmount:
         typeof row.keywordPostPriceAmount === 'number'
           ? row.keywordPostPriceAmount
+          : null,
+      matchedProductPostId:
+        typeof row.keywordPostId === 'number'
+          ? row.keywordPostId
           : null,
       distanceKm: null,
       distanceLabel: null,
@@ -604,7 +1082,7 @@ export class PlaceFeedService {
     return nextItems
   }
 
-  // SECTION 08 : URL HELPER
+  // SECTION 10 : URL HELPER
 
   private buildMediaUrl(
     filePath: string | null
@@ -653,7 +1131,7 @@ export class PlaceFeedService {
     return `${baseUrl}/media/${trimmed.replace(/^\/+/, '')}`
   }
 
-  // SECTION 09 : NORMALIZE HELPER
+  // SECTION 11 : NORMALIZE HELPER
 
   private normalizeNullablePositiveInteger(
     value: unknown
@@ -733,22 +1211,135 @@ export class PlaceFeedService {
       MAX_LIMIT
     )
   }
+
+  private normalizeSearchScope(
+    value: unknown
+  ): 'ALL' | 'POST' | 'PRODUCT' {
+    if (value === undefined || value === null || value === '') {
+      return 'ALL'
+    }
+
+    if (typeof value !== 'string') {
+      return 'ALL'
+    }
+
+    const normalized = value.trim().toUpperCase()
+
+    if (normalized === 'POST') {
+      return 'POST'
+    }
+
+    if (normalized === 'PRODUCT') {
+      return 'PRODUCT'
+    }
+
+    return 'ALL'
+  }
+
+  private normalizeChannelCode(
+    value: unknown
+  ): string {
+    if (
+      value === undefined ||
+      value === null
+    ) {
+      throw new BadRequestException(
+        'invalid channelCode'
+      )
+    }
+
+    if (typeof value !== 'string') {
+      throw new BadRequestException(
+        'invalid channelCode'
+      )
+    }
+
+    const trimmed =
+      value.trim()
+
+    if (!trimmed) {
+      throw new BadRequestException(
+        'invalid channelCode'
+      )
+    }
+
+    return trimmed
+  }
+
+  private normalizePreviewLimit(
+    value: unknown
+  ): number {
+    if (
+      value === undefined ||
+      value === null ||
+      value === ''
+    ) {
+      return PREVIEW_DEFAULT_LIMIT
+    }
+
+    const normalized =
+      typeof value === 'number'
+        ? value
+        : Number(value)
+
+    if (
+      !Number.isInteger(normalized) ||
+      normalized <= 0
+    ) {
+      return PREVIEW_DEFAULT_LIMIT
+    }
+
+    return Math.min(
+      normalized,
+      PREVIEW_MAX_LIMIT
+    )
+  }
+
+  private normalizeRepresentativeLimit(
+    value: unknown
+  ): number {
+    if (
+      value === undefined ||
+      value === null ||
+      value === ''
+    ) {
+      return REPRESENTATIVE_DEFAULT_LIMIT
+    }
+
+    const normalized =
+      typeof value === 'number'
+        ? value
+        : Number(value)
+
+    if (
+      !Number.isInteger(normalized) ||
+      normalized <= 0
+    ) {
+      return REPRESENTATIVE_DEFAULT_LIMIT
+    }
+
+    return Math.min(
+      normalized,
+      REPRESENTATIVE_MAX_LIMIT
+    )
+  }
 }
 
-// SECTION 10 : VALIDATION
+// SECTION 12 : VALIDATION
 
 /*
 VALIDATION:
-- ?⑥씪 ?뚯씪 ?듭퐫??異쒕젰
-- PLACE ?쇰뱶 ?꾩떆 Service ?앹꽦
-- 濡쒓렇??/ 鍮꾨줈洹몄씤 怨듯넻 READ 援ъ“
-- profiles 以묒떖 BUSINESS 議고쉶
-- regionId 湲곗? activityRegionId / feedRegionId 留ㅼ묶
-- hero ?대?吏 ?곗꽑 / avatar fallback
-- profileId 怨듦컻 ?묐떟 ?쒖쇅
-- channelCode 怨듦컻 ?앸퀎??諛섑솚
-- distanceKm / distanceLabel? 1李??꾩떆 null 泥섎━
-- DB ?ㅽ궎留?蹂寃??놁쓬
-- JWT / getMe ?ъ슜 ?놁쓬
-- Controller ?놁쓬
+- ??μ뵬 ???뵬 ???맜???곗뮆??
+- PLACE ??곕굡 ?袁⑸뻻 Service ??밴쉐
+- 嚥≪뮄???/ ??쑬以덃뉩紐꾩뵥 ?⑤벏??READ ?닌듼?
+- profiles 餓λ쵐??BUSINESS 鈺곌퀬??
+- regionId 疫꿸퀣? activityRegionId / feedRegionId 筌띲끉臾?
+- hero ???筌왖 ?怨쀪퐨 / avatar fallback
+- profileId ?⑤벀而??臾먮뼗 ??뽰뇚
+- channelCode ?⑤벀而???명??獄쏆꼹??
+- distanceKm / distanceLabel?? 1筌??袁⑸뻻 null 筌ｌ꼶??
+- DB ??쎄텕筌?癰궰野???곸벉
+- JWT / getMe ??????곸벉
+- Controller ??곸벉
 */
+

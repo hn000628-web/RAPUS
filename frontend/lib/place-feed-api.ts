@@ -24,6 +24,7 @@ export type PlaceFeedItem = {
   closedOverlayText: string | null
   matchedProductTitle: string | null
   matchedProductPriceAmount: number | null
+  matchedProductPostId?: number | null
   distanceKm: number | null
   distanceLabel: string | null
   adSlotNo: number
@@ -36,11 +37,42 @@ export type GetPlaceFeedPayload = {
   keyword?: string | null
   limit?: number | string | null
   businessStatus?: 'ALL' | 'OPEN' | 'CLOSED' | null
+  searchScope?: 'ALL' | 'POST' | 'PRODUCT' | null
 }
 
 export type GetPlaceFeedResponse = {
   ok: boolean
   places: PlaceFeedItem[]
+}
+
+export type PlaceProductPreviewItem = {
+  productId: number
+  productCode: string
+  productName: string
+  priceAmount: number | null
+  priceLabel: string | null
+  thumbnailUrl: string | null
+  categoryName: string | null
+  menuStatus: string | null
+  isSoldOut: boolean
+  matchedProductPostId: number | null
+}
+
+export type GetPlaceProductPreviewResponse = {
+  ok: boolean
+  channelCode: string
+  items: PlaceProductPreviewItem[]
+}
+
+export type PlaceRepresentativeImageItem = {
+  imageUrl: string
+  sourceType: 'PROFILE' | 'HERO' | 'FALLBACK'
+}
+
+export type GetPlaceRepresentativeImagesResponse = {
+  ok: boolean
+  channelCode: string
+  items: PlaceRepresentativeImageItem[]
 }
 
 // SECTION 02 : CONSTANT
@@ -123,7 +155,8 @@ export async function getPlaceFeed(
       regionId: payload.regionId,
       keyword: payload.keyword,
       limit: payload.limit,
-      businessStatus: payload.businessStatus
+      businessStatus: payload.businessStatus,
+      searchScope: payload.searchScope
     })
 
   const response =
@@ -140,6 +173,78 @@ export async function getPlaceFeed(
 
   return Array.isArray(data.places)
     ? data.places
+    : []
+}
+
+export async function getPlaceProductPreview(
+  channelCode: string,
+  limit: number = 5
+): Promise<PlaceProductPreviewItem[]> {
+  const safeChannelCode =
+    String(channelCode || '').trim()
+
+  if (!safeChannelCode) {
+    return []
+  }
+
+  const query =
+    buildQueryString({
+      limit
+    })
+
+  const response =
+    await fetch(
+      `${PLACE_FEED_URL}/${encodeURIComponent(safeChannelCode)}/products/preview${query}`,
+      {
+        method: 'GET',
+        cache: 'no-store'
+      }
+    )
+
+  const data =
+    await parseJsonResponse<GetPlaceProductPreviewResponse>(
+      response,
+      'place product preview fetch failed'
+    )
+
+  return Array.isArray(data.items)
+    ? data.items
+    : []
+}
+
+export async function getPlaceRepresentativeImages(
+  channelCode: string,
+  limit: number = 6
+): Promise<PlaceRepresentativeImageItem[]> {
+  const safeChannelCode =
+    String(channelCode || '').trim()
+
+  if (!safeChannelCode) {
+    return []
+  }
+
+  const query =
+    buildQueryString({
+      limit
+    })
+
+  const response =
+    await fetch(
+      `${PLACE_FEED_URL}/${encodeURIComponent(safeChannelCode)}/representative-images${query}`,
+      {
+        method: 'GET',
+        cache: 'no-store'
+      }
+    )
+
+  const data =
+    await parseJsonResponse<GetPlaceRepresentativeImagesResponse>(
+      response,
+      'place representative images fetch failed'
+    )
+
+  return Array.isArray(data.items)
+    ? data.items
     : []
 }
 

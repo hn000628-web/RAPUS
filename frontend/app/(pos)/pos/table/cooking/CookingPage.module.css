@@ -1,0 +1,578 @@
+.page {
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f7fb;
+  --pos-page-padding-x: 10px;
+  --pos-page-padding-y: 8px;
+  --pos-panel-padding: 12px;
+  --pos-panel-gap: 12px;
+  --pos-card-padding: 12px;
+  --pos-card-gap: 10px;
+  --pos-radius-panel: 14px;
+  --pos-radius-card: 14px;
+}
+
+.posShell {
+  min-width: 640px;
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbarWrap {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  flex: 0 0 64px;
+  height: 64px;
+  min-height: 64px;
+  width: 100%;
+  overflow: visible;
+  background-color: #f5f7fb;
+}
+
+.topbarInner {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.mainViewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+.mainGrid {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 0;
+  padding:
+    var(--pos-page-padding-y)
+    var(--pos-page-padding-x)
+    calc(var(--pos-page-padding-y) + 6px);
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cookingPageGrid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.main {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+.description {
+  margin: 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.menuScrollArea {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 12px;
+  padding-bottom: 12px;
+  scrollbar-gutter: stable;
+}
+
+.posDashboardPanel {
+  width: 100%;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pos-panel-gap);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: var(--pos-radius-panel);
+  padding: var(--pos-panel-padding);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+}
+
+.posDashboardHero {
+  display: flex;
+  gap: var(--pos-panel-gap);
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: var(--pos-radius-card);
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 34%),
+    linear-gradient(135deg, #f8fafc, #ffffff);
+  border: 1px solid #e2e8f0;
+}
+
+.posDashboardEyebrow {
+  margin: 0 0 10px;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.posDashboardTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.22;
+}
+
+.posDashboardDescription {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.posDashboardSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.posDashboardSummaryCard {
+  min-width: 0;
+  min-height: 110px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--pos-radius-card);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.posDashboardSummaryCardClickable {
+  text-align: left;
+  cursor: pointer;
+}
+
+.posDashboardSummaryCardClickable:hover {
+  border-color: #0f172a;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.posDashboardSummaryLabel {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.posDashboardSummaryValue {
+  color: #0f172a;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.posDashboardSummaryHint {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.cookingStatusModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.48);
+  box-sizing: border-box;
+}
+
+.cookingStatusModalPanel {
+  width: min(1000px, calc(100vw - 48px));
+  height: min(720px, calc(100vh - 48px));
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cookingStatusModalHeader {
+  flex: 0 0 auto;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.cookingStatusModalTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cookingStatusModalTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.cookingStatusModalCountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background-color: #f3f4f6;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.cookingStatusModalDescription {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tableStatusModalCloseButton {
+  width: 112px;
+  height: 38px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  border-radius: 10px;
+}
+
+.tableStatusModalCloseButtonText {
+  width: auto;
+  min-width: 92px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.cookingStatusModalBody {
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+}
+
+.cookingSection {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cookingSectionList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.cookingCard {
+  border: 1px solid #d8e0ea;
+  border-radius: 14px;
+  padding: 12px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cookingCardTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.cookingOrderLabel {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.cookingBadgeGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cookingStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.cookingStatusWaiting {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.cookingStatusCooking {
+  color: #7c2d12;
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
+.cookingStatusDone {
+  color: #065f46;
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+
+.cookingElapsed {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cookingMenuName {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.cookingMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cookingRequest {
+  margin: 0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.cookingActionRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cookingActionButton {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d9e6;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cookingActionButton:hover {
+  border-color: #0f172a;
+}
+
+.cookingCompletedBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid #a7f3d0;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.emptyStateBox {
+  border: 1px dashed #d8e0ea;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 18px;
+}
+
+.emptyStateTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.emptyStateText {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+@media (max-width: 1024px) {
+  .cookingSectionList {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .mainGrid {
+    padding: 8px 10px 12px;
+  }
+
+  .menuScrollArea {
+    padding-right: 0;
+  }
+
+  .posDashboardHero {
+    padding: 14px;
+  }
+
+  .posDashboardTitle {
+    font-size: 22px;
+    line-height: 1.25;
+  }
+
+  .posDashboardSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cookingStatusModalOverlay {
+    padding: 12px;
+  }
+
+  .cookingStatusModalPanel {
+    width: min(1000px, calc(100vw - 24px));
+    height: min(720px, calc(100vh - 24px));
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .posDashboardHero {
+    padding: 16px;
+  }
+
+  .posDashboardTitle {
+    font-size: 24px;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .posDashboardHero {
+    padding: 20px;
+  }
+
+  .posDashboardTitle {
+    font-size: 28px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .posDashboardTitle {
+    font-size: 30px;
+  }
+
+  .posDashboardDescription {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 639px) {
+  .posShell {
+    min-width: 0;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .page {
+    --pos-page-padding-x: 14px;
+    --pos-page-padding-y: 10px;
+    --pos-panel-padding: 16px;
+    --pos-panel-gap: 14px;
+    --pos-card-padding: 14px;
+    --pos-card-gap: 12px;
+    --pos-radius-panel: 16px;
+    --pos-radius-card: 14px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page {
+    --pos-page-padding-x: 16px;
+    --pos-page-padding-y: 10px;
+    --pos-panel-padding: 22px;
+    --pos-panel-gap: 18px;
+    --pos-card-padding: 16px;
+    --pos-card-gap: 12px;
+    --pos-radius-panel: 18px;
+    --pos-radius-card: 16px;
+  }
+
+  .posShell {
+    min-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .page {
+    --pos-page-padding-x: 20px;
+    --pos-page-padding-y: 14px;
+    --pos-panel-padding: 24px;
+    --pos-panel-gap: 20px;
+    --pos-card-padding: 18px;
+    --pos-card-gap: 14px;
+    --pos-radius-panel: 20px;
+    --pos-radius-card: 18px;
+  }
+}

@@ -1,3 +1,13 @@
+/* FILE : frontend/app/(pos)/pos/PosMainPage.module.css */
+/* ROOT : frontend/app/(pos)/pos/PosMainPage.module.css */
+/* STATUS : CREATE */
+/* ROLE : POS MAIN PAGE STYLE MODULE */
+/* CHANGE SUMMARY :
+- /pos 메인 페이지 전용 CSS module 분리
+- 기존 ../PosPage.module.css 의존 제거
+- page.tsx에서 사용하는 className만 복사
+*/
+
 .page {
   width: 100%;
   min-height: 100dvh;
@@ -50,24 +60,6 @@
   gap: 16px;
 }
 
-.header {
-  flex: 0 0 auto;
-}
-
-.title {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 900;
-  color: #111827;
-}
-
-.description {
-  margin: 6px 0 0;
-  color: #4b5563;
-  font-size: 15px;
-  font-weight: 600;
-}
-
 .grid {
   flex: 1 1 auto;
   min-height: 0;
@@ -106,36 +98,6 @@
   font-size: 14px;
   font-weight: 600;
   line-height: 1.5;
-}
-
-.summaryList {
-  margin-top: 4px;
-  display: grid;
-  gap: 8px;
-}
-
-.summaryRow {
-  min-height: 48px;
-  border-radius: 14px;
-  background-color: #f8fafc;
-  padding: 0 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.summaryLabel {
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.summaryValue {
-  color: #111827;
-  font-size: 16px;
-  font-weight: 900;
-  white-space: nowrap;
 }
 
 .card {

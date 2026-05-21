@@ -33,6 +33,16 @@ export type PosTableSettingItem = {
   zoneName: string
   tableOptionName: string
   tableTypeCode?: string
+  floor?: string
+  zone?: string
+  floorSortOrder?: number
+  zoneSortOrder?: number
+  layoutX?: number
+  layoutY?: number
+  layoutWidth?: number
+  layoutHeight?: number
+  layoutRotate?: number
+  layoutShape?: string
   defaultPrice?: number
   resourceStatus?: string
   tableCode?: string | null
@@ -54,6 +64,8 @@ export type GetPosTableSettingsParams = {
   profileId: number
   channelCode: string
   resourceType?: PosResourceType | 'ALL'
+  floor?: string
+  zone?: string
 }
 
 export type CreatePosTableSettingRequest = {
@@ -63,6 +75,16 @@ export type CreatePosTableSettingRequest = {
   zoneName: string
   tableOptionName: string
   tableTypeCode?: string
+  floor?: string
+  zone?: string
+  floorSortOrder?: number
+  zoneSortOrder?: number
+  layoutX?: number
+  layoutY?: number
+  layoutWidth?: number
+  layoutHeight?: number
+  layoutRotate?: number
+  layoutShape?: string
   resourceType?: PosResourceType
   defaultPrice?: number
   capacity?: number | null
@@ -76,6 +98,16 @@ export type UpdatePosTableSettingRequest = {
   zoneName?: string
   tableOptionName?: string
   tableTypeCode?: string
+  floor?: string
+  zone?: string
+  floorSortOrder?: number
+  zoneSortOrder?: number
+  layoutX?: number
+  layoutY?: number
+  layoutWidth?: number
+  layoutHeight?: number
+  layoutRotate?: number
+  layoutShape?: string
   resourceType?: PosResourceType
   defaultPrice?: number
   capacity?: number | null
@@ -199,7 +231,9 @@ export async function getPosTableSettings(
     buildQueryString({
       profileId: params.profileId,
       channelCode: params.channelCode,
-      resourceType: params.resourceType
+      resourceType: params.resourceType,
+      floor: params.floor,
+      zone: params.zone
     })
 
   return requestJson<PosTableSettingsResponse>(

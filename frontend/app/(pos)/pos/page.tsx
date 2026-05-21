@@ -6,7 +6,7 @@
 // SECTION 01 : IMPORT
 import { useRouter } from 'next/navigation'
 
-import styles from './page.module.css'
+import styles from './PosMainPage.module.css'
 
 import { usePosKeyboardMode } from './components/PosKeyboardModeContext'
 import PosTopbar from './components/PosTopbar'
@@ -23,19 +23,19 @@ type HubItem = {
 const HUB_ITEMS: HubItem[] = [
   {
     key: 'TABLE',
-    title: '테이블현황',
+    title: '요식업_매장관리',
     description: '매장 테이블 상태와 주문내역을 확인합니다.',
     path: '/pos/table'
   },
   {
     key: 'ROOM_STATUS',
-    title: '객실현황',
+    title: '숙박업_매장관리',
     description: '객실 상태와 숙박 운영 현황을 확인합니다.',
     path: '/pos/rooms'
   },
   {
     key: 'DELIVERY_ORDER',
-    title: '딜리버리 오더',
+    title: '배달전문점_매장관리',
     description: '배달전문점 전용 / 예약 / 배달 / 포장 주문을 통합하여 확인합니다.',
     path: '/pos/delivery-orders'
   },

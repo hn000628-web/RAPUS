@@ -15,12 +15,11 @@ import { KeyboardEvent, MouseEvent, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 
-import styles from '../PosPage.module.css'
+import styles from './PosTablePage.module.css'
 
 import PosFooterBar from '../components/PosFooterBar'
 import { usePosKeyboardMode } from '../components/PosKeyboardModeContext'
-import PosSidebar from '../components/PosSidebar'
-import PosTodaySummary from '../components/PosTodaySummary'
+import PosHeaderMenuBar from '../components/PosHeaderMenuBar'
 import PosTopbar from '../components/PosTopbar'
 import {
   TABLE_POS_SIDEBAR_MENUS,
@@ -58,165 +57,9 @@ import {
 import { getPosCookingTickets } from '@/lib/business/pos/posCookingApi'
 
 // SECTION 02 : MOCK DATA
-const reservationOrders: PosReservationOrderItem[] = [
-  {
-    id: 'res-1',
-    orderNo: 'RES-250504-001',
-    reservationType: 'VISIT',
-    reservationLabel: '매장방문',
-    summaryText: '매장방문 / 인원 10명 / 메뉴 김치찌개 2, 공기밥 2',
-    scheduledLabel: '방문예정시간',
-    scheduledTime: '18:00',
-    customerName: '김민지',
-    status: 'WAITING'
-  },
-  {
-    id: 'res-2',
-    orderNo: 'RES-250504-002',
-    reservationType: 'DELIVERY',
-    reservationLabel: '배달주문',
-    summaryText: '배달주문 / 요청시간 18:30 / 제육볶음 1, 콜라 2',
-    scheduledLabel: '배달요청시간',
-    scheduledTime: '18:30',
-    customerName: '이도윤',
-    status: 'WAITING'
-  },
-  {
-    id: 'res-3',
-    orderNo: 'RES-250504-003',
-    reservationType: 'PICKUP',
-    reservationLabel: '픽업주문',
-    summaryText: '픽업주문 / 예정시간 19:10 / 돈까스 2, 아메리카노 1',
-    scheduledLabel: '픽업예정시간',
-    scheduledTime: '19:10',
-    customerName: '박서준',
-    status: 'WAITING'
-  }
-]
+const reservationOrders: PosReservationOrderItem[] = []
 
-const initialDailyOrders: DailyOrderItem[] = [
-  {
-    id: 'do-1',
-    paymentNumber: 'PAY-240501-001',
-    orderNumber: 'OD-240501-001',
-    tableNo: 1,
-    customerChannelCode: 'A240501MOCK01',
-    amount: 24000,
-    orderStatus: 'ORDER_REQUESTED',
-    paymentStatus: 'UNPAID',
-    paymentMethod: 'CARD',
-    paidAt: '',
-    isQrPayment: false,
-    pointAmount: 0,
-    memo: '결제 대기 상태',
-    orderItems: [
-      { name: '클래식 버거', quantity: 2 },
-      { name: '아메리카노', quantity: 2 }
-    ],
-    items: ['클래식 버거 x2', '아메리카노 x2']
-  },
-  {
-    id: 'do-2',
-    paymentNumber: 'PAY-240501-002',
-    orderNumber: 'OD-240501-002',
-    tableNo: 3,
-    customerChannelCode: 'A240501MOCK02',
-    amount: 18000,
-    orderStatus: 'ORDER_CONFIRMED',
-    paymentStatus: 'UNPAID',
-    paymentMethod: 'CASH',
-    paidAt: '',
-    isQrPayment: false,
-    pointAmount: 0,
-    memo: '현장 결제 예정',
-    orderItems: [
-      { name: '치킨 라이스', quantity: 1 },
-      { name: '감자튀김', quantity: 1 },
-      { name: '레몬에이드', quantity: 1 }
-    ],
-    items: ['치킨 라이스 x1', '감자튀김 x1', '레몬에이드 x1']
-  },
-  {
-    id: 'do-3',
-    paymentNumber: 'PAY-240501-003',
-    orderNumber: 'OD-240501-003',
-    tableNo: 2,
-    customerChannelCode: 'A240501MOCK03',
-    amount: 7900,
-    orderStatus: 'ORDER_REQUESTED',
-    paymentStatus: 'PAID',
-    paymentMethod: 'QR',
-    paidAt: '12:10',
-    isQrPayment: true,
-    pointAmount: 79,
-    memo: 'QR결제 1% 포인트 적립 완료',
-    orderItems: [
-      { name: '토마토 파스타', quantity: 1 }
-    ],
-    items: ['토마토 파스타 x1']
-  },
-  {
-    id: 'do-4',
-    paymentNumber: 'PAY-240501-004',
-    orderNumber: 'OD-240501-004',
-    tableNo: 6,
-    customerChannelCode: 'A240501MOCK04',
-    amount: 13500,
-    orderStatus: 'ORDER_WAITING',
-    paymentStatus: 'UNPAID',
-    paymentMethod: 'CARD',
-    paidAt: '',
-    isQrPayment: false,
-    pointAmount: 0,
-    memo: '고객 요청으로 잠시 대기',
-    orderItems: [
-      { name: '아메리카노', quantity: 1 },
-      { name: '치즈스틱', quantity: 2 }
-    ],
-    items: ['아메리카노 x1', '치즈스틱 x2']
-  },
-  {
-    id: 'do-5',
-    paymentNumber: 'PAY-240501-005',
-    orderNumber: 'OD-240501-005',
-    tableNo: 4,
-    customerChannelCode: 'A240501MOCK05',
-    amount: 26000,
-    orderStatus: 'ORDER_CONFIRMED',
-    paymentStatus: 'PAID',
-    paymentMethod: 'QR',
-    paidAt: '13:42',
-    isQrPayment: true,
-    pointAmount: 260,
-    memo: 'QR결제 1% 포인트 적립 완료',
-    orderItems: [
-      { name: '클래식 버거', quantity: 1 },
-      { name: '치즈 샐러드', quantity: 1 },
-      { name: '레몬에이드', quantity: 1 }
-    ],
-    items: ['클래식 버거 x1', '치즈 샐러드 x1', '레몬에이드 x1']
-  },
-  {
-    id: 'do-6',
-    paymentNumber: 'PAY-240501-006',
-    orderNumber: 'OD-240501-006',
-    tableNo: 5,
-    customerChannelCode: 'A240501MOCK06',
-    amount: 12000,
-    orderStatus: 'ORDER_CONFIRMED',
-    paymentStatus: 'PAID',
-    paymentMethod: 'CASH',
-    paidAt: '14:15',
-    isQrPayment: false,
-    pointAmount: 0,
-    memo: '현금결제 완료',
-    orderItems: [
-      { name: '치킨 라이스', quantity: 1 },
-      { name: '아메리카노', quantity: 1 }
-    ],
-    items: ['치킨 라이스 x1', '아메리카노 x1']
-  }
-]
+const initialDailyOrders: DailyOrderItem[] = []
 
 const TABLE_SIDE_MENU_PATHS = TABLE_POS_SIDEBAR_PATHS
 const TABLE_ORDER_BLOCK_MESSAGE =
@@ -244,6 +87,7 @@ function BusinessPosPageContent() {
   const [selectedSalesFilter, setSelectedSalesFilter] = useState<SalesFilterType>('ALL')
   const [selectedSalesPaymentId, setSelectedSalesPaymentId] = useState<string | null>(null)
   const [selectedTableNoForOrderSummary, setSelectedTableNoForOrderSummary] = useState<number | null>(null)
+  const [isTableStatusModalOpen, setIsTableStatusModalOpen] = useState<boolean>(false)
   const [tableStateItems, setTableStateItems] = useState<PosTableItem[]>([])
   const [dailyOrders, setDailyOrders] = useState<DailyOrderItem[]>(initialDailyOrders)
   const [posMenuItems, setPosMenuItems] = useState<PosMenuItem[]>([])
@@ -260,6 +104,11 @@ function BusinessPosPageContent() {
 
   const usingTableCount = useMemo(
     () => tableStateItems.filter((table) => table.status === 'USING').length,
+    [tableStateItems]
+  )
+
+  const emptyTableCount = useMemo(
+    () => tableStateItems.filter((table) => table.status === 'EMPTY').length,
     [tableStateItems]
   )
 
@@ -374,6 +223,15 @@ function BusinessPosPageContent() {
   }
 
   const handleChangeMenu = (menu: PosMenuKey) => {
+    if (menu === 'TABLE') {
+      setActiveMenu('TABLE')
+      setSelectedSalesPaymentId(null)
+      setSelectedTableNoForOrderSummary(null)
+      setIsTableStatusModalOpen(true)
+      router.push(TABLE_SIDE_MENU_PATHS.TABLE)
+      return
+    }
+
     if (menu === 'MENU_MANAGE') {
       router.push(TABLE_SIDE_MENU_PATHS.MENU_MANAGE)
       return
@@ -385,7 +243,6 @@ function BusinessPosPageContent() {
     }
 
     if (
-      menu === 'TABLE' ||
       menu === 'ORDER_HISTORY' ||
       menu === 'RESERVATION' ||
       menu === 'SALES_HISTORY'
@@ -482,10 +339,6 @@ function BusinessPosPageContent() {
           : '테이블 정리 상태 변경에 실패했습니다.'
       )
     }
-  }
-
-  const handleChangeSelectedTableNo = (tableNo: number | null) => {
-    setSelectedTableNo(tableNo)
   }
 
   const handleTableCardKeyDown = (
@@ -703,12 +556,12 @@ function BusinessPosPageContent() {
 
             for (const [locationId, counts] of cookingStatusCountByLocationId.entries()) {
               if (counts.waiting > 0) {
-                cookingStatusLabelByLocationId.set(locationId, `조리대기 ${counts.waiting}`)
+                cookingStatusLabelByLocationId.set(locationId, '조리대기')
                 continue
               }
 
               if (counts.cooking > 0) {
-                cookingStatusLabelByLocationId.set(locationId, `조리중 ${counts.cooking}`)
+                cookingStatusLabelByLocationId.set(locationId, '조리중')
                 continue
               }
 
@@ -881,12 +734,16 @@ function BusinessPosPageContent() {
         <PosTableView
           tables={tableStateItems}
           selectedTableNo={selectedTableNo}
-          onChangeSelectedTableNo={handleChangeSelectedTableNo}
           onClickTable={handleClickTable}
           onClickTableOrderButton={handleClickTableOrderButton}
           onClickTableCleaningAction={handleClickTableCleaningAction}
           onTableCardKeyDown={handleTableCardKeyDown}
           onGoTableSettings={() => router.push('/pos/table/settings')}
+          isTableStatusModalOpen={isTableStatusModalOpen}
+          onOpenTableStatusModal={() => setIsTableStatusModalOpen(true)}
+          onCloseTableStatusModal={() => setIsTableStatusModalOpen(false)}
+          usingTableCount={usingTableCount}
+          emptyTableCount={emptyTableCount}
         />
       )
     }
@@ -961,15 +818,14 @@ function BusinessPosPageContent() {
         </div>
 
         <div className={styles.mainViewport}>
-          <div className={styles.mainGrid}>
-            <PosSidebar
-              activeMenu={activeSideMenu}
-              onChangeMenu={handleChangeMenu}
-              menuOptions={TABLE_POS_SIDEBAR_MENUS}
-              className={styles.sidebar}
-            />
-
+          <div className={`${styles.mainGrid} ${styles.tablePageGrid}`}>
             <main className={styles.main}>
+              <PosHeaderMenuBar
+                activeMenu={activeSideMenu}
+                onChangeMenu={handleChangeMenu}
+                menuOptions={TABLE_POS_SIDEBAR_MENUS}
+              />
+
               {activeMenu !== 'TABLE' ? (
                 <div className={styles.header}>
                   <h1 className={styles.title}>{pageCopy.title}</h1>
@@ -985,32 +841,19 @@ function BusinessPosPageContent() {
               </div>
             </main>
 
-            <PosTodaySummary
-              activeMenu={activeMenu}
-              selectedTableOrderSummary={selectedTableOrderSummary}
-              usingTableCount={usingTableCount}
-              confirmedTableCount={confirmedTableCount}
-              totalTableAmount={totalTableAmount}
-              reservationSummary={reservationSummary}
-              dailySummary={dailySummary}
-              salesSummary={salesSummary}
-              selectedSalesFilter={selectedSalesFilter}
-              selectedSalesPayment={selectedSalesPayment}
-              onSelectSalesFilter={setSelectedSalesFilter}
-              onResetSelectedSalesPayment={() => setSelectedSalesPaymentId(null)}
-              onResetSelectedTableSummary={() => setSelectedTableNoForOrderSummary(null)}
-            />
           </div>
         </div>
 
-        <PosFooterBar
-          activeMenu={activeMenu}
-          count={footerCount}
-          amount={activeMenu === 'SALES_HISTORY' ? salesSummary.totalSalesAmount : totalTableAmount}
-          selectedTableOrderSummary={selectedTableOrderSummary}
-          onPrimaryAction={handlePrimaryFooterAction}
-          onSecondaryAction={handleRevertSelectedTableOrderToWaiting}
-        />
+        {activeMenu !== 'TABLE' ? (
+          <PosFooterBar
+            activeMenu={activeMenu}
+            count={footerCount}
+            amount={activeMenu === 'SALES_HISTORY' ? salesSummary.totalSalesAmount : totalTableAmount}
+            selectedTableOrderSummary={selectedTableOrderSummary}
+            onPrimaryAction={handlePrimaryFooterAction}
+            onSecondaryAction={handleRevertSelectedTableOrderToWaiting}
+          />
+        ) : null}
       </div>
     </div>
   )
@@ -1149,6 +992,16 @@ function mapPosLocationsToTableItems(
       tableNo: normalizedSortOrder,
       label: item.tableName?.trim() || `테이블 ${normalizedSortOrder}`,
       amount: activeOrderAmount,
+      floor: item.floor?.trim() || '1층',
+      zone: item.zone?.trim() || '홀',
+      floorSortOrder: Number(item.floorSortOrder ?? 1),
+      zoneSortOrder: Number(item.zoneSortOrder ?? 1),
+      layoutX: Number(item.layoutX ?? 0),
+      layoutY: Number(item.layoutY ?? 0),
+      layoutWidth: Number(item.layoutWidth ?? 180),
+      layoutHeight: Number(item.layoutHeight ?? 140),
+      layoutRotate: Number(item.layoutRotate ?? 0),
+      layoutShape: String(item.layoutShape ?? '').trim() || 'RECT',
       resourceStatus,
       status: tableStatus,
       cookingStatusLabel:

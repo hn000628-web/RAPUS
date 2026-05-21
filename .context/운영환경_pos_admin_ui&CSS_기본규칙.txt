@@ -1,0 +1,1730 @@
+FILE : PROJECT_RULES/POS_MANAGEMENT_UI_CSS_RESPONSIVE_STANDARD_SNAPSHOT.txt
+ROOT : C:\Users\kjm\social-platform\PROJECT_RULES\POS_MANAGEMENT_UI_CSS_RESPONSIVE_STANDARD_SNAPSHOT.txt
+STATUS : PRODUCTION LOCK
+ROLE : POS / MANAGEMENT UI CSS RESPONSIVE LAYOUT STANDARD
+CHANGE SUMMARY :
+- POS/관리 화면 전용 반응형 기준 고정
+- 640 / 768 / 1024 / 1280 기준 breakpoint 표준화
+- gap / padding / panel / background / card / modal / grid / scroll area 표준 정의
+- POS 운영 화면과 POS/관리 화면의 최소 기준 분리
+- 고객용 주문 페이지와 일반 피드/프로필 페이지는 별도 표준으로 분리
+- POS 운영 화면 1024px 강제 기준 보강
+- 가로 스크롤 허용/금지 영역 분리
+- 터치 디바이스 기준 추가
+- 텍스트 overflow / ellipsis / clamp 기준 추가
+- z-index / modal type / card action / viewport height 검증 기준 추가
+
+==================================================
+SECTION 00 : PURPOSE
+==================================================
+
+본 스냅샷은 RAPUS 플랫폼의 POS / 관리 페이지 UI CSS 작업 기준을 고정한다.
+
+목적:
+
+1. POS / 관리 화면의 반응형 기준 통일
+2. 페이지별 gap / padding / panel / card / modal / grid 기준 통일
+3. Codex / AI 작업 시 CSS 수정 범위와 금지사항 명확화
+4. 640px / 768px / 1024px / 1280px 기준의 일관된 UI 설계
+5. 모바일 / 태블릿 / POS / PC 화면 대응 기준 분리
+6. POS 운영 화면과 POS 관리 화면의 최소 viewport 기준 분리
+7. 터치 디바이스 / 낮은 viewport height / overflow 대응 기준 고정
+
+본 문서는 전체 웹 공통 표준이 아니다.
+
+본 문서는 다음 영역 전용 표준이다.
+
+- POS 설정 화면
+- POS 관리 화면
+- 사업자 관리 화면
+- 운영자용 카드 / 패널 / 모달 중심 화면
+
+==================================================
+SECTION 01 : SCOPE
+==================================================
+
+적용 대상:
+
+frontend/app/(pos)/pos/**
+frontend/app/(after-login)/profile/business/**
+
+대표 적용 화면:
+
+/pos
+/pos/table
+/pos/table/settings
+/pos/table/orders
+/pos/table/cooking
+/pos/table/reservations
+/pos/table/stay-sales
+/pos/delivery-orders/**
+/profile/business/**
+
+제외 대상:
+
+frontend/app/channel/**/order/**
+frontend/app/(after-login)/profile/**
+일반 고객용 모바일 주문 페이지
+일반 피드 페이지
+일반 프로필 페이지
+
+제외 사유:
+
+고객용 주문 페이지와 일반 사용자 페이지는 스마트폰 세로모드 기준이 필수이다.
+
+따라서 고객용 화면은 별도 기준을 사용한다.
+
+고객용 주문 페이지 최소 기준:
+
+360px ~ 430px
+
+POS / 관리 페이지 최소 기준:
+
+640px
+
+주의:
+
+본 스냅샷의 640px 기준은 POS / 관리 화면 전용이다.
+
+고객용 주문 화면에 640px 기준을 적용하면 안 된다.
+
+==================================================
+SECTION 02 : CORE BREAKPOINT STANDARD
+==================================================
+
+POS / 관리 페이지의 공식 breakpoint 기준은 다음과 같다.
+
+--------------------------------------------------
+1. 640px
+--------------------------------------------------
+
+역할:
+
+모바일 / 소형 태블릿 가로모드 최소 운영 기준
+
+정책:
+
+- 1컬럼 중심
+- 탭 / 버튼은 가로 스크롤 허용
+- 카드 폭은 100%
+- panel padding 최소화
+- 복잡한 운영 화면은 제한적으로만 지원
+- 필요 시 가로모드 / 태블릿 사용 안내 가능
+
+--------------------------------------------------
+2. 768px
+--------------------------------------------------
+
+역할:
+
+권장 모바일 / 소형 태블릿 기준
+
+정책:
+
+- 일부 2컬럼 허용
+- 설정 카드 2컬럼 가능
+- 모달 여백 확장
+- 관리 화면 사용성 확보
+
+--------------------------------------------------
+3. 1024px
+--------------------------------------------------
+
+역할:
+
+태블릿 / POS 최소 기준
+
+정책:
+
+- POS 태블릿 최소 운영 기준
+- 설정 카드 4컬럼 가능
+- 기존 POS 운영 레이아웃 기준
+- 패널 / 카드 여백 정상값 적용
+
+--------------------------------------------------
+4. 1280px
+--------------------------------------------------
+
+역할:
+
+PC / POS 쾌적 기준
+
+정책:
+
+- 4컬럼 유지
+- 카드 간격 확장
+- 패널 여백 확장
+- 넓은 화면에서 자연 확장
+
+==================================================
+SECTION 03 : PAGE TYPE STANDARD
+==================================================
+
+페이지 유형별 최소 기준은 다음과 같다.
+
+--------------------------------------------------
+POS 운영 화면
+--------------------------------------------------
+
+예:
+
+/pos/table/[tableNo]
+/pos/table/cooking
+/pos/table/orders
+/pos/table/reservations
+/pos/table/stay-sales
+/pos/delivery-orders/orders
+/pos/delivery-orders/reservations
+
+최소 기준:
+
+1024px
+
+권장 기준:
+
+1280px
+
+사유:
+
+상품 / 옵션 / 주문 / 결제 / 상태 패널이 동시에 표시될 수 있으므로 640px을 기본 POS 운영 기준으로 쓰면 안 된다.
+
+원칙:
+
+- POS 운영 화면은 1024px 이상을 기본 기준으로 한다.
+- 640px 대응은 조회 / 보조 기능 / 단순 목록에 한해서 허용한다.
+- 주문 입력 / 결제 / 상품 선택 / 옵션 선택이 포함된 화면은 1024px 미만에서 사용 안내를 표시할 수 있다.
+- Codex는 POS 운영 화면을 무조건 640px에 맞추면 안 된다.
+
+--------------------------------------------------
+POS 설정 / 관리 화면
+--------------------------------------------------
+
+예:
+
+/pos/table/settings
+/pos/table
+/pos/settings/**
+
+최소 기준:
+
+640px
+
+권장 기준:
+
+768px ~ 1024px
+
+사유:
+
+카드 / 목록 / 설정 / 모달 중심 구조이므로 모바일 / 소형 태블릿 대응이 가능하다.
+
+--------------------------------------------------
+사업자 관리 화면
+--------------------------------------------------
+
+예:
+
+/profile/business/**
+
+최소 기준:
+
+640px
+
+권장 기준:
+
+768px
+
+사유:
+
+폼 / 카드 / 설정 중심 화면이므로 640px 기준 적용 가능하다.
+
+--------------------------------------------------
+고객 주문 페이지
+--------------------------------------------------
+
+예:
+
+/channel/[channelCode]/order/**
+
+최소 기준:
+
+360px
+
+권장 기준:
+
+390px ~ 430px
+
+사유:
+
+일반 사용자가 스마트폰 세로모드에서 사용한다.
+
+본 스냅샷의 640px POS / 관리 기준을 적용하면 안 된다.
+
+==================================================
+SECTION 04 : BASE PAGE STRUCTURE STANDARD
+==================================================
+
+POS / 관리 페이지 기본 구조:
+
+.page
+
+역할:
+
+전체 viewport root
+
+권장 CSS:
+
+.page {
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f7fb;
+}
+
+.posShell
+
+역할:
+
+POS / 관리 화면 실제 shell
+
+기본 정책:
+
+- 640px 이상에서 최소 운영 가능
+- 1024px 이상에서 POS 태블릿 기준
+- 640px 미만은 완전 지원 대상 아님
+
+권장 CSS:
+
+.posShell {
+  min-width: 640px;
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 1024px) {
+  .posShell {
+    min-width: 1024px;
+  }
+}
+
+@media (max-width: 639px) {
+  .posShell {
+    min-width: 0;
+  }
+}
+
+주의:
+
+기존 min-width: 1024px 고정은 POS 설정 / 관리 화면의 모바일 대응을 방해한다.
+
+단, 실제 주문 입력 / 상품 선택 / 결제 화면은 1024px 기준을 유지할 수 있다.
+
+==================================================
+SECTION 05 : CSS VARIABLE STANDARD
+==================================================
+
+CSS module 내부에서는 :root 사용을 금지한다.
+
+CSS variable은 .page 또는 .posShell에 선언한다.
+
+허용 prefix:
+
+--pos-
+--pos-page-
+--pos-panel-
+--pos-card-
+--pos-modal-
+--pos-grid-
+--pos-z-
+
+금지 prefix:
+
+--primary
+--gap
+--padding
+--color
+--size
+
+금지 사유:
+
+전역 변수 또는 다른 CSS module과 의미 충돌 가능성이 있다.
+
+기본 선언 예시:
+
+.page {
+  --pos-page-padding-x: 16px;
+  --pos-page-padding-y: 10px;
+  --pos-panel-padding: 22px;
+  --pos-panel-gap: 18px;
+  --pos-card-padding: 16px;
+  --pos-card-gap: 12px;
+  --pos-radius-panel: 18px;
+  --pos-radius-card: 16px;
+}
+
+브레이크포인트별 공식 값:
+
+--------------------------------------------------
+640px 기준
+--------------------------------------------------
+
+--pos-page-padding-x: 10px;
+--pos-page-padding-y: 8px;
+--pos-panel-padding: 12px;
+--pos-panel-gap: 12px;
+--pos-card-padding: 12px;
+--pos-card-gap: 10px;
+--pos-radius-panel: 14px;
+--pos-radius-card: 14px;
+
+--------------------------------------------------
+768px 기준
+--------------------------------------------------
+
+--pos-page-padding-x: 14px;
+--pos-page-padding-y: 10px;
+--pos-panel-padding: 16px;
+--pos-panel-gap: 14px;
+--pos-card-padding: 14px;
+--pos-card-gap: 12px;
+--pos-radius-panel: 16px;
+--pos-radius-card: 14px;
+
+--------------------------------------------------
+1024px 기준
+--------------------------------------------------
+
+--pos-page-padding-x: 16px;
+--pos-page-padding-y: 10px;
+--pos-panel-padding: 22px;
+--pos-panel-gap: 18px;
+--pos-card-padding: 16px;
+--pos-card-gap: 12px;
+--pos-radius-panel: 18px;
+--pos-radius-card: 16px;
+
+--------------------------------------------------
+1280px 기준
+--------------------------------------------------
+
+--pos-page-padding-x: 20px;
+--pos-page-padding-y: 14px;
+--pos-panel-padding: 24px;
+--pos-panel-gap: 20px;
+--pos-card-padding: 18px;
+--pos-card-gap: 14px;
+--pos-radius-panel: 20px;
+--pos-radius-card: 18px;
+
+==================================================
+SECTION 06 : MAIN GRID STANDARD
+==================================================
+
+mainGrid는 페이지 내부 콘텐츠 영역이다.
+
+고정 padding 대신 CSS variable을 사용한다.
+
+권장 CSS:
+
+.mainGrid {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: grid;
+  width: 100%;
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  padding:
+    var(--pos-page-padding-y)
+    var(--pos-page-padding-x)
+    calc(var(--pos-page-padding-y) + 6px);
+}
+
+원칙:
+
+- page 전체 스크롤보다 내부 panel scroll 우선
+- mainGrid는 전체 레이아웃 container 역할
+- 내부 카드 / 패널 간격은 panel에서 관리
+- mainGrid gap은 0 유지 가능
+- mainGrid 전체 가로 스크롤은 금지
+
+==================================================
+SECTION 07 : PANEL STANDARD
+==================================================
+
+패널은 한 화면의 큰 흰색 영역이다.
+
+대표 클래스:
+
+.settingsDashboardPanel
+.moduleCard
+.headerCard
+
+공통 기준:
+
+.panel {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: var(--pos-radius-panel);
+  padding: var(--pos-panel-padding);
+  gap: var(--pos-panel-gap);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+}
+
+640px 기준:
+
+- padding: 12px
+- gap: 12px
+- border-radius: 14px
+- shadow는 약하게 유지하거나 제거 가능
+
+1024px 이상:
+
+- 기존 shadow 유지
+- padding 정상값 유지
+
+==================================================
+SECTION 08 : BACKGROUND STANDARD
+==================================================
+
+POS / 관리 페이지 기본 배경:
+
+#f5f7fb
+
+패널 배경:
+
+#ffffff 또는 rgba(255, 255, 255, 0.95)
+
+보조 카드 배경:
+
+#f8fafc
+
+강조 영역 배경:
+
+radial-gradient 또는 linear-gradient 사용 가능
+
+권장 hero background:
+
+background:
+  radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 34%),
+  linear-gradient(135deg, #f8fafc, #ffffff);
+
+금지:
+
+- 과도한 원색 배경
+- 페이지 전체에 강한 gradient
+- POS 운영 화면의 가독성을 해치는 배경 이미지
+- 카드와 배경 대비가 낮은 조합
+
+==================================================
+SECTION 09 : HERO CARD STANDARD
+==================================================
+
+대표 클래스:
+
+.settingsDashboardHero
+
+역할:
+
+설정 / 관리 페이지 상단 설명 카드
+
+640px:
+
+- padding: 14px
+- border-radius: 14px
+- flex-direction: column
+- gap: 12px
+
+768px:
+
+- padding: 16px
+- border-radius: 16px
+
+1024px 이상:
+
+- padding: 20px
+- border-radius: 18px
+- flex-direction: row
+
+제목 크기:
+
+640px: 22px
+768px: 24px
+1024px: 28px
+1280px: 30px
+
+설명 크기:
+
+640px: 13px
+1024px: 14px
+
+권장 CSS:
+
+.settingsDashboardHero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--pos-panel-gap);
+  padding: var(--pos-panel-padding);
+  border-radius: var(--pos-radius-panel);
+  border: 1px solid #e2e8f0;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 34%),
+    linear-gradient(135deg, #f8fafc, #ffffff);
+}
+
+@media (max-width: 767px) {
+  .settingsDashboardHero {
+    flex-direction: column;
+  }
+}
+
+==================================================
+SECTION 10 : CARD STANDARD
+==================================================
+
+일반 카드 공통 대상:
+
+.headerCard
+.moduleCard
+.summaryCard
+.itemCard
+.tableManageCard
+.categoryEditorCard
+.createSectionCard
+.previewPanel
+
+공통 기준:
+
+border: 1px solid #e5e7eb;
+background: #ffffff;
+border-radius: var(--pos-radius-card);
+padding: var(--pos-card-padding);
+gap: var(--pos-card-gap);
+box-sizing: border-box;
+
+원칙:
+
+- 모바일에서 padding 과다 금지
+- 고정 height 금지
+- 고정 width 금지
+- 필요한 경우 min-height 사용
+- card 내부 버튼은 grid 또는 flex로 안정 배치
+- text overflow 처리 필수
+
+카드 제목:
+
+640px: 15px ~ 17px
+1024px: 17px ~ 20px
+
+카드 설명:
+
+640px: 12px ~ 13px
+1024px: 13px ~ 14px
+
+==================================================
+SECTION 11 : TEXT OVERFLOW STANDARD
+==================================================
+
+POS / 관리 화면은 주문번호, 상품명, 테이블명, 주소, 금액, 상태값이 길어질 수 있다.
+
+텍스트 overflow 처리는 필수이다.
+
+--------------------------------------------------
+주문번호
+--------------------------------------------------
+
+규칙:
+
+- 줄바꿈 금지
+- white-space: nowrap
+- word-break 금지
+- overflow 시 ellipsis 허용
+
+권장 CSS:
+
+.orderCodeText {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+--------------------------------------------------
+금액 / 수량 / 상태 badge
+--------------------------------------------------
+
+규칙:
+
+- 줄바꿈 금지
+- 숫자 단위 분리 금지
+- badge는 한 줄 유지
+
+권장:
+
+white-space: nowrap;
+flex-shrink: 0;
+
+--------------------------------------------------
+상품명 / 카드 제목
+--------------------------------------------------
+
+규칙:
+
+- 기본 1줄 ellipsis
+- 필요 시 2줄 clamp 허용
+
+1줄:
+
+overflow: hidden;
+text-overflow: ellipsis;
+white-space: nowrap;
+
+2줄:
+
+display: -webkit-box;
+-webkit-line-clamp: 2;
+-webkit-box-orient: vertical;
+overflow: hidden;
+
+--------------------------------------------------
+주소 / 메모 / 설명
+--------------------------------------------------
+
+규칙:
+
+- 1줄 또는 2줄 clamp 허용
+- 카드 높이 과도 확장 금지
+- 상세 모달에서는 전체 표시 가능
+
+금지:
+
+- 주문번호 중간 줄바꿈
+- 금액 줄바꿈
+- badge 내부 줄바꿈
+- 긴 텍스트 때문에 card grid 전체 overflow 발생
+
+==================================================
+SECTION 12 : SUMMARY / ACTION GRID STANDARD
+==================================================
+
+대표 클래스:
+
+.settingsDashboardSummaryGrid
+.settingsDashboardActionGrid
+
+컬럼 기준:
+
+640px:
+
+grid-template-columns: 1fr;
+
+768px:
+
+grid-template-columns: repeat(2, minmax(0, 1fr));
+
+1024px:
+
+grid-template-columns: repeat(4, minmax(0, 1fr));
+
+1280px:
+
+grid-template-columns: repeat(4, minmax(0, 1fr));
+
+gap:
+
+var(--pos-card-gap)
+
+summary card min-height:
+
+640px: 88px
+768px: 96px
+1024px: 110px
+
+action card min-height:
+
+640px: 72px
+768px: 84px
+1024px: 96px
+
+주의:
+
+- 카드 높이는 고정하지 않는다.
+- min-height만 사용한다.
+- 텍스트 길이에 따라 확장 가능해야 한다.
+
+==================================================
+SECTION 13 : ITEM GRID STANDARD
+==================================================
+
+대표 클래스:
+
+.itemGrid
+
+용도:
+
+메뉴 / 상품 / 설정 아이템 카드 목록
+
+컬럼 기준:
+
+640px:
+
+grid-template-columns: repeat(2, minmax(0, 1fr));
+gap: 10px;
+
+768px:
+
+grid-template-columns: repeat(2, minmax(180px, 1fr));
+gap: 12px;
+
+1024px:
+
+grid-template-columns: repeat(3, minmax(200px, 1fr));
+gap: 12px;
+
+1280px:
+
+grid-template-columns: repeat(4, minmax(200px, 1fr));
+gap: 14px;
+
+480px 이하:
+
+필수 지원 아님.
+
+단, 기존 480px 1컬럼 fallback은 유지 가능하다.
+
+권장:
+
+@media (max-width: 480px) {
+  .itemGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+==================================================
+SECTION 14 : TABLE MANAGE GRID STANDARD
+==================================================
+
+대표 클래스:
+
+.tableManageGrid
+
+용도:
+
+테이블 / 룸 / 좌석 / 공간 관리 카드 목록
+
+컬럼 기준:
+
+640px:
+
+grid-template-columns: 1fr;
+
+768px:
+
+grid-template-columns: repeat(2, minmax(220px, 1fr));
+
+1024px:
+
+grid-template-columns: repeat(3, minmax(210px, 1fr));
+
+1280px:
+
+grid-template-columns: repeat(4, minmax(210px, 1fr));
+
+gap:
+
+640px: 10px
+768px: 12px
+1024px 이상: 14px
+
+.tableManageCard min-height:
+
+640px: 150px
+768px: 160px
+1024px: 170px
+
+금지:
+
+- 고정 height
+- 고정 width
+- 640px에서 2컬럼 강제
+- 카드 내부 버튼 overflow 방치
+
+==================================================
+SECTION 15 : CARD ACTION BUTTON STANDARD
+==================================================
+
+카드 내부 action row는 화면 폭에 따라 안정적으로 재배치되어야 한다.
+
+640px 기준:
+
+- 1컬럼 또는 2컬럼
+- 버튼 3개 이상이면 1컬럼 전환 허용
+- 버튼 높이 최소 34px 이상
+
+768px 기준:
+
+- 2컬럼 허용
+- 버튼 3개 이상이면 2컬럼 grid 허용
+
+1024px 이상:
+
+- 3~4컬럼 허용
+- 버튼 row 유지 가능
+
+공통:
+
+- 버튼 4개 이상이면 overflow 금지
+- wrap 또는 grid 전환
+- 삭제 / 취소 / 위험 버튼은 마지막 위치 권장
+- 버튼 텍스트가 잘리면 최소 width 또는 font-size 조정
+- hover에만 의존하는 action 금지
+
+권장 CSS:
+
+.cardActionRow {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 1024px) {
+  .cardActionRow {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+==================================================
+SECTION 16 : TAB / BUTTON ROW STANDARD
+==================================================
+
+대표 클래스:
+
+.moduleTabs
+.filterRow
+.tableManageFloorRow
+.tabActionRow
+
+640px 기준:
+
+- flex-wrap: nowrap 허용
+- overflow-x: auto 허용
+- padding-bottom: 4px
+- 버튼 flex: 0 0 auto
+- 버튼 축소 허용
+- 가로 스크롤은 허용하되 화면 전체 가로 스크롤은 금지
+
+.moduleTabButton 기준:
+
+640px:
+
+min-width: 104px;
+height: 34px;
+font-size: 12px;
+
+1024px:
+
+min-width: 120px;
+height: 36px;
+font-size: 13px;
+
+버튼 공통:
+
+- min-height 34px 이상
+- border-radius 10px 또는 999px
+- font-weight 800 이상
+- 터치 영역 확보
+
+==================================================
+SECTION 17 : HORIZONTAL SCROLL STANDARD
+==================================================
+
+가로 스크롤은 허용 영역과 금지 영역을 명확히 분리한다.
+
+--------------------------------------------------
+허용 영역
+--------------------------------------------------
+
+아래 영역은 내부 가로 스크롤을 허용한다.
+
+- 탭 메뉴
+- 필터 버튼 row
+- floor 선택 row
+- pill button group
+- table type 선택 row
+- layout canvas 내부
+- 긴 설정 컨트롤 row
+
+조건:
+
+- 해당 영역 내부에만 overflow-x: auto 적용
+- page 전체에 overflow-x가 발생하면 실패
+- 버튼은 flex: 0 0 auto 처리
+
+--------------------------------------------------
+금지 영역
+--------------------------------------------------
+
+아래 영역은 가로 스크롤을 금지한다.
+
+- body
+- page
+- posShell
+- mainGrid
+- card grid 전체
+- modal panel 전체
+- topbar 전체
+- settings dashboard panel 전체
+
+금지 사유:
+
+전체 viewport 가로 스크롤은 POS / 관리 화면의 조작성과 안정성을 떨어뜨린다.
+
+권장:
+
+.page,
+.posShell,
+.mainGrid {
+  overflow-x: hidden;
+}
+
+.tabsRow {
+  overflow-x: auto;
+}
+
+==================================================
+SECTION 18 : TOPBAR STANDARD
+==================================================
+
+POS / 관리 topbar 정책:
+
+1024px 이상:
+
+- 1줄 유지
+- 주요 버튼 모두 표시
+
+768px ~ 1023px:
+
+- 버튼 축소 가능
+- 일부 버튼 wrap 허용
+- 상태 표시 pill 축소 가능
+
+640px ~ 767px:
+
+- 필요 시 2줄 허용
+- 버튼 텍스트 축약 가능
+- 탭 / 버튼 row는 가로 스크롤 허용
+
+640px 미만:
+
+- POS / 관리 화면 완전 지원 대상 아님
+- 필요 시 가로모드 / 태블릿 안내 가능
+
+금지:
+
+- topbar 높이 계산 없이 content를 덮는 구조
+- sticky topbar 아래 content가 가려지는 구조
+- 버튼이 viewport 밖으로 밀려도 접근 불가능한 구조
+
+==================================================
+SECTION 19 : TOUCH DEVICE STANDARD
+==================================================
+
+POS / 관리 화면은 마우스뿐 아니라 태블릿 터치 입력을 고려한다.
+
+주요 버튼 기준:
+
+- 최소 높이: 34px
+- 권장 높이: 38px ~ 44px
+- 위험 / 삭제 버튼 최소 높이: 36px
+- 주요 저장 / 등록 버튼 권장 높이: 40px 이상
+
+간격 기준:
+
+- 카드 내부 action gap 최소 6px
+- 터치 row gap 최소 8px
+- 탭 버튼 간격 최소 6px
+- 모달 footer 버튼 gap 최소 10px
+
+금지:
+
+- 640px에서 hover에만 의존하는 UI
+- 터치 불가능한 28px 미만 주요 버튼
+- 버튼 간격 4px 미만
+- 삭제 / 취소 버튼이 저장 버튼과 너무 가까운 구조
+
+==================================================
+SECTION 20 : MODAL STANDARD
+==================================================
+
+modalBackdrop 기준:
+
+640px:
+
+padding: 12px;
+
+768px:
+
+padding: 16px;
+
+1024px:
+
+padding: 24px;
+
+--------------------------------------------------
+Small Modal
+--------------------------------------------------
+
+용도:
+
+확인 / 경고 / 간단한 입력
+
+width:
+
+min(480px, calc(100vw - 24px))
+
+--------------------------------------------------
+Default Modal
+--------------------------------------------------
+
+용도:
+
+일반 설정 / 입력
+
+width:
+
+min(720px, calc(100vw - 24px))
+
+--------------------------------------------------
+Large Modal
+--------------------------------------------------
+
+용도:
+
+복합 설정 / 메뉴 생성 / 상세 관리
+
+width:
+
+min(1120px, calc(100vw - 48px))
+
+--------------------------------------------------
+Workspace Modal
+--------------------------------------------------
+
+용도:
+
+테이블 배치 / 캔버스 / 복합 작업
+
+width:
+
+min(1230px, calc(100vw - 48px))
+
+height:
+
+min(820px, calc(100dvh - 48px))
+
+--------------------------------------------------
+Mobile Modal
+--------------------------------------------------
+
+640px 기준:
+
+width: calc(100vw - 24px);
+height: calc(100dvh - 24px);
+
+768px 기준:
+
+width: calc(100vw - 32px);
+height: calc(100dvh - 32px);
+
+주의:
+
+기존 layoutModalPanel의 아래 구조는 640px에서 과할 수 있다.
+
+min-width: min(900px, calc(100vw - 48px));
+
+따라서 640px 이하 또는 760px 이하 media에서 반드시 override 한다.
+
+권장:
+
+@media (max-width: 760px) {
+  .layoutModalPanel {
+    width: calc(100vw - 24px);
+    height: calc(100dvh - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+    min-width: 0;
+    min-height: 0;
+  }
+}
+
+==================================================
+SECTION 21 : MODAL FOOTER STANDARD
+==================================================
+
+768px 이상:
+
+- footer 버튼 우측 정렬
+- 버튼 min-width 96px 이상
+- 버튼 row 유지
+
+640px ~ 767px:
+
+- footer 버튼 full-width 허용
+- column-reverse 허용
+- 취소 버튼 아래 또는 위 배치는 UX 기준에 맞게 결정
+
+권장 CSS:
+
+@media (max-width: 767px) {
+  .modalFooter {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .modalCancelButton,
+  .modalSubmitButton {
+    width: 100%;
+  }
+}
+
+원칙:
+
+- 모바일에서 버튼이 작아지면 안 된다.
+- 주요 action은 터치하기 쉬워야 한다.
+- 모달 body만 스크롤되고 footer는 접근 가능해야 한다.
+
+==================================================
+SECTION 22 : SCROLL AREA STANDARD
+==================================================
+
+기본 원칙:
+
+- page 전체 스크롤보다 panel 내부 스크롤 우선
+- topbar는 sticky 유지
+- modal은 body만 스크롤
+- footer는 가능하면 고정 접근성 유지
+- 가로 스크롤은 탭 / 버튼 row 내부에만 허용
+
+대표 클래스:
+
+.panelScrollArea
+.panelScrollAreaModal
+.modalBody
+.layoutModalBody
+
+권장:
+
+.panelScrollArea {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.modalBody {
+  min-height: 0;
+  overflow: auto;
+}
+
+금지:
+
+- body 전체에 의도 없는 overflow-x 발생
+- card grid 때문에 viewport 전체 가로 스크롤 발생
+- modal header / footer가 스크롤에 묻혀 접근 불가
+- 내부 scroll area에 min-height: 0 누락
+
+==================================================
+SECTION 23 : LAYOUT CANVAS STANDARD
+==================================================
+
+대표 클래스:
+
+.layoutCanvas
+
+용도:
+
+테이블 / 룸 / 좌석 배치 캔버스
+
+min-height 기준:
+
+640px:
+
+min-height: 420px;
+
+768px:
+
+min-height: 520px;
+
+1024px:
+
+min-height: 600px;
+
+1280px:
+
+min-height: 640px;
+
+background grid:
+
+기본:
+
+background-size: 24px 24px;
+
+640px:
+
+background-size: 20px 20px; 허용
+
+주의:
+
+- 캔버스는 overflow: auto 유지
+- 드래그 영역이 viewport 밖으로 밀릴 수 있으므로 내부 스크롤 허용
+- card 위치 좌표는 DB 또는 Service 기준과 별도
+- CSS에서 좌표 계산 로직을 만들지 않는다
+
+==================================================
+SECTION 24 : FONT SIZE STANDARD
+==================================================
+
+페이지 타이틀:
+
+640px: 22px
+768px: 24px
+1024px: 28px
+1280px: 30px
+
+섹션 타이틀:
+
+640px: 18px
+768px: 20px
+1024px: 22px
+
+카드 타이틀:
+
+640px: 15px ~ 17px
+1024px: 17px ~ 20px
+
+설명 텍스트:
+
+640px: 12px ~ 13px
+1024px: 13px ~ 14px
+
+버튼 텍스트:
+
+640px: 12px
+1024px: 13px
+
+금지:
+
+- 640px에서 10px 이하 주요 텍스트
+- POS 운영 핵심 숫자의 과도한 축소
+- 상태 badge의 판독성 저하
+
+==================================================
+SECTION 25 : Z-INDEX STANDARD
+==================================================
+
+POS / 관리 화면의 z-index는 아래 기준을 따른다.
+
+기준:
+
+topbar:
+
+70
+
+modalBackdrop:
+
+80
+
+modalPanel:
+
+90
+
+dropdown / popover:
+
+100
+
+imageViewerOverlay:
+
+1200
+
+toast / alert:
+
+1300
+
+debug / floating utility:
+
+1400
+
+금지:
+
+- 의미 없는 z-index: 99999
+- 파일마다 임의 z-index 체계 생성
+- modal보다 높은 일반 card z-index
+- topbar보다 낮아서 dropdown이 가려지는 구조
+
+권장:
+
+z-index는 가능한 한 CSS variable로 관리한다.
+
+예:
+
+.page {
+  --pos-z-topbar: 70;
+  --pos-z-modal-backdrop: 80;
+  --pos-z-modal-panel: 90;
+  --pos-z-popover: 100;
+  --pos-z-image-viewer: 1200;
+  --pos-z-toast: 1300;
+}
+
+==================================================
+SECTION 26 : MEDIA QUERY STANDARD
+==================================================
+
+공식 media query 기준:
+
+@media (max-width: 639px)
+
+용도:
+
+640px 미만 fallback / 제한 안내 / 최소 대응
+
+@media (min-width: 640px) and (max-width: 767px)
+
+용도:
+
+모바일 / 소형 태블릿 최소 운영
+
+@media (min-width: 768px) and (max-width: 1023px)
+
+용도:
+
+권장 모바일 / 소형 태블릿
+
+@media (min-width: 1024px)
+
+용도:
+
+POS 태블릿 최소 / 기본 운영
+
+@media (min-width: 1280px)
+
+용도:
+
+PC / POS 쾌적 기준
+
+기존 혼합 기준:
+
+- max-width: 1220px
+- max-width: 980px
+- max-width: 760px
+- max-width: 640px
+- max-width: 480px
+- max-width: 1023px
+
+정책:
+
+- 기존 파일에 존재하는 경우 무조건 삭제하지 않는다.
+- 충돌하지 않으면 유지 가능하다.
+- 충돌하면 공식 기준으로 재정렬한다.
+- 신규 작업은 공식 기준을 우선 사용한다.
+
+==================================================
+SECTION 27 : 640PX BELOW POLICY
+==================================================
+
+640px 미만은 POS / 관리 화면의 완전 지원 대상이 아니다.
+
+정책:
+
+1. 가능한 경우 1컬럼으로 최소 표시
+2. 주요 기능이 깨지는 경우 사용 안내 표시 가능
+3. POS 운영 핵심 화면은 640px 미만에서 사용 제한 가능
+4. 고객 주문 페이지는 별도 모바일 기준으로 처리
+
+안내 문구 예:
+
+POS 관리는 가로모드 또는 11인치 이상 태블릿에서 사용해주세요.
+
+또는
+
+이 화면은 640px 이상에서 안정적으로 사용할 수 있습니다.
+
+주의:
+
+고객 주문 페이지에서는 위 안내를 사용하지 않는다.
+
+고객 주문 페이지는 스마트폰 세로모드 대응이 필수이다.
+
+==================================================
+SECTION 28 : VIEWPORT HEIGHT STANDARD
+==================================================
+
+POS / 관리 화면은 width뿐 아니라 height 기준도 함께 검증한다.
+
+필수 검증 viewport:
+
+640 x 520
+768 x 600
+1024 x 526
+1024 x 768
+1280 x 720
+
+1024 x 526 기준은 낮은 브라우저 높이 환경을 검증하기 위한 필수 기준이다.
+
+검증 항목:
+
+- 낮은 height에서도 topbar가 content를 가리지 않는가
+- modal footer 접근이 가능한가
+- panel scroll이 정상 동작하는가
+- sticky topbar 아래 content가 숨지 않는가
+- action button이 viewport 아래로 사라져 접근 불가능하지 않은가
+
+금지:
+
+- height 고정 때문에 핵심 action button 접근 불가
+- modal body scroll 없이 footer가 viewport 밖으로 밀림
+- panel 내부 min-height 과다로 작은 height에서 사용 불가
+
+==================================================
+SECTION 29 : CODEX WORK STANDARD
+==================================================
+
+POS / 관리 UI CSS 작업 시 Codex는 반드시 다음 순서를 따른다.
+
+STEP 1
+
+수정 대상 파일 확인
+
+STEP 2
+
+사용 중인 className 확인
+
+STEP 3
+
+CSS module 기준으로 영향 범위 확인
+
+STEP 4
+
+DB / API / Service / Controller 영향 여부 확인
+
+STEP 5
+
+CSS variable / media query / grid / padding / gap 수정
+
+STEP 6
+
+브레이크포인트별 화면 확인
+
+STEP 7
+
+viewport height 기준 확인
+
+STEP 8
+
+완료보고서 작성
+
+==================================================
+SECTION 30 : ABSOLUTE PROHIBITION
+==================================================
+
+절대 금지:
+
+1. DB 수정 금지
+2. API 수정 금지
+3. Service 수정 금지
+4. Controller 수정 금지
+5. 라우트 변경 금지
+6. page.tsx 임의 수정 금지
+7. TSX 컴포넌트 구조 임의 변경 금지
+8. 클래스명 대규모 변경 금지
+9. 기존 JSX에서 사용 중인 className 삭제 금지
+10. 화면 기능 변경 금지
+11. 한글 문자열 인코딩 깨짐 금지
+12. CSS 전체 삭제 후 재작성 금지
+13. 사용처 확인 없이 class 제거 금지
+14. 640px 기준을 고객용 주문 페이지에 적용 금지
+15. POS 운영 화면을 무조건 640px에 맞추는 작업 금지
+16. page / mainGrid / modalPanel 전체 가로 스크롤 방치 금지
+17. z-index: 99999 같은 임의 고정값 사용 금지
+18. hover에만 의존하는 모바일 action 금지
+19. 주문번호 / 금액 / badge 줄바꿈 방치 금지
+
+허용:
+
+1. 기존 CSS 값 조정
+2. CSS variable 추가
+3. media query 추가 / 정리
+4. padding / gap / radius / min-height 조정
+5. grid-template-columns 조정
+6. modal width / height 조정
+7. scroll area overflow 조정
+8. 모바일 대응 override 추가
+9. text overflow / ellipsis / clamp 처리
+10. touch target 확보를 위한 button size 조정
+
+==================================================
+SECTION 31 : VALIDATION STANDARD
+==================================================
+
+프론트엔드 실행:
+
+[프론트엔드] cd frontend
+[프론트엔드] npm run dev
+
+브라우저 width 확인 기준:
+
+640px
+768px
+1024px
+1280px
+
+브라우저 viewport 확인 기준:
+
+640 x 520
+768 x 600
+1024 x 526
+1024 x 768
+1280 x 720
+
+검증 항목:
+
+1. 640px에서 화면 가로 스크롤이 과도하게 생기지 않는가
+2. 640px에서 설정 카드가 1컬럼으로 정리되는가
+3. 768px에서 카드 2컬럼이 자연스러운가
+4. 1024px에서 POS 태블릿 기준 사용성이 유지되는가
+5. 1280px에서 여백이 너무 넓거나 좁지 않은가
+6. 상단 탭이 640px에서 깨지지 않고 스크롤 가능한가
+7. 설정 허브 카드 4개가 1024px 이상에서 4컬럼으로 유지되는가
+8. 모달이 640px에서 화면 밖으로 넘치지 않는가
+9. layout modal이 640px에서 min-width 때문에 깨지지 않는가
+10. 테이블 배치 캔버스가 640px / 768px / 1024px에서 정상 표시되는가
+11. 1024 x 526에서 topbar가 content를 가리지 않는가
+12. 1024 x 526에서 panel scroll이 정상 동작하는가
+13. modal footer가 낮은 height에서도 접근 가능한가
+14. 주문번호 / 금액 / badge가 줄바꿈되지 않는가
+15. page 전체 overflow-x가 발생하지 않는가
+16. tab / filter / floor row 내부 가로 스크롤은 정상인가
+17. 주요 버튼 터치 영역이 충분한가
+18. TypeScript 오류가 없는가
+19. CSS module class 오류가 없는가
+20. 기존 기능이 유지되는가
+21. DB / API / Service / Controller 변경이 없는가
+
+==================================================
+SECTION 32 : CODEX COMPLETION REPORT FORMAT
+==================================================
+
+Codex는 작업 완료 후 아래 형식으로 보고한다.
+
+1. 수정 파일 목록
+-
+
+2. 신규 생성 파일 목록
+- 없음
+
+3. 삭제 파일 목록
+- 없음
+
+4. 변경 요약
+- POS/관리 반응형 기준 640 / 768 / 1024 / 1280 적용
+- gap / padding / panel / card / radius / grid 표준화
+- dashboard panel / hero / card grid 반응형 정리
+- modal / layout canvas 모바일 기준 정리
+- touch target / text overflow / z-index / viewport height 기준 반영
+
+5. 유지한 기능
+- 기존 라우트 유지
+- 기존 컴포넌트 구조 유지
+- 기존 버튼 / 탭 / 모달 기능 유지
+- 기존 API 호출 구조 유지
+
+6. CSS 표준 적용 결과
+- 640px:
+- 768px:
+- 1024px:
+- 1280px:
+
+7. Viewport 검증표
+- 640 x 520:
+- 768 x 600:
+- 1024 x 526:
+- 1024 x 768:
+- 1280 x 720:
+
+8. 스크롤 검증
+- page overflow-x:
+- mainGrid overflow-x:
+- panel scroll:
+- modal body scroll:
+- tab horizontal scroll:
+- layout canvas scroll:
+
+9. Text overflow 검증
+- 주문번호 nowrap:
+- 금액 nowrap:
+- badge nowrap:
+- 상품명 ellipsis / clamp:
+- 주소 ellipsis / clamp:
+
+10. 금지사항 위반 여부
+- page.tsx 수정 없음
+- DB 수정 없음
+- API 수정 없음
+- Service / Controller 수정 없음
+- 라우트 변경 없음
+- className 대규모 변경 없음
+- z-index 임의값 사용 없음
+- POS 운영 화면 640px 강제 없음
+
+11. 검증 결과
+- frontend npm run dev:
+- TypeScript 오류:
+- CSS module 오류:
+- 화면 확인:
+
+12. 남은 이슈
+- 없음 또는 내용 기재
+
+==================================================
+SECTION 33 : FINAL DECLARATION
+==================================================
+
+본 스냅샷은 RAPUS 플랫폼의 POS / 관리 페이지 UI CSS 반응형 표준이다.
+
+최종 기준:
+
+640px
+
+= POS / 관리 모바일 최소 운영 기준
+
+768px
+
+= 권장 모바일 / 소형 태블릿 기준
+
+1024px
+
+= 태블릿 / POS 최소 기준
+
+1280px
+
+= PC / POS 쾌적 기준
+
+본 기준은 POS / 관리 페이지에는 적용 가능하다.
+
+본 기준을 고객용 주문 페이지의 모바일 기준으로 사용하면 안 된다.
+
+고객용 주문 페이지는 360px ~ 430px 스마트폰 세로모드 기준의 별도 UI CSS 표준을 사용한다.
+
+POS 운영 화면은 1024px 이상을 기본 기준으로 하며, 640px 대응은 설정 / 관리 / 조회성 화면 중심으로 제한한다.
+
+END OF FILE

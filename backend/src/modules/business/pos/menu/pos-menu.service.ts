@@ -959,38 +959,132 @@ export class PosMenuService {
     optionGroups: NormalizedPosMenuOptionInput[]
   ) {
     const tx = db.transaction(() => {
-      db.prepare(`
-        DELETE FROM pos_product_option_values
-        WHERE profileId = ?
-          AND channelCode = ?
-          AND optionId IN (
-            SELECT id
-            FROM pos_product_options
-            WHERE profileId = ?
-              AND channelCode = ?
-              AND (
-                productId = ?
-                OR productCode = ?
-              )
-          )
-      `).run(
-        profileId,
-        channelCode,
-        profileId,
-        channelCode,
-        productId,
-        productCode
-      )
-
-      db.prepare(`
-        DELETE FROM pos_product_options
+      const existingOptions = db.prepare(`
+        SELECT
+          id,
+          optionName
+        FROM pos_product_options
         WHERE profileId = ?
           AND channelCode = ?
           AND (
             productId = ?
             OR productCode = ?
           )
-      `).run(profileId, channelCode, productId, productCode)
+      `).all(
+        profileId,
+        channelCode,
+        productId,
+        productCode
+      ) as Array<{ id: number; optionName: string }>
+
+      const optionIds = existingOptions
+        .map((row) => Number(row.id))
+        .filter((id) => Number.isInteger(id) && id > 0)
+
+      if (optionIds.length > 0) {
+        const optionPlaceholders = optionIds.map(() => '?').join(',')
+
+        const referencedOptionIdRows = db.prepare(`
+          SELECT DISTINCT productOptionId AS optionId
+          FROM pos_order_item_options
+          WHERE productOptionId IN (${optionPlaceholders})
+        `).all(...optionIds) as Array<{ optionId: number | null }>
+
+        const referencedOptionIdSet = new Set<number>(
+          referencedOptionIdRows
+            .map((row) => Number(row.optionId))
+            .filter((id) => Number.isInteger(id) && id > 0)
+        )
+
+        const existingValues = db.prepare(`
+          SELECT
+            id,
+            optionId
+          FROM pos_product_option_values
+          WHERE profileId = ?
+            AND channelCode = ?
+            AND optionId IN (${optionPlaceholders})
+        `).all(
+          profileId,
+          channelCode,
+          ...optionIds
+        ) as Array<{ id: number; optionId: number }>
+
+        const valueIds = existingValues
+          .map((row) => Number(row.id))
+          .filter((id) => Number.isInteger(id) && id > 0)
+
+        const referencedValueIdSet = new Set<number>()
+
+        if (valueIds.length > 0) {
+          const valuePlaceholders = valueIds.map(() => '?').join(',')
+
+          const referencedValueIdRows = db.prepare(`
+            SELECT DISTINCT productOptionValueId AS valueId
+            FROM pos_order_item_options
+            WHERE productOptionValueId IN (${valuePlaceholders})
+          `).all(...valueIds) as Array<{ valueId: number | null }>
+
+          referencedValueIdRows.forEach((row) => {
+            const parsedId = Number(row.valueId)
+            if (Number.isInteger(parsedId) && parsedId > 0) {
+              referencedValueIdSet.add(parsedId)
+            }
+          })
+        }
+
+        const archiveValue = db.prepare(`
+          UPDATE pos_product_option_values
+          SET
+            isActive = 0,
+            isVisible = 0,
+            deletedAt = COALESCE(deletedAt, CURRENT_TIMESTAMP),
+            updatedAt = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `)
+
+        const deleteValue = db.prepare(`
+          DELETE FROM pos_product_option_values
+          WHERE id = ?
+        `)
+
+        existingValues.forEach((valueRow) => {
+          if (referencedValueIdSet.has(valueRow.id)) {
+            archiveValue.run(valueRow.id)
+            return
+          }
+
+          deleteValue.run(valueRow.id)
+        })
+
+        const archiveOption = db.prepare(`
+          UPDATE pos_product_options
+          SET
+            optionName = CASE
+              WHEN optionName LIKE '%[ARCHIVED#%'
+                THEN optionName
+              ELSE optionName || ' [ARCHIVED#' || id || ']'
+            END,
+            isActive = 0,
+            deletedAt = COALESCE(deletedAt, CURRENT_TIMESTAMP),
+            updatedAt = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `)
+
+        const deleteOption = db.prepare(`
+          DELETE FROM pos_product_options
+          WHERE id = ?
+        `)
+
+        existingOptions.forEach((optionRow) => {
+          if (referencedOptionIdSet.has(optionRow.id)) {
+            archiveOption.run(optionRow.id)
+            return
+          }
+
+          deleteOption.run(optionRow.id)
+        })
+      }
 
       if (optionGroups.length < 1) {
         return

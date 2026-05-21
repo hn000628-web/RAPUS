@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 
-import PosSidebar from '../../components/PosSidebar'
+import PosHeaderMenuBar from '../../components/PosHeaderMenuBar'
 import PosTopbar from '../../components/PosTopbar'
 import { usePosKeyboardMode } from '../../components/PosKeyboardModeContext'
 import { PosMenuKey } from '../../components/posTypes'
@@ -11,10 +11,11 @@ import {
   TABLE_POS_SIDEBAR_MENUS,
   TABLE_POS_SIDEBAR_PATHS
 } from '../../components/tablePosMenuConfig'
+import sharedStyles from '../PosTablePage.module.css'
 
 import styles from './TableStaySalesPage.module.css'
 
-type SalesViewMode = 'DAILY' | 'MONTHLY'
+type SalesModalType = 'DAILY' | 'MONTHLY'
 
 type TableSalesSummary = {
   totalSalesAmount: number
@@ -139,7 +140,7 @@ export default function TableStaySalesPage() {
   const [currentYear, setCurrentYear] = useState(YEAR)
   const [currentMonth, setCurrentMonth] = useState(MONTH)
   const [selectedDay, setSelectedDay] = useState(12)
-  const [viewMode, setViewMode] = useState<SalesViewMode>('DAILY')
+  const [selectedSalesModal, setSelectedSalesModal] = useState<SalesModalType | null>(null)
   const [isCalendarPickerOpen, setIsCalendarPickerOpen] = useState(false)
 
   const daysInMonth = useMemo(
@@ -175,8 +176,6 @@ export default function TableStaySalesPage() {
     () => DAILY_SALES_BY_DAY[selectedDay] ?? EMPTY_SUMMARY,
     [selectedDay]
   )
-
-  const currentSummary = viewMode === 'DAILY' ? selectedSummary : monthSummary
 
   const calendarDays = useMemo(() => {
     return Array.from({ length: daysInMonth }, (_, index) => {
@@ -245,6 +244,19 @@ export default function TableStaySalesPage() {
     setSelectedDay(1)
   }
 
+  const handleOpenSalesModal = (modalType: SalesModalType) => {
+    setSelectedSalesModal(modalType)
+  }
+
+  const handleCloseSalesModal = () => {
+    setSelectedSalesModal(null)
+  }
+
+  const handleMonthlyCalendarDayClick = (day: number) => {
+    setSelectedDay(day)
+    setSelectedSalesModal('DAILY')
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.posShell}>
@@ -265,127 +277,185 @@ export default function TableStaySalesPage() {
 
         <div className={styles.mainViewport}>
           <div className={styles.mainGrid}>
-            <PosSidebar
-              activeMenu={activeMenu}
-              onChangeMenu={handleChangeMenu}
-              menuOptions={TABLE_POS_SIDEBAR_MENUS}
-              className={styles.sidebar}
-            />
-
             <main className={styles.main}>
-              <section className={styles.summaryPanel}>
-                <p className={styles.pageDescription}>
-                  선택한 날짜의 주문 매출과 결제 내역을 확인합니다.
-                </p>
+              <PosHeaderMenuBar
+                activeMenu={activeMenu}
+                onChangeMenu={handleChangeMenu}
+                menuOptions={TABLE_POS_SIDEBAR_MENUS}
+              />
 
-                <div className={styles.titleRow}>
-                  <h1 className={styles.pageTitle}>매출현황</h1>
-                  <div className={styles.viewActions}>
-                    <button
-                      type="button"
-                      className={viewMode === 'DAILY' ? styles.viewButtonActive : styles.viewButton}
-                      onClick={() => setViewMode('DAILY')}
-                    >
-                      1일 매출 전체보기
-                    </button>
-                    <button
-                      type="button"
-                      className={viewMode === 'MONTHLY' ? styles.viewButtonActive : styles.viewButton}
-                      onClick={() => setViewMode('MONTHLY')}
-                    >
-                      월별 매출 보기
-                    </button>
-                  </div>
-                </div>
-
-                <div className={styles.summaryMain}>
-                  <h2 className={styles.summaryTitle}>
-                    {viewMode === 'DAILY' ? `${currentMonth}월 ${selectedDay}일 매출` : `${currentMonth}월 매출`}
-                  </h2>
-                  <p className={styles.summaryBigValue}>
-                    {formatCurrency(currentSummary.totalSalesAmount)}
-                  </p>
-
-                  <div className={styles.summaryRows}>
-                    {SALES_ITEMS.map((item) => (
-                      <div key={item.key} className={styles.summaryRow}>
-                        <span>{item.label}</span>
-                        <strong>
-                          {formatCurrency(currentSummary[item.key] as number)}
-                        </strong>
-                      </div>
-                    ))}
-                    <div className={styles.summaryRow}>
-                      <span>주문 건수</span>
-                      <strong>{currentSummary.orderCount}건</strong>
+              <div className={styles.menuScrollArea}>
+                <section className={sharedStyles.posDashboardPanel}>
+                  <article className={sharedStyles.posDashboardHero}>
+                    <div>
+                      <p className={sharedStyles.posDashboardEyebrow}>요식업 POS 매출현황</p>
+                      <h1 className={sharedStyles.posDashboardTitle}>매출현황</h1>
+                      <p className={sharedStyles.posDashboardDescription}>
+                        선택한 날짜의 주문 매출과 결제 내역을 확인하고 일별/월별 매출 상세를 빠르게 확인합니다.
+                      </p>
                     </div>
-                  </div>
-                </div>
-              </section>
+                  </article>
+
+                  <section className={styles.salesContentGrid}>
+                    <button
+                      type="button"
+                      className={`${sharedStyles.posDashboardSummaryCard} ${sharedStyles.posDashboardSummaryCardClickable}`}
+                      onClick={() => handleOpenSalesModal('DAILY')}
+                    >
+                      <span className={sharedStyles.posDashboardSummaryLabel}>1일 매출</span>
+                      <strong className={sharedStyles.posDashboardSummaryValue}>
+                        {formatCurrency(selectedSummary.totalSalesAmount)}
+                      </strong>
+                      <small className={sharedStyles.posDashboardSummaryHint}>
+                        클릭하여 1일 매출 현황 보기
+                      </small>
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`${sharedStyles.posDashboardSummaryCard} ${sharedStyles.posDashboardSummaryCardClickable}`}
+                      onClick={() => handleOpenSalesModal('MONTHLY')}
+                    >
+                      <span className={sharedStyles.posDashboardSummaryLabel}>월간 매출</span>
+                      <strong className={sharedStyles.posDashboardSummaryValue}>
+                        {formatCurrency(monthSummary.totalSalesAmount)}
+                      </strong>
+                      <small className={sharedStyles.posDashboardSummaryHint}>
+                        클릭하여 월간 매출 현황 보기
+                      </small>
+                    </button>
+                  </section>
+                </section>
+              </div>
             </main>
-
-            <aside className={styles.calendarPanel}>
-              <div className={styles.calendarHeader}>
-                <h2 className={styles.calendarTitle}>{currentYear}년 {currentMonth}월 캘린더</h2>
-                <div className={styles.calendarActionRow}>
-                  <button
-                    type="button"
-                    className={styles.calendarActionButton}
-                    onClick={handleMoveToToday}
-                  >
-                    오늘
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.calendarActionButton}
-                    onClick={handleMoveToThisMonth}
-                  >
-                    이번달
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.calendarActionButton}
-                    onClick={handleOpenCalendarPicker}
-                  >
-                    캘린더 선택
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.weekRow}>
-                <span>일</span>
-                <span>월</span>
-                <span>화</span>
-                <span>수</span>
-                <span>목</span>
-                <span>금</span>
-                <span>토</span>
-              </div>
-
-              <div className={styles.calendarGrid}>
-                {calendarDays.map((dayInfo) => (
-                  <button
-                    key={dayInfo.day}
-                    type="button"
-                    className={
-                      dayInfo.isSelected
-                        ? `${styles.calendarCell} ${styles.calendarCellActive}`
-                        : styles.calendarCell
-                    }
-                    onClick={() => setSelectedDay(dayInfo.day)}
-                  >
-                    <span className={styles.calendarDate}> {String(dayInfo.day).padStart(2, '0')}</span>
-                    <span className={styles.calendarAmount}>
-                      {dayInfo.totalSalesAmount > 0
-                        ? formatCurrency(dayInfo.totalSalesAmount)
-                        : '없음'}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </aside>
           </div>
         </div>
+
+        {selectedSalesModal ? (
+          <div className={styles.salesModalOverlay} role="dialog" aria-modal="true">
+            <div
+              className={`${styles.salesModalPanel} ${
+                selectedSalesModal === 'MONTHLY' ? styles.salesCalendarModalPanel : styles.salesSummaryModalPanel
+              }`}
+            >
+              <header className={styles.salesModalHeader}>
+                <div>
+                  <h2 className={styles.salesModalTitle}>
+                    {selectedSalesModal === 'DAILY' ? '1일 매출현황' : null}
+                    {selectedSalesModal === 'MONTHLY' ? '월간 매출현황' : null}
+                  </h2>
+                  <p className={styles.salesModalDescription}>
+                    {selectedSalesModal === 'DAILY' ? '선택한 날짜의 주문 매출과 결제 내역을 확인합니다.' : null}
+                    {selectedSalesModal === 'MONTHLY' ? '월간 매출과 날짜별 매출 캘린더를 확인합니다.' : null}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.salesModalCloseButton}
+                  onClick={handleCloseSalesModal}
+                >
+                  닫기
+                </button>
+              </header>
+
+              <div className={styles.salesModalBody}>
+                {selectedSalesModal === 'MONTHLY' ? (
+                  <section className={styles.calendarPanel}>
+                    <div className={styles.calendarHeader}>
+                      <h2 className={styles.calendarTitle}>{currentYear}년 {currentMonth}월 캘린더</h2>
+                      <div className={styles.calendarActionRow}>
+                        <button
+                          type="button"
+                          className={styles.calendarActionButton}
+                          onClick={handleMoveToToday}
+                        >
+                          오늘
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.calendarActionButton}
+                          onClick={handleMoveToThisMonth}
+                        >
+                          이번달
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.calendarActionButton}
+                          onClick={handleOpenCalendarPicker}
+                        >
+                          캘린더 선택
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.calendarActionButton}
+                          onClick={() => handleOpenSalesModal('MONTHLY')}
+                        >
+                          월별 매출 보기
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={styles.weekRow}>
+                      <span>일</span>
+                      <span>월</span>
+                      <span>화</span>
+                      <span>수</span>
+                      <span>목</span>
+                      <span>금</span>
+                      <span>토</span>
+                    </div>
+
+                    <div className={styles.calendarGrid}>
+                      {calendarDays.map((dayInfo) => (
+                        <button
+                          key={dayInfo.day}
+                          type="button"
+                          className={
+                            dayInfo.isSelected
+                              ? `${styles.calendarCell} ${styles.calendarCellActive}`
+                              : styles.calendarCell
+                          }
+                          onClick={() => handleMonthlyCalendarDayClick(dayInfo.day)}
+                        >
+                          <span className={styles.calendarDate}> {String(dayInfo.day).padStart(2, '0')}</span>
+                          <span className={styles.calendarAmount}>
+                            {dayInfo.totalSalesAmount > 0
+                              ? formatCurrency(dayInfo.totalSalesAmount)
+                              : '없음'}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ) : (
+                  <section className={styles.summaryPanel}>
+                    <div className={styles.summaryMain}>
+                      <h2 className={styles.summaryTitle}>{`${currentMonth}월 ${selectedDay}일 매출`}</h2>
+                      <p className={styles.summaryBigValue}>
+                        {formatCurrency(selectedSummary.totalSalesAmount)}
+                      </p>
+
+                      <div className={styles.summaryRows}>
+                        {SALES_ITEMS.map((item) => (
+                          <div key={item.key} className={styles.summaryRow}>
+                            <span>{item.label}</span>
+                            <strong>
+                              {formatCurrency(selectedSummary[item.key])}
+                            </strong>
+                          </div>
+                        ))}
+                        <div className={styles.summaryRow}>
+                          <span>주문 건수</span>
+                          <strong>{selectedSummary.orderCount}건</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {isCalendarPickerOpen ? (
           <div

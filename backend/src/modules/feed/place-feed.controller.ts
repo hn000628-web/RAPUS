@@ -16,11 +16,16 @@ import {
   Controller,
   Get,
   HttpCode,
+  Param,
   Query
 } from '@nestjs/common'
 
 import {
   GetPlaceFeedInput,
+  GetPlaceProductPreviewInput,
+  GetPlaceRepresentativeImagesInput,
+  PlaceFeedRepresentativeImagesResult,
+  PlaceFeedProductPreviewResult,
   PlaceFeedResult,
   PlaceFeedService
 } from './place-feed.service'
@@ -30,6 +35,15 @@ import {
 type PlaceFeedQuery = {
   regionId?: string
   keyword?: string
+  limit?: string
+  searchScope?: 'ALL' | 'POST' | 'PRODUCT' | string
+}
+
+type PlaceProductPreviewQuery = {
+  limit?: string
+}
+
+type PlaceRepresentativeImagesQuery = {
   limit?: string
 }
 
@@ -51,14 +65,47 @@ export class PlaceFeedController {
     const input: GetPlaceFeedInput = {
       regionId: query.regionId,
       keyword: query.keyword,
-      limit: query.limit
+      limit: query.limit,
+      searchScope: query.searchScope
     }
 
     return this.placeFeedService.getPlaceFeed(input)
   }
+
+  // SECTION 05 : GET PLACE PRODUCT PREVIEW
+
+  @Get(':channelCode/products/preview')
+  @HttpCode(200)
+  async getPlaceProductPreview(
+    @Param('channelCode') channelCode: string,
+    @Query() query: PlaceProductPreviewQuery
+  ): Promise<PlaceFeedProductPreviewResult> {
+    const input: GetPlaceProductPreviewInput = {
+      channelCode,
+      limit: query.limit
+    }
+
+    return this.placeFeedService.getPlaceProductPreview(input)
+  }
+
+  // SECTION 06 : GET PLACE REPRESENTATIVE IMAGES
+
+  @Get(':channelCode/representative-images')
+  @HttpCode(200)
+  async getPlaceRepresentativeImages(
+    @Param('channelCode') channelCode: string,
+    @Query() query: PlaceRepresentativeImagesQuery
+  ): Promise<PlaceFeedRepresentativeImagesResult> {
+    const input: GetPlaceRepresentativeImagesInput = {
+      channelCode,
+      limit: query.limit
+    }
+
+    return this.placeFeedService.getPlaceRepresentativeImages(input)
+  }
 }
 
-// SECTION 05 : VALIDATION
+// SECTION 07 : VALIDATION
 
 /*
 VALIDATION:

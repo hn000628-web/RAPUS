@@ -24,6 +24,17 @@ import {
 import type {
   CSSProperties
 } from 'react'
+import {
+  createCustomerOrder,
+  getCustomerOrderBootstrap,
+  type CreateCustomerOrderRequest,
+  type CustomerOrderBootstrapResponse
+} from '@/lib/business/pos/customerOrderApi'
+import { getMe } from '@/lib/authApi'
+import {
+  listMyDeliveryAddresses,
+  type DeliveryAddressItem,
+} from '@/lib/accountApi'
 
 // SECTION 02 : TYPE
 
@@ -31,6 +42,7 @@ type Props = {
   channelCode: string
   activeCategoryKey: string
   categorySidebar?: ReactNode
+  embedInModal?: boolean
 }
 
 type OrderMenuItem = {
@@ -51,6 +63,11 @@ type DeliveryPaymentItem = {
   id: string
   label: string
   description: string
+}
+
+type DeliveryAddressLoadContext = {
+  profileId: number
+  channelCode: string
 }
 
 // SECTION 03 : CONSTANT
@@ -254,9 +271,28 @@ const menuButtonStyle: CSSProperties = {
 
 const selectedMenuButtonStyle: CSSProperties = {
   ...menuButtonStyle,
-  borderColor: '#111827',
-  backgroundColor: '#ffffff',
-  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.12)'
+  border: '2px solid #111827',
+  backgroundColor: '#f8fafc',
+  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.16)'
+}
+
+const menuButtonTopStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: '8px'
+}
+
+const selectedBadgeStyle: CSSProperties = {
+  flexShrink: 0,
+  padding: '2px 8px',
+  borderRadius: '999px',
+  backgroundColor: '#0f172a',
+  color: '#ffffff',
+  fontSize: '11px',
+  fontWeight: 900,
+  lineHeight: 1.4,
+  whiteSpace: 'nowrap'
 }
 
 const menuNameStyle: CSSProperties = {
@@ -404,18 +440,20 @@ const paymentGridStyle: CSSProperties = {
 const paymentButtonStyle: CSSProperties = {
   minHeight: '86px',
   padding: '14px',
-  border: '1px solid #dbe2ea',
+  border: '1px solid #dbe3ef',
   borderRadius: '16px',
   backgroundColor: '#ffffff',
+  boxShadow: 'none',
   textAlign: 'left',
-  cursor: 'pointer'
+  cursor: 'pointer',
+  outline: 'none'
 }
 
 const selectedPaymentButtonStyle: CSSProperties = {
   ...paymentButtonStyle,
-  borderColor: '#111827',
+  border: '2px solid #0f172a',
   backgroundColor: '#f8fafc',
-  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.12)'
+  boxShadow: '0 8px 20px rgba(15, 23, 42, 0.14)'
 }
 
 const paymentTitleStyle: CSSProperties = {
@@ -538,25 +576,30 @@ const footerOrderButtonStyle: CSSProperties = {
 const modalOverlayStyle: CSSProperties = {
   position: 'fixed',
   inset: 0,
-  zIndex: 120,
-  padding: '18px',
-  backgroundColor: 'rgba(15, 23, 42, 0.55)',
+  zIndex: 1000,
+  padding: '24px',
+  backgroundColor: 'rgba(15, 23, 42, 0.45)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  boxSizing: 'border-box'
+  boxSizing: 'border-box',
+  overflow: 'hidden'
 }
 
 const modalPanelStyle: CSSProperties = {
-  width: 'min(920px, calc(100vw - 36px))',
-  maxHeight: 'calc(100vh - 56px)',
-  overflowY: 'auto',
+  width: 'min(100%, 900px)',
+  maxHeight: 'min(86vh, 760px)',
   border: '1px solid #dbe2ea',
   borderRadius: '24px',
   backgroundColor: '#ffffff',
   boxShadow: '0 28px 70px rgba(15, 23, 42, 0.28)',
   padding: '18px',
-  boxSizing: 'border-box'
+  boxSizing: 'border-box',
+  overflow: 'hidden',
+  position: 'relative',
+  margin: 'auto',
+  display: 'flex',
+  flexDirection: 'column'
 }
 
 const modalHeaderStyle: CSSProperties = {
@@ -596,6 +639,9 @@ const modalCloseButtonStyle: CSSProperties = {
 }
 
 const modalBodyStyle: CSSProperties = {
+  flex: '1 1 auto',
+  minHeight: 0,
+  overflowY: 'auto',
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
   gap: '12px',
@@ -657,8 +703,23 @@ function formatPrice(
 export default function DeliveryOrderContent({
   channelCode,
   activeCategoryKey,
-  categorySidebar
+  categorySidebar,
+  embedInModal = false
 }: Props) {
+  const [isLoadingMenus, setIsLoadingMenus] = useState<boolean>(false)
+  const [menuError, setMenuError] = useState<string | null>(null)
+  const [orderSubmitError, setOrderSubmitError] = useState<string | null>(null)
+  const [deliveryAddressError, setDeliveryAddressError] = useState<string | null>(null)
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false)
+  const [isLoadingDeliveryAddresses, setIsLoadingDeliveryAddresses] = useState<boolean>(false)
+  const [bootstrapData, setBootstrapData] = useState<CustomerOrderBootstrapResponse | null>(null)
+  const [orderResult, setOrderResult] = useState<{ orderCode: string, revisionCode: string } | null>(null)
+  const [menuItems, setMenuItems] = useState<OrderMenuItem[]>(MOCK_MENU_ITEMS)
+  const [menuOptionItemsByMenuId, setMenuOptionItemsByMenuId] = useState<Record<string, OrderOptionItem[]>>({})
+  const [deliveryAddresses, setDeliveryAddresses] = useState<DeliveryAddressItem[]>([])
+  const [selectedDeliveryAddressId, setSelectedDeliveryAddressId] = useState<string>('')
+  const [deliveryAddressLoadContext, setDeliveryAddressLoadContext] = useState<DeliveryAddressLoadContext | null>(null)
+
   // SECTION 07 : STATE
 
   const [selectedMenuId, setSelectedMenuId] =
@@ -709,19 +770,97 @@ export default function DeliveryOrderContent({
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadBootstrap() {
+      if (!channelCode) {
+        setBootstrapData(null)
+        setMenuItems([])
+        setMenuOptionItemsByMenuId({})
+        return
+      }
+
+      setIsLoadingMenus(true)
+      setMenuError(null)
+
+      try {
+        const response = await getCustomerOrderBootstrap({
+          providerChannelCode: channelCode,
+          orderFlowType: 'DELIVERY'
+        })
+
+        if (cancelled) {
+          return
+        }
+
+        setBootstrapData(response)
+
+        const nextMenuItems: OrderMenuItem[] = response.products.map((product) => ({
+          id: String(product.id),
+          categoryKey: response.categories.find((category) => category.id === product.categoryId)?.categoryCode ?? 'UNCATEGORIZED',
+          name: product.productName,
+          description: product.productDescription ?? '',
+          price: product.basePrice
+        }))
+
+        const nextOptionsByMenuId: Record<string, OrderOptionItem[]> = {}
+        response.products.forEach((product) => {
+          nextOptionsByMenuId[String(product.id)] = product.options.flatMap((option) => (
+            option.values.map((value) => ({
+              id: `${option.id}:${value.id}`,
+              label: option.optionName.trim() === value.optionValueName.trim()
+                ? option.optionName
+                : `${option.optionName} - ${value.optionValueName}`,
+              price: value.priceDelta
+            }))
+          ))
+        })
+
+        setMenuItems(nextMenuItems)
+        setMenuOptionItemsByMenuId(nextOptionsByMenuId)
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+        setBootstrapData(null)
+        setMenuItems([])
+        setMenuOptionItemsByMenuId({})
+        setMenuError(
+          error instanceof Error && error.message
+            ? `메뉴 정보를 불러오지 못했습니다. (${error.message})`
+            : '메뉴 정보를 불러오지 못했습니다.'
+        )
+      } finally {
+        if (!cancelled) {
+          setIsLoadingMenus(false)
+        }
+      }
+    }
+
+    void loadBootstrap()
+
+    return () => {
+      cancelled = true
+    }
+  }, [channelCode])
+
   const selectedMenu = useMemo(() => {
-    return MOCK_MENU_ITEMS.find(item => {
+    return menuItems.find(item => {
       return item.id === selectedMenuId
     }) || EMPTY_MENU_ITEM
   }, [
-    selectedMenuId
+    selectedMenuId,
+    menuItems
   ])
 
   const visibleProducts = useMemo(() => {
-    return MOCK_MENU_ITEMS.filter((item) => {
-      return item.categoryKey === activeCategoryKey
-    })
-  }, [activeCategoryKey])
+    if (activeCategoryKey === 'ALL') {
+      return menuItems
+    }
+    const filtered = menuItems.filter((item) => item.categoryKey === activeCategoryKey)
+    return filtered.length > 0 ? filtered : menuItems
+  }, [activeCategoryKey, menuItems])
 
   useEffect(() => {
     if (visibleProducts.length === 0) {
@@ -739,11 +878,14 @@ export default function DeliveryOrderContent({
   }, [selectedMenuId, visibleProducts])
 
   const selectedOptions = useMemo(() => {
-    return MOCK_OPTION_ITEMS.filter(item => {
+    const optionItems = menuOptionItemsByMenuId[selectedMenuId] ?? []
+    return optionItems.filter(item => {
       return selectedOptionIds.includes(item.id)
     })
   }, [
-    selectedOptionIds
+    selectedOptionIds,
+    selectedMenuId,
+    menuOptionItemsByMenuId
   ])
 
   const selectedPayment = useMemo(() => {
@@ -834,12 +976,68 @@ export default function DeliveryOrderContent({
     })
   }
 
+  function applyDeliveryAddress(
+    item: DeliveryAddressItem
+  ) {
+    setSelectedDeliveryAddressId(String(item.id))
+    setReceiverName(item.recipientName?.trim() || '')
+    setReceiverPhone(item.recipientPhone?.trim() || '')
+    setAddress(item.deliveryAddress?.trim() || '')
+    setDetailAddress(item.deliveryDetailAddress?.trim() || '')
+    setMemo(item.deliveryMemo?.trim() || '')
+  }
+
+  async function loadDeliveryAddressesFromDb() {
+    setIsLoadingDeliveryAddresses(true)
+    setDeliveryAddressError(null)
+
+    try {
+      const me = await getMe()
+      const profileId = Number(me?.user?.profileId || 0)
+      const meChannelCode = String(me?.user?.channelCode || '').trim()
+
+      if (!profileId || !meChannelCode) {
+        throw new Error('로그인 컨텍스트를 확인하지 못했습니다.')
+      }
+
+      const response = await listMyDeliveryAddresses({
+        profileId,
+        channelCode: meChannelCode,
+      })
+
+      setDeliveryAddressLoadContext({
+        profileId,
+        channelCode: meChannelCode,
+      })
+
+      const activeAddresses = (response.addresses || []).filter((item) => Number(item.isActive) === 1)
+      setDeliveryAddresses(activeAddresses)
+
+      if (activeAddresses.length > 0) {
+        const defaultAddress = activeAddresses.find((item) => Number(item.isDefault) === 1) ?? activeAddresses[0]
+        applyDeliveryAddress(defaultAddress)
+      }
+    } catch (error) {
+      setDeliveryAddressError(
+        error instanceof Error && error.message
+          ? `배송지 정보를 불러오지 못했습니다. (${error.message})`
+          : '배송지 정보를 불러오지 못했습니다.'
+      )
+    } finally {
+      setIsLoadingDeliveryAddresses(false)
+    }
+  }
+
   function handleAddressSearch() {
-    window.alert('주소 선택 기능은 이후 로그인 주소 조회 / 주소 API 연결 단계에서 구현합니다.')
+    void loadDeliveryAddressesFromDb()
   }
 
   function handleOpenDeliveryModal() {
+    setOrderSubmitError(null)
     setIsDeliveryModalOpen(true)
+    if (deliveryAddresses.length < 1 && !isLoadingDeliveryAddresses) {
+      void loadDeliveryAddressesFromDb()
+    }
   }
 
   function handleCloseDeliveryModal() {
@@ -847,8 +1045,81 @@ export default function DeliveryOrderContent({
   }
 
   function handleSubmitOrder() {
-    window.alert('배달 주문 생성 기능은 이후 API / DB 연결 단계에서 구현합니다.')
-    setIsDeliveryModalOpen(false)
+    if (isSubmittingOrder) {
+      return
+    }
+
+    if (!channelCode) {
+      setOrderSubmitError('채널 정보를 확인하지 못했습니다.')
+      return
+    }
+
+    if (selectedMenu.id === EMPTY_MENU_ITEM.id) {
+      setOrderSubmitError('주문할 메뉴를 선택해 주세요.')
+      return
+    }
+
+    const productId = Number(selectedMenu.id)
+    if (!Number.isInteger(productId) || productId < 1) {
+      setOrderSubmitError('메뉴 정보가 올바르지 않습니다.')
+      return
+    }
+
+    setIsSubmittingOrder(true)
+    setOrderSubmitError(null)
+
+    const payload: CreateCustomerOrderRequest = {
+      providerChannelCode: channelCode,
+      orderSource: 'ONLINE',
+      orderFlowType: 'DELIVERY',
+      customerProfileId: deliveryAddressLoadContext?.profileId,
+      customerChannelCode: deliveryAddressLoadContext?.channelCode,
+      customerName: receiverName.trim() || undefined,
+      customerPhone: receiverPhone.trim() || undefined,
+      memo: memo.trim() || undefined,
+      fulfillment: {
+        deliveryAddress: address.trim() || undefined,
+        deliveryDetailAddress: detailAddress.trim() || undefined,
+        deliveryPhone: receiverPhone.trim() || undefined,
+        deliveryMemo: memo.trim() || undefined,
+        customerRequestMemo: memo.trim() || undefined
+      },
+      items: [
+        {
+          posProductId: productId,
+          quantity,
+          options: selectedOptions
+            .map((option) => {
+              const [optionIdRaw, optionValueIdRaw] = option.id.split(':')
+              return {
+                productOptionId: Number(optionIdRaw),
+                productOptionValueId: Number(optionValueIdRaw),
+                quantity: 1
+              }
+            })
+            .filter((option) => Number.isInteger(option.productOptionId) && Number.isInteger(option.productOptionValueId))
+        }
+      ]
+    }
+
+    void createCustomerOrder(payload)
+      .then((response) => {
+        setOrderResult({
+          orderCode: response.order.orderCode,
+          revisionCode: response.order.revisionCode
+        })
+        setIsDeliveryModalOpen(false)
+      })
+      .catch((error) => {
+        setOrderSubmitError(
+          error instanceof Error && error.message
+            ? `주문을 접수하지 못했습니다. (${error.message})`
+            : '주문을 접수하지 못했습니다.'
+        )
+      })
+      .finally(() => {
+        setIsSubmittingOrder(false)
+      })
   }
 
   // SECTION 10 : UI BLOCK
@@ -872,6 +1143,12 @@ export default function DeliveryOrderContent({
         1. 메뉴 선택
       </h3>
 
+      {isLoadingMenus ? (
+        <p style={descriptionStyle}>메뉴 정보를 불러오는 중입니다.</p>
+      ) : null}
+      {menuError ? (
+        <p style={descriptionStyle}>{menuError}</p>
+      ) : null}
       <div style={menuGridStyle}>
         {visibleProducts.map(item => {
           const isSelected =
@@ -881,6 +1158,7 @@ export default function DeliveryOrderContent({
             <button
               key={item.id}
               type="button"
+              aria-pressed={isSelected}
               style={
                 isSelected
                   ? selectedMenuButtonStyle
@@ -891,9 +1169,14 @@ export default function DeliveryOrderContent({
               }}
             >
               <span>
-                <h4 style={menuNameStyle}>
-                  {item.name}
-                </h4>
+                <span style={menuButtonTopStyle}>
+                  <h4 style={menuNameStyle}>
+                    {item.name}
+                  </h4>
+                  {isSelected ? (
+                    <span style={selectedBadgeStyle}>선택됨</span>
+                  ) : null}
+                </span>
 
                 <p style={menuDescStyle}>
                   {item.description}
@@ -965,7 +1248,7 @@ export default function DeliveryOrderContent({
       </h3>
 
       <div style={optionListStyle}>
-        {MOCK_OPTION_ITEMS.map(item => {
+        {(menuOptionItemsByMenuId[selectedMenuId] ?? []).map(item => {
           const checked =
             selectedOptionIds.includes(item.id)
 
@@ -1031,8 +1314,29 @@ export default function DeliveryOrderContent({
           style={addressButtonStyle}
           onClick={handleAddressSearch}
         >
-          배송지 선택
+          {isLoadingDeliveryAddresses ? '배송지 불러오는 중...' : '배송지 선택'}
         </button>
+
+        {deliveryAddresses.length > 0 ? (
+          <select
+            value={selectedDeliveryAddressId}
+            style={inputStyle}
+            onChange={(event) => {
+              const selectedId = event.target.value
+              setSelectedDeliveryAddressId(selectedId)
+              const selected = deliveryAddresses.find((item) => String(item.id) === selectedId)
+              if (selected) {
+                applyDeliveryAddress(selected)
+              }
+            }}
+          >
+            {deliveryAddresses.map((item) => (
+              <option key={item.id} value={String(item.id)}>
+                {item.label} · {item.deliveryAddress}
+              </option>
+            ))}
+          </select>
+        ) : null}
 
         <input
           type="text"
@@ -1056,7 +1360,11 @@ export default function DeliveryOrderContent({
       </div>
 
       <p style={descriptionStyle}>
-        현재는 UI 목업입니다. 실제 배달 주문에서는 로그인 고객의 주소 목록을 불러오는 구조로 연결합니다.
+        {deliveryAddressError
+          ? deliveryAddressError
+          : deliveryAddresses.length > 0
+            ? `등록 배송지 ${deliveryAddresses.length}개를 불러왔습니다.`
+            : '배송지 선택 버튼을 누르면 DB에 저장된 배송지 목록을 불러옵니다.'}
       </p>
     </section>
   )
@@ -1076,6 +1384,7 @@ export default function DeliveryOrderContent({
             <button
               key={item.id}
               type="button"
+              aria-pressed={isSelected}
               style={
                 isSelected
                   ? selectedPaymentButtonStyle
@@ -1209,12 +1518,31 @@ export default function DeliveryOrderContent({
       <div style={noticeStyle}>
         하단 배달주문등록 버튼을 누르면 배송정보와 결제방식을 입력합니다.
       </div>
+      {orderResult ? (
+        <div style={noticeStyle}>
+          주문 접수 완료: {orderResult.orderCode} / {orderResult.revisionCode}
+        </div>
+      ) : null}
+      {orderSubmitError ? (
+        <div style={noticeStyle}>{orderSubmitError}</div>
+      ) : null}
     </section>
   )
 
   const FooterBarUI = (
     <footer
-      style={footerBarViewportStyle}
+      style={
+        embedInModal
+          ? {
+              ...footerBarViewportStyle,
+              position: 'sticky',
+              left: 'auto',
+              right: 'auto',
+              bottom: 0,
+              zIndex: 1
+            }
+          : footerBarViewportStyle
+      }
     >
       <div
         style={
@@ -1366,9 +1694,10 @@ export default function DeliveryOrderContent({
             <button
               type="button"
               style={modalSubmitButtonStyle}
+              disabled={isSubmittingOrder}
               onClick={handleSubmitOrder}
             >
-              배달주문등록
+              {isSubmittingOrder ? '주문 접수중...' : '배달주문등록'}
             </button>
           </div>
         </footer>
@@ -1379,7 +1708,16 @@ export default function DeliveryOrderContent({
   // SECTION 11 : RETURN
 
   return (
-    <section style={contentStyle}>
+    <section
+      style={
+        embedInModal
+          ? {
+              ...contentStyle,
+              paddingBottom: '12px'
+            }
+          : contentStyle
+      }
+    >
       {IntroUI}
       {categorySidebar}
 

@@ -39,6 +39,12 @@ showCloseButton?:boolean
 
 hideIcon?:boolean
 
+headerRight?:ReactNode
+
+closeButtonInHeaderActions?:boolean
+
+headerStyle?:CSSProperties
+
 panelStyle?:CSSProperties
 
 bodyStyle?:CSSProperties
@@ -60,6 +66,9 @@ footer,
 hideDefaultButton=false,
 showCloseButton=false,
 hideIcon=false,
+headerRight,
+closeButtonInHeaderActions=false,
+headerStyle,
 panelStyle,
 bodyStyle
 
@@ -110,7 +119,7 @@ return(
 ...panelStyle
 }}>
 
-{showCloseButton&&(
+{showCloseButton && !closeButtonInHeaderActions&&(
 
 <button
 
@@ -143,17 +152,46 @@ type==='info'?'i':
 
 )}
 
-<div style={titleStyle}>
+<div style={{
+...headerWrapStyle,
+...((headerRight || closeButtonInHeaderActions) ? headerWrapWithActionStyle : undefined),
+...headerStyle
+}}>
+<div style={(headerRight || closeButtonInHeaderActions) ? titleWrapWithActionStyle : undefined}>
+<div style={{
+...titleStyle,
+...((headerRight || closeButtonInHeaderActions) ? titleWithActionStyle : undefined)
+}}>
 {title}
 </div>
 
 {description&&(
 
-<div style={descStyle}>
+<div style={{
+...descStyle,
+...((headerRight || closeButtonInHeaderActions) ? descWithActionStyle : undefined)
+}}>
 {description}
 </div>
 
 )}
+</div>
+{headerRight || closeButtonInHeaderActions ? (
+<div style={headerActionWrapStyle}>
+{headerRight}
+{showCloseButton && closeButtonInHeaderActions ? (
+<button
+type="button"
+onClick={onClose}
+style={inlineCloseButtonStyle}
+aria-label="Close modal"
+>
+×
+</button>
+) : null}
+</div>
+) : null}
+</div>
 
 {children&&(
 
@@ -273,6 +311,20 @@ cursor:'pointer'
 
 }
 
+const inlineCloseButtonStyle:CSSProperties={
+width:34,
+minWidth:34,
+height:34,
+border:'1px solid #d1d5db',
+borderRadius:10,
+background:'#fff',
+color:'#111827',
+fontSize:22,
+fontWeight:800,
+lineHeight:1,
+cursor:'pointer'
+}
+
 const iconStyle=(color:string):CSSProperties=>({
 
 width:56,
@@ -339,4 +391,40 @@ fontWeight:600,
 
 cursor:'pointer'
 
+}
+
+const headerWrapStyle:CSSProperties={
+width:'100%'
+}
+
+const headerWrapWithActionStyle:CSSProperties={
+display:'flex',
+alignItems:'center',
+justifyContent:'space-between',
+gap:12
+}
+
+const titleWrapWithActionStyle:CSSProperties={
+display:'flex',
+flexDirection:'column',
+alignItems:'flex-start',
+gap:6,
+minWidth:0,
+flex:1
+}
+
+const titleWithActionStyle:CSSProperties={
+textAlign:'left'
+}
+
+const descWithActionStyle:CSSProperties={
+textAlign:'left'
+}
+
+const headerActionWrapStyle:CSSProperties={
+display:'flex',
+alignItems:'center',
+gap:12,
+paddingRight:44,
+flexShrink:0
 }

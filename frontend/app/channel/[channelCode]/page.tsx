@@ -24,7 +24,8 @@ import {
 } from 'react'
 
 import {
-  useParams
+  useParams,
+  useSearchParams
 } from 'next/navigation'
 
 import {
@@ -421,9 +422,12 @@ export default function PublicChannelPage({
     useParams<{
       channelCode?: string
     }>()
+  const searchParams = useSearchParams()
 
   const menuBarRef =
     useRef<HTMLDivElement | null>(null)
+  const autoOrderTabHandledRef =
+    useRef(false)
 
   const channelCode = useMemo(() => {
     return String(
@@ -435,6 +439,10 @@ export default function PublicChannelPage({
     routeParams,
     params?.channelCode
   ])
+
+  const shouldAutoOpenOrder = useMemo(() => {
+    return searchParams?.get('openOrder') === 'true'
+  }, [searchParams])
 
   // SECTION 07 : STATE
 
@@ -652,7 +660,11 @@ export default function PublicChannelPage({
         setProductPostItems(productItems)
         setEventPostItems(eventItems)
         setGalleryDbItems(galleryItems)
-        setActiveTab('info')
+        setActiveTab(
+          shouldAutoOpenOrder
+            ? 'order'
+            : 'info'
+        )
       } catch (err) {
         console.error('PUBLIC CHANNEL LOAD FAILED ->', err)
 
@@ -676,7 +688,8 @@ export default function PublicChannelPage({
       cancelled = true
     }
   }, [
-    channelCode
+    channelCode,
+    shouldAutoOpenOrder
   ])
 
   // SECTION 10 : MEMO DATA
@@ -875,6 +888,23 @@ export default function PublicChannelPage({
   }, [
     menus
   ])
+
+  useEffect(() => {
+    if (!shouldAutoOpenOrder || autoOrderTabHandledRef.current) {
+      return
+    }
+
+    const hasOrderTab = tabs.some((tab) => {
+      return normalizePostType(tab.postType || tab.id) === 'ORDER'
+    })
+
+    if (!hasOrderTab) {
+      return
+    }
+
+    autoOrderTabHandledRef.current = true
+    setActiveTab('order')
+  }, [shouldAutoOpenOrder, tabs])
 
   const activeMenu = useMemo(() => {
     return tabs.find(tab => {
@@ -1081,6 +1111,7 @@ export default function PublicChannelPage({
       {activePostType === 'ORDER' && (
         <ChannelOrder
           channelCode={channelCode}
+          autoOpenOrder={shouldAutoOpenOrder}
         />
       )}
 

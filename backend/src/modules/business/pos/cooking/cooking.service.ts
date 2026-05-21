@@ -52,6 +52,10 @@ type CookingTicketRow = {
   createdAt: string
   updatedAt: string | null
   deletedAt: string | null
+  orderYear: number | null
+  orderMonth: number | null
+  orderDay: number | null
+  orderSequence: number | null
 }
 
 type MissingCookingTicketOrderItemRow = {
@@ -128,36 +132,42 @@ export class CookingService {
       normalizedStatus === 'ALL'
         ? db.prepare(`
             SELECT
-              id,
-              providerProfileId,
-              providerChannelCode,
-              orderId,
-              orderCode,
-              orderItemId,
-              locationId,
-              locationNameSnapshot,
-              productNameSnapshot,
-              quantity,
-              optionSummarySnapshot,
-              requestMemoSnapshot,
-              cookingStatus,
-              priorityLevel,
-              cookStaffCode,
-              cookStaffNameSnapshot,
-              orderedAt,
-              cookingStartedAt,
-              cookingCompletedAt,
-              elapsedMinutes,
-              isActive,
-              createdAt,
-              updatedAt,
-              deletedAt
-            FROM pos_order_cooking_tickets
-            WHERE providerProfileId = ?
-              AND providerChannelCode = ?
-              AND isActive = ?
-              AND deletedAt IS NULL
-            ORDER BY createdAt ASC, id ASC
+              t.id AS id,
+              t.providerProfileId AS providerProfileId,
+              t.providerChannelCode AS providerChannelCode,
+              t.orderId AS orderId,
+              t.orderCode AS orderCode,
+              t.orderItemId AS orderItemId,
+              t.locationId AS locationId,
+              t.locationNameSnapshot AS locationNameSnapshot,
+              t.productNameSnapshot AS productNameSnapshot,
+              t.quantity AS quantity,
+              t.optionSummarySnapshot AS optionSummarySnapshot,
+              t.requestMemoSnapshot AS requestMemoSnapshot,
+              t.cookingStatus AS cookingStatus,
+              t.priorityLevel AS priorityLevel,
+              t.cookStaffCode AS cookStaffCode,
+              t.cookStaffNameSnapshot AS cookStaffNameSnapshot,
+              t.orderedAt AS orderedAt,
+              t.cookingStartedAt AS cookingStartedAt,
+              t.cookingCompletedAt AS cookingCompletedAt,
+              t.elapsedMinutes AS elapsedMinutes,
+              t.isActive AS isActive,
+              t.createdAt AS createdAt,
+              t.updatedAt AS updatedAt,
+              t.deletedAt AS deletedAt,
+              o.orderYear AS orderYear,
+              o.orderMonth AS orderMonth,
+              o.orderDay AS orderDay,
+              o.orderSequence AS orderSequence
+            FROM pos_order_cooking_tickets t
+            LEFT JOIN pos_orders o
+              ON o.id = t.orderId
+            WHERE t.providerProfileId = ?
+              AND t.providerChannelCode = ?
+              AND t.isActive = ?
+              AND t.deletedAt IS NULL
+            ORDER BY t.createdAt ASC, t.id ASC
           `).all(
           profileId,
           channelCode,
@@ -165,37 +175,43 @@ export class CookingService {
         ) as CookingTicketRow[]
         : db.prepare(`
             SELECT
-              id,
-              providerProfileId,
-              providerChannelCode,
-              orderId,
-              orderCode,
-              orderItemId,
-              locationId,
-              locationNameSnapshot,
-              productNameSnapshot,
-              quantity,
-              optionSummarySnapshot,
-              requestMemoSnapshot,
-              cookingStatus,
-              priorityLevel,
-              cookStaffCode,
-              cookStaffNameSnapshot,
-              orderedAt,
-              cookingStartedAt,
-              cookingCompletedAt,
-              elapsedMinutes,
-              isActive,
-              createdAt,
-              updatedAt,
-              deletedAt
-            FROM pos_order_cooking_tickets
-            WHERE providerProfileId = ?
-              AND providerChannelCode = ?
-              AND cookingStatus = ?
-              AND isActive = ?
-              AND deletedAt IS NULL
-            ORDER BY createdAt ASC, id ASC
+              t.id AS id,
+              t.providerProfileId AS providerProfileId,
+              t.providerChannelCode AS providerChannelCode,
+              t.orderId AS orderId,
+              t.orderCode AS orderCode,
+              t.orderItemId AS orderItemId,
+              t.locationId AS locationId,
+              t.locationNameSnapshot AS locationNameSnapshot,
+              t.productNameSnapshot AS productNameSnapshot,
+              t.quantity AS quantity,
+              t.optionSummarySnapshot AS optionSummarySnapshot,
+              t.requestMemoSnapshot AS requestMemoSnapshot,
+              t.cookingStatus AS cookingStatus,
+              t.priorityLevel AS priorityLevel,
+              t.cookStaffCode AS cookStaffCode,
+              t.cookStaffNameSnapshot AS cookStaffNameSnapshot,
+              t.orderedAt AS orderedAt,
+              t.cookingStartedAt AS cookingStartedAt,
+              t.cookingCompletedAt AS cookingCompletedAt,
+              t.elapsedMinutes AS elapsedMinutes,
+              t.isActive AS isActive,
+              t.createdAt AS createdAt,
+              t.updatedAt AS updatedAt,
+              t.deletedAt AS deletedAt,
+              o.orderYear AS orderYear,
+              o.orderMonth AS orderMonth,
+              o.orderDay AS orderDay,
+              o.orderSequence AS orderSequence
+            FROM pos_order_cooking_tickets t
+            LEFT JOIN pos_orders o
+              ON o.id = t.orderId
+            WHERE t.providerProfileId = ?
+              AND t.providerChannelCode = ?
+              AND t.cookingStatus = ?
+              AND t.isActive = ?
+              AND t.deletedAt IS NULL
+            ORDER BY t.createdAt ASC, t.id ASC
           `).all(
           profileId,
           channelCode,
@@ -666,7 +682,7 @@ export class CookingService {
       profileId: row.providerProfileId,
       channelCode: row.providerChannelCode,
       orderId: row.orderId,
-      orderCode: row.orderCode,
+      orderCode: this.normalizeOrderCodeForDisplay(row),
       orderItemId: row.orderItemId,
       locationId: row.locationId,
       locationNameSnapshot: row.locationNameSnapshot,
@@ -686,6 +702,41 @@ export class CookingService {
       createdAt: row.createdAt,
       updatedAt: row.updatedAt
     }
+  }
+
+  private normalizeOrderCodeForDisplay(
+    row: Pick<CookingTicketRow, 'orderCode' | 'orderYear' | 'orderMonth' | 'orderDay' | 'orderSequence'>
+  ): string {
+    const raw = String(row.orderCode ?? '').trim().toUpperCase()
+
+    if (/^OC[0-9]{10}$/.test(raw)) {
+      return raw
+    }
+
+    const year = Number(row.orderYear ?? 0)
+    const month = Number(row.orderMonth ?? 0)
+    const day = Number(row.orderDay ?? 0)
+    const sequence = Number(row.orderSequence ?? 0)
+
+    if (
+      Number.isInteger(year) &&
+      Number.isInteger(month) &&
+      Number.isInteger(day) &&
+      Number.isInteger(sequence) &&
+      year > 0 &&
+      month > 0 &&
+      day > 0 &&
+      sequence > 0 &&
+      sequence <= 9999
+    ) {
+      const yy = String(year % 100).padStart(2, '0')
+      const mm = String(month).padStart(2, '0')
+      const dd = String(day).padStart(2, '0')
+      const seq = String(sequence).padStart(4, '0')
+      return `OC${yy}${mm}${dd}${seq}`
+    }
+
+    return raw
   }
 
   private resolveElapsedMinutesByOrderStart(

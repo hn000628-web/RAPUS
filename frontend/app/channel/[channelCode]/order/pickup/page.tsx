@@ -1,50 +1,93 @@
 ﻿'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import OrderLayout from '../components/OrderLayout'
 import OrderSidebar from '../components/OrderSidebar'
 import PickupOrderContent from '../components/PickupOrderContent'
+import type { ReactNode } from 'react'
+import { getCustomerOrderBootstrap } from '@/lib/business/pos/customerOrderApi'
 
 type RouteParams = {
   channelCode?: string
 }
 
-type MockOrderCategory = {
+type OrderCategory = {
   key: string
   label: string
 }
 
-const MOCK_ORDER_CATEGORIES: MockOrderCategory[] = [
-  { key: 'MAIN', label: '메인 메뉴' },
-  { key: 'SUB', label: '서브 메뉴' },
-  { key: 'DRINK', label: '음료' },
-  { key: 'SIDE', label: '사이드' },
-  { key: 'ALCOHOL', label: '주류' },
-  { key: 'CUSTOM_1', label: '새 카테고리' },
-  { key: 'CUSTOM_2', label: '새 카테고리' },
-  { key: 'CUSTOM_3', label: '새 카테고리' }
-]
+const DEFAULT_ORDER_CATEGORIES: OrderCategory[] = []
 
 export default function PickupOrderPage() {
   const router = useRouter()
   const params = useParams<RouteParams>()
   const channelCode = String(params?.channelCode || '').trim()
 
-  const [activeCategoryKey, setActiveCategoryKey] = useState<string>('MAIN')
+  const [orderCategories, setOrderCategories] = useState<OrderCategory[]>(DEFAULT_ORDER_CATEGORIES)
+  const [activeCategoryKey, setActiveCategoryKey] = useState<string>('')
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadCategories() {
+      if (!channelCode) {
+        setOrderCategories(DEFAULT_ORDER_CATEGORIES)
+        setActiveCategoryKey('')
+        return
+      }
+
+      try {
+        const response = await getCustomerOrderBootstrap({
+          providerChannelCode: channelCode,
+          orderFlowType: 'PICKUP',
+        })
+
+        if (cancelled) {
+          return
+        }
+
+        const nextCategories: OrderCategory[] = response.categories.map((category) => ({
+          key: category.categoryCode,
+          label: category.categoryName,
+        }))
+
+        setOrderCategories(nextCategories)
+        setActiveCategoryKey((prev) => {
+          const exists = nextCategories.some((category) => category.key === prev)
+          return exists ? prev : nextCategories[0].key
+        })
+      } catch {
+        if (cancelled) {
+          return
+        }
+
+        setOrderCategories(DEFAULT_ORDER_CATEGORIES)
+        setActiveCategoryKey('')
+      }
+    }
+
+    void loadCategories()
+
+    return () => {
+      cancelled = true
+    }
+  }, [channelCode])
 
   const sidebar = useMemo(() => {
     return (
       <OrderSidebar
         channelCode={channelCode}
         mode="MENU_CATEGORY"
-        categories={MOCK_ORDER_CATEGORIES}
+        categories={orderCategories}
         activeCategoryKey={activeCategoryKey}
         onChangeCategory={setActiveCategoryKey}
       />
     )
   }, [activeCategoryKey, channelCode])
+
+  const sidebarNode = useMemo<ReactNode>(() => sidebar, [sidebar])
 
   if (!channelCode) {
     return (
@@ -85,11 +128,12 @@ export default function PickupOrderPage() {
   return (
     <OrderLayout
       channelCode={channelCode}
-      customSidebar={sidebar}
+      hideSidebar
     >
       <PickupOrderContent
         channelCode={channelCode}
         activeCategoryKey={activeCategoryKey}
+        categorySidebar={sidebarNode}
       />
     </OrderLayout>
   )

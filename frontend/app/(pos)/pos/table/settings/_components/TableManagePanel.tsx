@@ -3,7 +3,9 @@
 // STATUS : MODIFY MODE
 // ROLE : POS TABLE SETTINGS TABLE PANEL
 // CHANGE SUMMARY :
-// - /pos/settings/table ??湲곗〈 議고쉶/?섏젙 API ?ъ궗??// - 移대뱶 [?섏젙] 踰꾪듉 紐⑤떖 ?곌껐 + PATCH ???+ 紐⑸줉 ?ъ“??// - 湲곗〈 QR 蹂닿린 紐⑤떖 援ъ“ ?ъ궗??
+// - /pos/settings/table 기존 조회/수정 API 재사용
+// - 카드 [수정] 버튼 모달 연결 + PATCH 저장 + 목록 갱신
+// - 기존 QR 보기 모달 구조 재사용
 'use client'
 
 // SECTION 01 : IMPORT
@@ -32,6 +34,23 @@ type TableManagePanelProps = {
   onSavingChange?: (saving: boolean) => void
   onSaveSuccess?: () => void
   onCreateActionChange?: (action: (() => void) | null) => void
+  onFloorControlChange?: (control: {
+    selectedFloor: string
+    floorOptions: string[]
+    onSelectFloor: (floor: string) => void
+    onAddFloor: () => void
+  } | null) => void
+  onStatusControlChange?: (control: {
+    selectedStatus: string
+    statusOptions: Array<{ value: string; label: string }>
+    onSelectStatus: (status: string) => void
+  } | null) => void
+  onTypeControlChange?: (control: {
+    selectedTableType: string
+    tableTypeOptions: Array<{ value: string; label: string }>
+    onSelectTableType: (tableType: string) => void
+  } | null) => void
+  viewMode?: 'DASHBOARD' | 'LIST'
   hideCreateButton?: boolean
 }
 
@@ -63,6 +82,10 @@ type TablePanelCardItem = {
   zoneName: string
   tableOptionName: string
   zoneTypeLabel: string
+  floor: string
+  zone: string
+  floorSortOrder: number
+  zoneSortOrder: number
   defaultPrice: number
   defaultPriceLabel: string
   seatOptionLabel: string
@@ -77,6 +100,10 @@ type TableEditForm = {
   tableName: string
   zoneName: string
   tableOptionName: string
+  floor: string
+  zone: string
+  floorSortOrder: string
+  zoneSortOrder: string
   tableTypeCode: PosTableTypeCode
   defaultPrice: string
 }
@@ -94,36 +121,40 @@ const TABLE_TYPE_FILTER_OPTIONS: Array<{
   value: 'ALL' | PosTableTypeCode
   label: string
 }> = [
-  { value: 'ALL', label: '?댁쁺 ?깃툒: ?꾩껜' },
-  { value: 'STANDARD', label: '?댁쁺 ?깃툒: ?ㅽ깲?ㅻ뱶' },
-  { value: 'DELUXE', label: 'TABLE TYPE: DELUXE' },
-  { value: 'PREMIUM', label: '?댁쁺 ?깃툒: ?꾨━誘몄뾼' },
-  { value: 'VIP', label: '?댁쁺 ?깃툒: VIP' }
+  { value: 'ALL', label: '운영 등급: 전체' },
+  { value: 'STANDARD', label: '운영 등급: 스탠다드' },
+  { value: 'DELUXE', label: '운영 등급: 디럭스' },
+  { value: 'PREMIUM', label: '운영 등급: 프리미엄' },
+  { value: 'VIP', label: '운영 등급: VIP' }
 ]
 
 const STATUS_FILTER_OPTIONS = [
-  { value: 'ALL', label: '?꾩껜' },
-  { value: 'IN_USE', label: 'IN_USE' },
-  { value: 'AVAILABLE', label: '鍮꾩뼱?덉쓬' },
-  { value: 'RESERVED', label: '?덉빟' },
-  { value: 'WAITING', label: '?湲곗쨷' }
+  { value: 'ALL', label: '전체' },
+  { value: 'IN_USE', label: '사용중' },
+  { value: 'AVAILABLE', label: '비어있음' },
+  { value: 'RESERVED', label: '예약' },
+  { value: 'WAITING', label: '대기중' }
 ] as const
 
 const FALLBACK_TABLE_CARDS: TablePanelCardItem[] = Array.from({ length: 8 }, (_, index) => ({
   id: `fallback-${index + 1}`,
-  tableName: `?뚯씠釉?${index + 1}`,
+  tableName: `테이블 ${index + 1}`,
   isActive: 1,
   tableTypeCode: 'STANDARD',
   qrStatus: 'CONNECTED',
-  qrStatusLabel: 'QR ?곌껐',
-  zoneName: '?',
-  tableOptionName: '4?몄꽍',
-  zoneTypeLabel: '? 쨌 4?몄꽍',
+  qrStatusLabel: 'QR 연결',
+  zoneName: '홀',
+  tableOptionName: '4인석',
+  zoneTypeLabel: '홀 · 4인석',
+  floor: '1층',
+  zone: '홀',
+  floorSortOrder: 1,
+  zoneSortOrder: 1,
   defaultPrice: 0,
   defaultPriceLabel: '₩0',
-  seatOptionLabel: '4?몄꽍',
+  seatOptionLabel: '4인석',
   resourceStatusCode: 'AVAILABLE',
-  resourceStatusLabel: '鍮꾩뼱?덉쓬',
+  resourceStatusLabel: '비어있음',
   tableCode: null,
   tableOrderUrl: null,
   qrCodeValue: null
@@ -217,18 +248,42 @@ function toResourceStatusLabel(status: string | undefined): string {
   }
 
   if (status === 'RESERVED') {
-    return '?덉빟'
+    return '예약'
   }
 
   if (status === 'WAITING') {
-    return '?湲곗쨷'
+    return '대기중'
   }
 
   if (status === 'AVAILABLE') {
-    return '鍮꾩뼱?덉쓬'
+    return '비어있음'
   }
 
-  return '鍮꾩뼱?덉쓬'
+  return '비어있음'
+}
+
+function getFloorSortOrder(floor: string): number {
+  const normalizedFloor =
+    floor.trim()
+
+  const basementMatch =
+    normalizedFloor.match(/^B(\d+)/i)
+
+  if (basementMatch) {
+    return Number.parseInt(basementMatch[1] ?? '1', 10) * -1
+  }
+
+  const numberMatch =
+    normalizedFloor.match(/-?\d+/)
+
+  if (!numberMatch) {
+    return 1
+  }
+
+  const parsedOrder =
+    Number.parseInt(numberMatch[0] ?? '1', 10)
+
+  return Number.isFinite(parsedOrder) ? parsedOrder : 1
 }
 
 function mapTableSettingToCard(item: PosTableSettingItem): TablePanelCardItem {
@@ -236,10 +291,18 @@ function mapTableSettingToCard(item: PosTableSettingItem): TablePanelCardItem {
     normalizeTableTypeCode(item.tableTypeCode)
 
   const zoneName =
-    String(item.zoneName ?? '').trim() || '?'
+    String(item.zoneName ?? '').trim() || '홀'
 
   const seatOptionName =
-    String(item.tableOptionName ?? '').trim() || '4?몄꽍'
+    String(item.tableOptionName ?? '').trim() || '4인석'
+  const floor =
+    String(item.floor ?? '').trim() || '1층'
+  const zone =
+    String(item.zone ?? '').trim() || '홀'
+  const floorSortOrder =
+    Number(item.floorSortOrder ?? 1)
+  const zoneSortOrder =
+    Number(item.zoneSortOrder ?? 1)
 
   const defaultPrice =
     Number(item.defaultPrice ?? 0)
@@ -249,14 +312,18 @@ function mapTableSettingToCard(item: PosTableSettingItem): TablePanelCardItem {
 
   return {
     id: String(item.id),
-    tableName: String(item.tableName ?? '').trim() || `?뚯씠釉?${item.id}`,
+    tableName: String(item.tableName ?? '').trim() || `테이블 ${item.id}`,
     isActive: Number(item.isActive ?? 1),
     tableTypeCode,
     qrStatus: item.qrStatus,
     qrStatusLabel: item.qrStatus === 'CONNECTED' ? 'QR CONNECTED' : 'QR DISCONNECTED',
     zoneName,
     tableOptionName: seatOptionName,
-    zoneTypeLabel: `${zoneName} 쨌 ${seatOptionName}`,
+    zoneTypeLabel: `${zoneName} · ${seatOptionName}`,
+    floor,
+    zone,
+    floorSortOrder: Number.isFinite(floorSortOrder) ? floorSortOrder : 1,
+    zoneSortOrder: Number.isFinite(zoneSortOrder) ? zoneSortOrder : 1,
     defaultPrice,
     defaultPriceLabel: `${defaultPrice.toLocaleString('ko-KR')}원`,
     seatOptionLabel: seatOptionName,
@@ -267,13 +334,16 @@ function mapTableSettingToCard(item: PosTableSettingItem): TablePanelCardItem {
     qrCodeValue: item.qrCodeValue ?? null
   }
 }
-
 // SECTION 05 : COMPONENT
 export default function TableManagePanel({
   onSaveActionChange,
   onSavingChange,
   onSaveSuccess,
   onCreateActionChange,
+  onFloorControlChange,
+  onStatusControlChange,
+  onTypeControlChange,
+  viewMode = 'LIST',
   hideCreateButton
 }: TableManagePanelProps) {
   const [selectedResourceFilter] =
@@ -282,6 +352,10 @@ export default function TableManagePanel({
     useState<'ALL' | PosTableTypeCode>('ALL')
   const [selectedStatusFilter, setSelectedStatusFilter] =
     useState<(typeof STATUS_FILTER_OPTIONS)[number]['value']>('ALL')
+  const [selectedFloorFilter, setSelectedFloorFilter] =
+    useState<string>('ALL')
+  const [temporaryFloors, setTemporaryFloors] =
+    useState<string[]>([])
   const [businessContext, setBusinessContext] =
     useState<BusinessContext | null>(null)
   const [tableCards, setTableCards] =
@@ -337,7 +411,7 @@ export default function TableManagePanel({
           String(me.user?.channelCode ?? '').trim()
 
         if (!profileId || !channelCode) {
-          throw new Error('BUSINESS 而⑦뀓?ㅽ듃瑜??뺤씤?????놁뒿?덈떎.')
+          throw new Error('BUSINESS 컨텍스트를 확인할 수 없습니다.')
         }
 
         const context: BusinessContext = {
@@ -367,10 +441,57 @@ export default function TableManagePanel({
     void loadInitial()
   }, [loadTableCards, selectedResourceFilter])
 
+  const floorOptions = useMemo(() => {
+    const floorMap =
+      new Map<string, number>()
+
+    tableCards.forEach((card) => {
+      if (card.isActive !== 1) {
+        return
+      }
+
+      const nextFloor =
+        card.floor.trim() || '1층'
+      const nextSortOrder =
+        Number.isFinite(card.floorSortOrder)
+          ? card.floorSortOrder
+          : getFloorSortOrder(nextFloor)
+
+      if (!floorMap.has(nextFloor)) {
+        floorMap.set(nextFloor, nextSortOrder)
+      }
+    })
+
+    temporaryFloors.forEach((floor) => {
+      const nextFloor =
+        floor.trim()
+
+      if (!nextFloor || floorMap.has(nextFloor)) {
+        return
+      }
+
+      floorMap.set(nextFloor, getFloorSortOrder(nextFloor))
+    })
+
+    return Array.from(floorMap.entries())
+      .sort(([leftFloor, leftOrder], [rightFloor, rightOrder]) => {
+        if (leftOrder !== rightOrder) {
+          return leftOrder - rightOrder
+        }
+
+        return leftFloor.localeCompare(rightFloor, 'ko-KR')
+      })
+      .map(([floor]) => floor)
+  }, [tableCards, temporaryFloors])
+
   const filteredCards = useMemo(() => {
     return tableCards.filter((card) => {
       const activeMatch =
         card.isActive === 1
+
+      const floorMatch =
+        selectedFloorFilter === 'ALL' ||
+        card.floor === selectedFloorFilter
 
       const tableTypeMatch =
         selectedTableTypeFilter === 'ALL' ||
@@ -379,19 +500,18 @@ export default function TableManagePanel({
       const statusMatch =
         selectedStatusFilter === 'ALL' ||
         (selectedStatusFilter === 'AVAILABLE'
-          ? card.resourceStatusLabel === '鍮꾩뼱?덉쓬'
+          ? card.resourceStatusLabel === '비어있음'
           : selectedStatusFilter === 'IN_USE'
-            ? card.resourceStatusLabel === 'IN_USE'
+            ? card.resourceStatusLabel === '사용중'
             : selectedStatusFilter === 'RESERVED'
-              ? card.resourceStatusLabel === '?덉빟'
+              ? card.resourceStatusLabel === '예약'
               : selectedStatusFilter === 'WAITING'
-                ? card.resourceStatusLabel === '?湲곗쨷'
+                ? card.resourceStatusLabel === '대기중'
                 : true)
 
-      return activeMatch && tableTypeMatch && statusMatch
+      return activeMatch && floorMatch && tableTypeMatch && statusMatch
     })
-  }, [selectedStatusFilter, selectedTableTypeFilter, tableCards])
-
+  }, [selectedFloorFilter, selectedStatusFilter, selectedTableTypeFilter, tableCards])
   const tableSummary = useMemo(() => {
     const total = tableCards.length
     const qrConnected = tableCards.filter((card) => card.qrStatus === 'CONNECTED').length
@@ -445,7 +565,7 @@ export default function TableManagePanel({
       const message =
         error instanceof Error
           ? error.message
-          : '??젣 泥섎━ 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.'
+          : '삭제 처리 중 오류가 발생했습니다.'
       setEditError(message)
     } finally {
       setIsDeleteSaving(false)
@@ -459,6 +579,10 @@ export default function TableManagePanel({
       tableName: item.tableName,
       zoneName: item.zoneName,
       tableOptionName: item.tableOptionName,
+      floor: item.floor,
+      zone: item.zone,
+      floorSortOrder: String(item.floorSortOrder),
+      zoneSortOrder: String(item.zoneSortOrder),
       tableTypeCode: item.tableTypeCode,
       defaultPrice: String(item.defaultPrice)
     })
@@ -483,7 +607,7 @@ export default function TableManagePanel({
       Number(selectedEditTable.id)
 
     if (!Number.isFinite(tableId) || tableId <= 0) {
-      setEditError('?섏젙???뚯씠釉??뺣낫瑜??뺤씤?????놁뒿?덈떎.')
+      setEditError('수정할 테이블 정보를 확인할 수 없습니다.')
       return false
     }
 
@@ -493,16 +617,29 @@ export default function TableManagePanel({
       editForm.zoneName.trim()
     const nextTableOptionName =
       editForm.tableOptionName.trim()
+    const nextFloor =
+      editForm.floor.trim() || '1층'
+    const nextZone =
+      editForm.zone.trim() || '홀'
+    const nextFloorSortOrder =
+      Number.parseInt(String(editForm.floorSortOrder || '1').replace(/[^\d-]/g, ''), 10)
+    const nextZoneSortOrder =
+      Number.parseInt(String(editForm.zoneSortOrder || '1').replace(/[^\d-]/g, ''), 10)
     const nextDefaultPrice =
       Number.parseInt(String(editForm.defaultPrice || '0').replace(/[^\d-]/g, ''), 10)
 
     if (!nextTableName || !nextZoneName || !nextTableOptionName) {
-      setEditError('?뚯씠釉붾챸, ?꾩튂/援ъ뿭, 醫뚯꽍 ?듭뀡? ?꾩닔?낅땲??')
+      setEditError('테이블명, 위치/구역, 좌석 옵션은 필수입니다.')
+      return false
+    }
+
+    if (!Number.isInteger(nextFloorSortOrder) || !Number.isInteger(nextZoneSortOrder)) {
+      setEditError('층 정렬과 구역 정렬은 숫자로 입력해 주세요.')
       return false
     }
 
     if (!Number.isFinite(nextDefaultPrice) || nextDefaultPrice < 0) {
-      setEditError('湲곕낯媛寃⑹? 0 ?댁긽???レ옄?ъ빞 ?⑸땲??')
+      setEditError('기본가격은 0 이상의 숫자여야 합니다.')
       return false
     }
 
@@ -518,6 +655,10 @@ export default function TableManagePanel({
           tableName: nextTableName,
           zoneName: nextZoneName,
           tableOptionName: nextTableOptionName,
+          floor: nextFloor,
+          zone: nextZone,
+          floorSortOrder: nextFloorSortOrder,
+          zoneSortOrder: nextZoneSortOrder,
           tableTypeCode: normalizeTableTypeCode(editForm.tableTypeCode),
           defaultPrice: nextDefaultPrice
         }
@@ -539,7 +680,7 @@ export default function TableManagePanel({
       const message =
         error instanceof Error
           ? error.message
-          : '?섏젙 ???以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.'
+          : '수정 저장 중 오류가 발생했습니다.'
       setEditError(message)
       return false
     } finally {
@@ -585,6 +726,22 @@ export default function TableManagePanel({
     selectedResourceFilter
   ])
 
+  const handleAddFloor = () => {
+    const nextFloor =
+      window.prompt('추가할 플로어명을 입력해 주세요. 예) 2층')?.trim()
+
+    if (!nextFloor) {
+      return
+    }
+
+    setTemporaryFloors((prev) => (
+      prev.includes(nextFloor)
+        ? prev
+        : [...prev, nextFloor]
+    ))
+    setSelectedFloorFilter(nextFloor)
+  }
+
   const handleAddTable = useCallback(async () => {
     if (!businessContext || isCreateSaving || isEditSaving || isDeleteSaving) {
       return
@@ -595,13 +752,23 @@ export default function TableManagePanel({
     try {
       const nextIndex =
         tableCards.length + 1
+      const selectedFloor =
+        selectedFloorFilter === 'ALL'
+          ? '1층'
+          : selectedFloorFilter
+      const selectedFloorSortOrder =
+        getFloorSortOrder(selectedFloor)
 
       await createPosTableSetting({
         profileId: businessContext.profileId,
         channelCode: businessContext.channelCode,
-        tableName: `?뚯씠釉?${nextIndex}`,
-        zoneName: '?',
-        tableOptionName: '4?몄꽍',
+        tableName: `테이블 ${nextIndex}`,
+        zoneName: '홀',
+        tableOptionName: '4인석',
+        floor: selectedFloor,
+        zone: '홀',
+        floorSortOrder: selectedFloorSortOrder,
+        zoneSortOrder: 1,
         tableTypeCode: 'STANDARD',
         resourceType: 'TABLE',
         defaultPrice: 0,
@@ -613,6 +780,10 @@ export default function TableManagePanel({
         selectedResourceFilter
       )
 
+      setTemporaryFloors((prev) => (
+        prev.filter((floor) => floor !== selectedFloor)
+      ))
+
       emitPosTableSettingsSync({
         channelCode: businessContext.channelCode,
         reason: 'create'
@@ -621,7 +792,7 @@ export default function TableManagePanel({
       const message =
         error instanceof Error
           ? error.message
-          : '?뚯씠釉?異붽? 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.'
+          : '테이블 추가 중 오류가 발생했습니다.'
       setEditError(message)
     } finally {
       setIsCreateSaving(false)
@@ -632,10 +803,10 @@ export default function TableManagePanel({
     isDeleteSaving,
     isEditSaving,
     loadTableCards,
+    selectedFloorFilter,
     selectedResourceFilter,
     tableCards.length
   ])
-
   useEffect(() => {
     onCreateActionChange?.(handleAddTable)
 
@@ -643,6 +814,51 @@ export default function TableManagePanel({
       onCreateActionChange?.(null)
     }
   }, [handleAddTable, onCreateActionChange])
+
+  useEffect(() => {
+    onFloorControlChange?.({
+      selectedFloor: selectedFloorFilter,
+      floorOptions,
+      onSelectFloor: (floor: string) => setSelectedFloorFilter(floor),
+      onAddFloor: handleAddFloor
+    })
+
+    return () => {
+      onFloorControlChange?.(null)
+    }
+  }, [floorOptions, handleAddFloor, onFloorControlChange, selectedFloorFilter])
+
+  useEffect(() => {
+    onStatusControlChange?.({
+      selectedStatus: selectedStatusFilter,
+      statusOptions: STATUS_FILTER_OPTIONS.map((option) => ({
+        value: option.value,
+        label: option.label
+      })),
+      onSelectStatus: (status: string) =>
+        setSelectedStatusFilter(status as (typeof STATUS_FILTER_OPTIONS)[number]['value'])
+    })
+
+    return () => {
+      onStatusControlChange?.(null)
+    }
+  }, [onStatusControlChange, selectedStatusFilter])
+
+  useEffect(() => {
+    onTypeControlChange?.({
+      selectedTableType: selectedTableTypeFilter,
+      tableTypeOptions: TABLE_TYPE_FILTER_OPTIONS.map((option) => ({
+        value: option.value,
+        label: option.label
+      })),
+      onSelectTableType: (tableType: string) =>
+        setSelectedTableTypeFilter(tableType as 'ALL' | PosTableTypeCode)
+    })
+
+    return () => {
+      onTypeControlChange?.(null)
+    }
+  }, [onTypeControlChange, selectedTableTypeFilter])
 
   useEffect(() => {
     onSavingChange?.(
@@ -685,93 +901,42 @@ export default function TableManagePanel({
   return (
     <section className={styles.modulePanel}>
       <header className={styles.tableManageHeader}>
-        <div className={styles.moduleHeader}>
-          <h2 className={styles.moduleTitle}>?뚯씠釉붽?由?</h2>
-        </div>
-
-        <div className={styles.summaryGrid}>
-          <article className={styles.summaryCard}>
-            <p className={styles.summaryLabel}>?꾩껜 ?뚯씠釉?</p>
-            <p className={styles.summaryValue}>{tableSummary.total}媛?</p>
-          </article>
-          <article className={styles.summaryCard}>
-            <p className={styles.summaryLabel}>QR ?곌껐</p>
-            <p className={styles.summaryValue}>{tableSummary.qrConnected}媛?</p>
-          </article>
-          <article className={styles.summaryCard}>
-            <p className={styles.summaryLabel}>?ъ슜以?</p>
-            <p className={styles.summaryValue}>{tableSummary.inUse}媛?</p>
-          </article>
-          <article className={styles.summaryCard}>
-            <p className={styles.summaryLabel}>鍮꾪솢??</p>
-            <p className={styles.summaryValue}>{tableSummary.inactive}媛?</p>
-          </article>
-        </div>
-
-        <div className={styles.tableManageControlRow}>
-          <div className={styles.tableManageSelectGroup}>
-            <span
-              className={`${styles.tableManageSelect} ${styles.tableManageFixedSelect}`}
-              aria-label="由ъ냼?????怨좎젙"
-            >
-              ?뚯씠釉?            </span>
-
-            <select
-              className={styles.tableManageSelect}
-              value={selectedStatusFilter}
-              aria-label="?곹깭 ?꾪꽣"
-              onChange={(event) => setSelectedStatusFilter(event.target.value as (typeof STATUS_FILTER_OPTIONS)[number]['value'])}
-            >
-              {STATUS_FILTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-
-            <select
-              className={styles.tableManageSelect}
-              value={selectedTableTypeFilter}
-              aria-label="?댁쁺 ?깃툒"
-              onChange={(event) => setSelectedTableTypeFilter(event.target.value as 'ALL' | PosTableTypeCode)}
-            >
-              {TABLE_TYPE_FILTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {!hideCreateButton ? (
-            <button
-              type="button"
-              className={styles.primaryInlineButton}
-              onClick={() => {
-                void handleAddTable()
-              }}
-              disabled={isCreateSaving || isDeleteSaving || isEditSaving}
-            >
-              {isCreateSaving ? '추가중' : '+ 테이블추가'}
-            </button>
-          ) : null}
-        </div>
       </header>
 
+      {viewMode === 'DASHBOARD' ? (
+        <div className={styles.summaryGrid}>
+          <article className={styles.summaryCard}>
+            <p className={styles.summaryLabel}>전체 테이블</p>
+            <p className={styles.summaryValue}>{tableSummary.total}개</p>
+          </article>
+          <article className={styles.summaryCard}>
+            <p className={styles.summaryLabel}>QR 연결</p>
+            <p className={styles.summaryValue}>{tableSummary.qrConnected}개</p>
+          </article>
+          <article className={styles.summaryCard}>
+            <p className={styles.summaryLabel}>사용중</p>
+            <p className={styles.summaryValue}>{tableSummary.inUse}개</p>
+          </article>
+          <article className={styles.summaryCard}>
+            <p className={styles.summaryLabel}>비활성</p>
+            <p className={styles.summaryValue}>{tableSummary.inactive}개</p>
+          </article>
+        </div>
+      ) : (
       <div className={styles.tableManageGrid}>
         {isLoading ? (
           <article className={styles.tableManageCard}>
             <div className={styles.tableManageCardTop}>
-              <h3 className={styles.tableManageCardTitle}>?뚯씠釉??뺣낫瑜?遺덈윭?ㅻ뒗 以묒엯?덈떎.</h3>
+              <h3 className={styles.tableManageCardTitle}>테이블 정보를 불러오는 중입니다.</h3>
             </div>
-            <p className={styles.tableManageMeta}>?좎떆留?湲곕떎?ㅼ＜?몄슂.</p>
+            <p className={styles.tableManageMeta}>잠시만 기다려주세요.</p>
           </article>
         ) : filteredCards.length < 1 ? (
           <article className={styles.tableManageCard}>
             <div className={styles.tableManageCardTop}>
-              <h3 className={styles.tableManageCardTitle}>?깅줉???뚯씠釉붿씠 ?놁뒿?덈떎.</h3>
+              <h3 className={styles.tableManageCardTitle}>등록된 테이블이 없습니다.</h3>
             </div>
-            <p className={styles.tableManageMeta}>?꾪꽣 議곌굔??蹂寃쏀븯嫄곕굹 ?뚯씠釉붿쓣 異붽??댁＜?몄슂.</p>
+            <p className={styles.tableManageMeta}>필터 조건을 변경하거나 테이블을 추가해 주세요.</p>
           </article>
         ) : (
           filteredCards.map((item) => (
@@ -785,11 +950,12 @@ export default function TableManagePanel({
               </div>
 
               <p className={styles.tableManageMeta}>{item.zoneTypeLabel}</p>
+              <p className={styles.tableManageMeta}>{item.floor} · {item.zone}</p>
               <p className={styles.tableManageMetaStrong}>{item.defaultPriceLabel}</p>
               <p className={styles.tableManageMeta}>{item.resourceStatusLabel}</p>
 
               <div className={styles.tableManageOptionBox}>
-                <p className={styles.tableManageOptionLabel}>醫뚯꽍 ?듭뀡</p>
+                <p className={styles.tableManageOptionLabel}>좌석 옵션</p>
                 <p className={styles.tableManageOptionValue}>{item.seatOptionLabel}</p>
               </div>
 
@@ -800,7 +966,7 @@ export default function TableManagePanel({
                   onClick={() => handleOpenEditModal(item)}
                   disabled={isDeleteSaving || isEditSaving}
                 >
-                  ?섏젙
+                  수정
                 </button>
                 <button
                   type="button"
@@ -808,7 +974,7 @@ export default function TableManagePanel({
                   onClick={() => setSelectedQrTable(item)}
                   disabled={isDeleteSaving || isEditSaving}
                 >
-                  QR 蹂닿린
+                  QR 보기
                 </button>
                 <button
                   type="button"
@@ -823,6 +989,7 @@ export default function TableManagePanel({
           ))
         )}
       </div>
+      )}
 
       {selectedQrTable ? (
         <PosTableQrModal
@@ -848,15 +1015,15 @@ export default function TableManagePanel({
           <div
             role="dialog"
             aria-modal="true"
-            aria-label="?뚯씠釉??섏젙"
+            aria-label="테이블 수정"
             style={EDIT_MODAL_CARD_STYLE}
             onClick={(event) => event.stopPropagation()}
           >
-            <h3 className={styles.moduleTitle}>?뚯씠釉??섏젙</h3>
+            <h3 className={styles.moduleTitle}>테이블 수정</h3>
 
             <div style={EDIT_MODAL_GRID_STYLE}>
               <label style={EDIT_FIELD_STYLE}>
-                <span style={EDIT_LABEL_STYLE}>?뚯씠釉붾챸</span>
+                <span style={EDIT_LABEL_STYLE}>테이블명</span>
                 <input
                   type="text"
                   value={editForm.tableName}
@@ -866,7 +1033,7 @@ export default function TableManagePanel({
               </label>
 
               <label style={EDIT_FIELD_STYLE}>
-                <span style={EDIT_LABEL_STYLE}>?꾩튂/援ъ뿭</span>
+                <span style={EDIT_LABEL_STYLE}>위치/구역</span>
                 <input
                   type="text"
                   value={editForm.zoneName}
@@ -876,7 +1043,7 @@ export default function TableManagePanel({
               </label>
 
               <label style={EDIT_FIELD_STYLE}>
-                <span style={EDIT_LABEL_STYLE}>醫뚯꽍 ?듭뀡</span>
+                <span style={EDIT_LABEL_STYLE}>좌석 옵션</span>
                 <input
                   type="text"
                   value={editForm.tableOptionName}
@@ -886,21 +1053,62 @@ export default function TableManagePanel({
               </label>
 
               <label style={EDIT_FIELD_STYLE}>
-                <span style={EDIT_LABEL_STYLE}>?댁쁺 ?깃툒</span>
+                <span style={EDIT_LABEL_STYLE}>층</span>
+                <input
+                  type="text"
+                  value={editForm.floor}
+                  style={EDIT_INPUT_STYLE}
+                  onChange={(event) => setEditForm((prev) => prev ? { ...prev, floor: event.target.value } : prev)}
+                />
+              </label>
+
+              <label style={EDIT_FIELD_STYLE}>
+                <span style={EDIT_LABEL_STYLE}>구역</span>
+                <input
+                  type="text"
+                  value={editForm.zone}
+                  style={EDIT_INPUT_STYLE}
+                  onChange={(event) => setEditForm((prev) => prev ? { ...prev, zone: event.target.value } : prev)}
+                />
+              </label>
+
+              <label style={EDIT_FIELD_STYLE}>
+                <span style={EDIT_LABEL_STYLE}>층 정렬</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={editForm.floorSortOrder}
+                  style={EDIT_INPUT_STYLE}
+                  onChange={(event) => setEditForm((prev) => prev ? { ...prev, floorSortOrder: event.target.value } : prev)}
+                />
+              </label>
+
+              <label style={EDIT_FIELD_STYLE}>
+                <span style={EDIT_LABEL_STYLE}>구역 정렬</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={editForm.zoneSortOrder}
+                  style={EDIT_INPUT_STYLE}
+                  onChange={(event) => setEditForm((prev) => prev ? { ...prev, zoneSortOrder: event.target.value } : prev)}
+                />
+              </label>
+              <label style={EDIT_FIELD_STYLE}>
+                <span style={EDIT_LABEL_STYLE}>운영 등급</span>
                 <select
                   value={editForm.tableTypeCode}
                   style={EDIT_INPUT_STYLE}
                   onChange={(event) => setEditForm((prev) => prev ? { ...prev, tableTypeCode: normalizeTableTypeCode(event.target.value) } : prev)}
                 >
-                  <option value="STANDARD">?ㅽ깲?ㅻ뱶</option>
-                   <option value="DELUXE">?붾윮??</option>
-                  <option value="PREMIUM">?꾨━誘몄뾼</option>
+                  <option value="STANDARD">스탠다드</option>
+                   <option value="DELUXE">디럭스</option>
+                  <option value="PREMIUM">프리미엄</option>
                   <option value="VIP">VIP</option>
                 </select>
               </label>
 
               <label style={EDIT_FIELD_STYLE}>
-                <span style={EDIT_LABEL_STYLE}>湲곕낯媛寃?</span>
+                <span style={EDIT_LABEL_STYLE}>기본가격</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -911,7 +1119,7 @@ export default function TableManagePanel({
               </label>
 
               <label style={EDIT_FIELD_STYLE}>
-                <span style={EDIT_LABEL_STYLE}>?곹깭 / QR</span>
+                <span style={EDIT_LABEL_STYLE}>상태 / QR</span>
                 <input
                   type="text"
                   value={`${selectedEditTable.resourceStatusLabel} / ${selectedEditTable.qrStatusLabel}`}
@@ -926,7 +1134,7 @@ export default function TableManagePanel({
             </div>
 
             <p style={EDIT_HELP_STYLE}>
-              ?뚯씠釉?肄붾뱶? QR ?앹꽦 ?뺣낫??湲곗〈 ?ㅼ젙 ?뺤콉???곕씪 蹂꾨룄 愿由щ맗?덈떎.
+              테이블 코드와 QR 생성 정보는 기존 설정 정책에 따라 별도 관리됩니다.
             </p>
 
             {editError ? (
@@ -942,7 +1150,7 @@ export default function TableManagePanel({
                 onClick={handleCloseEditModal}
                 disabled={isEditSaving}
               >
-                痍⑥냼
+                취소
               </button>
               <button
                 type="button"
@@ -950,7 +1158,7 @@ export default function TableManagePanel({
                 onClick={handleSaveEdit}
                 disabled={isEditSaving}
               >
-                {isEditSaving ? '??μ쨷' : '?섏젙 ?꾨즺'}
+                {isEditSaving ? '저장중' : '수정 완료'}
               </button>
             </div>
           </div>

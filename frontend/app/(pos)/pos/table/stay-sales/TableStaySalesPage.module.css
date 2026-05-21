@@ -6,9 +6,18 @@
   display: flex;
   flex-direction: column;
   background-color: #f5f7fb;
+  --pos-page-padding-x: 10px;
+  --pos-page-padding-y: 8px;
+  --pos-panel-padding: 12px;
+  --pos-panel-gap: 12px;
+  --pos-card-padding: 12px;
+  --pos-card-gap: 10px;
+  --pos-radius-panel: 14px;
+  --pos-radius-card: 14px;
 }
 
 .posShell {
+  min-width: 640px;
   width: 100%;
   height: 100dvh;
   min-height: 100dvh;
@@ -18,17 +27,24 @@
 }
 
 .topbarWrap {
-  flex: 0 0 76px;
-  height: 76px;
-  min-height: 76px;
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  flex: 0 0 64px;
+  height: 64px;
+  min-height: 64px;
   width: 100%;
+  overflow: visible;
+  background-color: #f5f7fb;
 }
 
 .topbarInner {
   width: 100%;
+  min-width: 0;
   height: 100%;
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
 .mainViewport {
@@ -36,47 +52,72 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .mainGrid {
+  flex: 1 1 auto;
   width: 100%;
   height: 100%;
   min-height: 0;
-  display: grid;
-  gap: 16px;
-  padding: 16px;
-  box-sizing: border-box;
-  grid-template-columns: 180px minmax(0, 1fr) minmax(0, 1fr);
-}
-
-.sidebar {
-  min-height: 0;
-  height: 100%;
+  min-width: 0;
   overflow: hidden;
+  display: grid;
+  gap: 0;
+  align-items: stretch;
+  padding:
+    var(--pos-page-padding-y)
+    var(--pos-page-padding-x)
+    calc(var(--pos-page-padding-y) + 6px);
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .main {
+  width: 100%;
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-width: none;
+  gap: 0;
+}
+
+.menuScrollArea {
+  flex: 1 1 auto;
+  min-height: 0;
   min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 12px;
+  padding-bottom: 12px;
+  scrollbar-gutter: stable;
+}
+
+.salesContentGrid {
   width: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  align-items: stretch;
 }
 
 .summaryPanel {
   border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  border-radius: var(--pos-radius-card);
   background: #ffffff;
-  padding: 16px;
+  padding: var(--pos-card-padding);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--pos-card-gap);
   min-height: 0;
-  overflow: hidden;
-  height: 100%;
+  overflow: visible;
+  height: auto;
   width: 100%;
   box-sizing: border-box;
   min-width: 0;
@@ -133,12 +174,12 @@
 
 .summaryMain {
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border-radius: var(--pos-radius-card);
   background: #f9fafb;
-  padding: 14px;
+  padding: var(--pos-card-padding);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--pos-card-gap);
   min-height: 0;
   flex: 1;
 }
@@ -163,6 +204,7 @@
   flex-direction: column;
   gap: 8px;
   overflow: auto;
+  min-height: 0;
 }
 
 .summaryRow {
@@ -191,15 +233,15 @@
 
 .calendarPanel {
   min-width: 0;
-  height: 100%;
+  height: auto;
   border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  border-radius: var(--pos-radius-card);
   background: #ffffff;
-  padding: 14px;
+  padding: var(--pos-card-padding);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  overflow: hidden;
+  gap: var(--pos-card-gap);
+  overflow: visible;
   flex: 1;
   width: 100%;
   box-sizing: border-box;
@@ -292,6 +334,84 @@
   color: #4b5563;
 }
 
+.salesModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.48);
+  box-sizing: border-box;
+}
+
+.salesModalPanel {
+  width: min(1000px, calc(100vw - 48px));
+  height: min(720px, calc(100vh - 48px));
+  max-height: calc(100vh - 48px);
+  border-radius: 22px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.salesModalHeader {
+  flex: 0 0 auto;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.salesModalTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.salesModalDescription {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.salesModalCloseButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 86px;
+  width: auto;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid #d8e0ea;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.salesModalBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 24px 20px;
+}
+
 .modalOverlay {
   position: fixed;
   inset: 0;
@@ -374,27 +494,117 @@
   color: #ffffff;
 }
 
+.salesSummaryModalPanel {
+  width: min(900px, calc(100vw - 48px));
+  height: min(680px, calc(100vh - 48px));
+}
+
+.salesCalendarModalPanel {
+  width: min(1100px, calc(100vw - 48px));
+  height: min(760px, calc(100vh - 48px));
+}
+
 @media (max-width: 1024px) {
   .mainGrid {
-    grid-template-columns: 160px minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .salesContentGrid {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 640px) {
+  .posShell {
+    min-width: 0;
+  }
+
   .mainGrid {
     grid-template-columns: 1fr;
-    gap: 12px;
+    gap: 0;
     height: auto;
   }
 
-  .sidebar,
   .calendarPanel,
   .summaryPanel {
     height: auto;
   }
 
-  .sidebar {
-    display: none;
+  .salesModalOverlay {
+    padding: 12px;
+  }
+
+  .salesModalPanel {
+    width: calc(100vw - 24px);
+    height: calc(100vh - 24px);
+    max-height: calc(100vh - 24px);
+  }
+
+  .salesModalHeader {
+    padding: 16px 16px 14px;
+    gap: 12px;
+  }
+
+  .salesModalBody {
+    padding: 12px 16px 16px;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 767px) {
+  .page {
+    --pos-page-padding-x: 10px;
+    --pos-page-padding-y: 8px;
+    --pos-panel-padding: 12px;
+    --pos-panel-gap: 12px;
+    --pos-card-padding: 12px;
+    --pos-card-gap: 10px;
+    --pos-radius-panel: 14px;
+    --pos-radius-card: 14px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .page {
+    --pos-page-padding-x: 14px;
+    --pos-page-padding-y: 10px;
+    --pos-panel-padding: 16px;
+    --pos-panel-gap: 14px;
+    --pos-card-padding: 14px;
+    --pos-card-gap: 12px;
+    --pos-radius-panel: 16px;
+    --pos-radius-card: 14px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page {
+    --pos-page-padding-x: 16px;
+    --pos-page-padding-y: 10px;
+    --pos-panel-padding: 22px;
+    --pos-panel-gap: 18px;
+    --pos-card-padding: 16px;
+    --pos-card-gap: 12px;
+    --pos-radius-panel: 18px;
+    --pos-radius-card: 16px;
+  }
+
+  .posShell {
+    min-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .page {
+    --pos-page-padding-x: 20px;
+    --pos-page-padding-y: 14px;
+    --pos-panel-padding: 24px;
+    --pos-panel-gap: 20px;
+    --pos-card-padding: 18px;
+    --pos-card-gap: 14px;
+    --pos-radius-panel: 20px;
+    --pos-radius-card: 18px;
   }
 }
 

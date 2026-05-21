@@ -93,6 +93,8 @@ export type PosCookingUiItem = {
   optionText: string
   requestText: string
   orderedAt: string | null
+  cookingStartedAt: string | null
+  cookingCompletedAt: string | null
   elapsedMinutes: number | null
   status: PosCookingStatus
 }
@@ -167,6 +169,8 @@ export function mapCookingTicketDto(
     optionText: String(ticket.optionSummarySnapshot ?? '').trim(),
     requestText: String(ticket.requestMemoSnapshot ?? '').trim(),
     orderedAt: ticket.orderedAt ?? null,
+    cookingStartedAt: ticket.cookingStartedAt ?? null,
+    cookingCompletedAt: ticket.cookingCompletedAt ?? null,
     elapsedMinutes:
       typeof ticket.elapsedMinutes === 'number'
         ? ticket.elapsedMinutes

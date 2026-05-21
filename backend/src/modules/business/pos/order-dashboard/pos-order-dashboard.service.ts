@@ -14,6 +14,7 @@ import {
 import db from '../../../../config/database'
 
 import {
+  PosOrderCompositionType,
   PosOrderDashboardCategory,
   PosOrderDashboardDetail,
   PosOrderDashboardItem,
@@ -40,6 +41,10 @@ type DashboardOrderRow = {
   id: number
   orderCode: string
   revisionCode: string | null
+  orderYear: number | null
+  orderMonth: number | null
+  orderDay: number | null
+  orderSequence: number | null
   orderSource: string
   orderFlowType: string
   locationNameSnapshot: string | null
@@ -153,6 +158,10 @@ export class PosOrderDashboardService {
         o.id,
         o.orderCode,
         o.revisionCode,
+        o.orderYear,
+        o.orderMonth,
+        o.orderDay,
+        o.orderSequence,
         o.orderSource,
         o.orderFlowType,
         o.locationNameSnapshot,
@@ -209,6 +218,10 @@ export class PosOrderDashboardService {
         o.id,
         o.orderCode,
         o.revisionCode,
+        o.orderYear,
+        o.orderMonth,
+        o.orderDay,
+        o.orderSequence,
         o.orderSource,
         o.orderFlowType,
         o.locationNameSnapshot,
@@ -270,6 +283,10 @@ export class PosOrderDashboardService {
         o.id,
         o.orderCode,
         o.revisionCode,
+        o.orderYear,
+        o.orderMonth,
+        o.orderDay,
+        o.orderSequence,
         o.orderSource,
         o.orderFlowType,
         o.locationNameSnapshot,
@@ -328,6 +345,10 @@ export class PosOrderDashboardService {
         o.id,
         o.orderCode,
         o.revisionCode,
+        o.orderYear,
+        o.orderMonth,
+        o.orderDay,
+        o.orderSequence,
         o.orderSource,
         o.orderFlowType,
         o.locationNameSnapshot,
@@ -666,6 +687,10 @@ export class PosOrderDashboardService {
   private mapDashboardItem(
     row: DashboardOrderRow
   ): PosOrderDashboardItem {
+    const normalizedOrderCode = this.normalizeOrderCodeForDisplay(row)
+    const orderItemCount = Number(row.itemCount ?? 0)
+    const orderCompositionType =
+      this.resolveOrderCompositionType(orderItemCount)
     const category = mapOrderCategory(
       row.orderSource,
       row.orderFlowType
@@ -683,8 +708,8 @@ export class PosOrderDashboardService {
     return {
       id: row.id,
       orderId: row.id,
-      orderNo: row.orderCode,
-      orderCode: row.orderCode,
+      orderNo: normalizedOrderCode,
+      orderCode: normalizedOrderCode,
       revisionCode: row.revisionCode,
       category,
       categoryLabel: getOrderCategoryLabel(category),
@@ -695,12 +720,16 @@ export class PosOrderDashboardService {
       receivedAt: row.createdAt,
       receivedAtText: formatReceivedAt(row.createdAt),
       summary: buildOrderSummary(
-        Number(row.itemCount ?? 0),
+        orderItemCount,
         Number(row.totalQuantity ?? 0),
         row.firstProductName
       ),
       source: this.resolveSource(row),
-      itemCount: Number(row.itemCount ?? 0),
+      itemCount: orderItemCount,
+      orderItemCount,
+      orderCompositionType,
+      orderCompositionLabel:
+        this.getOrderCompositionLabel(orderCompositionType),
       totalQuantity: Number(row.totalQuantity ?? 0),
       tableCookingStatus: displayStatus.cookingStatus,
       displayStatusLabel: displayStatus.displayStatusLabel,
@@ -952,6 +981,64 @@ export class PosOrderDashboardService {
         AND o.orderSource NOT IN ('KIOSK', 'QR_ORDER')
       )
     `)
+  }
+
+  private normalizeOrderCodeForDisplay(
+    row: Pick<
+      DashboardOrderRow,
+      'orderCode' | 'orderYear' | 'orderMonth' | 'orderDay' | 'orderSequence'
+    >
+  ): string {
+    const rawOrderCode = String(row.orderCode ?? '').trim().toUpperCase()
+
+    if (/^OC[0-9]{10}$/.test(rawOrderCode)) {
+      return rawOrderCode
+    }
+
+    const year = Number(row.orderYear ?? 0)
+    const month = Number(row.orderMonth ?? 0)
+    const day = Number(row.orderDay ?? 0)
+    const sequence = Number(row.orderSequence ?? 0)
+
+    const canNormalize =
+      Number.isInteger(year) &&
+      Number.isInteger(month) &&
+      Number.isInteger(day) &&
+      Number.isInteger(sequence) &&
+      year > 0 &&
+      month >= 1 &&
+      month <= 12 &&
+      day >= 1 &&
+      day <= 31 &&
+      sequence >= 1 &&
+      sequence <= 9999
+
+    if (!canNormalize) {
+      return rawOrderCode
+    }
+
+    const yy = String(year).slice(-2).padStart(2, '0')
+    const mm = String(month).padStart(2, '0')
+    const dd = String(day).padStart(2, '0')
+    const nnnn = String(sequence).padStart(4, '0')
+
+    return `OC${yy}${mm}${dd}${nnnn}`
+  }
+
+  private resolveOrderCompositionType(
+    orderItemCount: number
+  ): PosOrderCompositionType {
+    return orderItemCount >= 2
+      ? 'COMPOSITE'
+      : 'SINGLE'
+  }
+
+  private getOrderCompositionLabel(
+    compositionType: PosOrderCompositionType
+  ): string {
+    return compositionType === 'COMPOSITE'
+      ? '복합 주문'
+      : '단일 주문'
   }
 
   private normalizeChannelCode(

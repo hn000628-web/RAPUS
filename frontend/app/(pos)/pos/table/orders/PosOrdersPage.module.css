@@ -1,13 +1,24 @@
 .page {
+  width: 100%;
   min-height: 100vh;
   height: 100vh;
   overflow: hidden;
   overflow-x: hidden;
-  background: #f3f6fa;
+  background: #f5f7fb;
   color: #0f172a;
+  --pos-page-padding-x: 10px;
+  --pos-page-padding-y: 8px;
+  --pos-panel-padding: 12px;
+  --pos-panel-gap: 12px;
+  --pos-card-padding: 12px;
+  --pos-card-gap: 10px;
+  --pos-radius-panel: 14px;
+  --pos-radius-card: 14px;
 }
 
 .posShell {
+  min-width: 640px;
+  width: 100%;
   min-height: 100vh;
   height: 100vh;
   display: flex;
@@ -17,13 +28,22 @@
 .topbarWrap {
   position: sticky;
   top: 0;
-  z-index: 20;
-  background: #0f172a;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  z-index: 70;
+  flex: 0 0 64px;
+  height: 64px;
+  min-height: 64px;
+  width: 100%;
+  overflow: visible;
+  background-color: #f5f7fb;
 }
 
 .topbarInner {
   width: 100%;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .main {
@@ -31,10 +51,11 @@
   flex: 1 1 auto;
   min-height: 0;
   box-sizing: border-box;
-  padding: 24px 0 0;
+  padding: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  gap: 0;
 }
 
 .headerCard {
@@ -182,13 +203,13 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  padding: 20px;
+  padding: 0;
   width: 100%;
   box-sizing: border-box;
-  background: #ffffff;
-  border: 1px solid #dbe3ef;
-  border-radius: 18px;
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.05);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .panelHeader {
@@ -225,8 +246,8 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 6px;
-  margin-bottom: 16px;
+  margin: 0;
+  justify-content: flex-end;
 }
 
 .orderTypeTab {
@@ -475,6 +496,38 @@
   line-height: 1.3;
 }
 
+.orderNoRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.compositionBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.compositionBadgeSingle {
+  color: #1e3a8a;
+  background: #dbeafe;
+}
+
+.compositionBadgeComposite {
+  color: #9a3412;
+  background: #ffedd5;
+}
+
 .orderSummary {
   margin: 6px 0 0;
   font-size: 14px;
@@ -494,6 +547,44 @@
   border-radius: 999px;
   font-size: 13px;
   font-weight: 900;
+}
+
+.orderHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.orderTypeInlineLabel {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #1e3a8a;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.orderPrintButton {
+  min-width: 62px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.orderPrintButton:hover {
+  background: #f8fafc;
 }
 
 .statusReceived {
@@ -516,6 +607,14 @@
   background: #ffe4e6;
 }
 
+.orderBottomRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
 .orderMetaGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -523,6 +622,8 @@
   padding: 12px;
   background: #f8fafc;
   border-radius: 14px;
+  flex: 1;
+  min-width: 0;
 }
 
 .orderMetaItem {
@@ -551,7 +652,137 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 14px;
+  flex-shrink: 0;
+  margin-top: 0;
+}
+
+.orderDetailModalOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 20;
+}
+
+.orderDetailModal {
+  width: min(460px, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  border: 1px solid #dbe3ef;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.orderDetailModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.orderDetailPaymentGuide {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.orderDetailTitle {
+  margin: 6px 0 0;
+  color: #0f172a;
+  font-size: 30px;
+  line-height: 1.1;
+  font-weight: 900;
+}
+
+.orderDetailOrderCode {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.orderDetailCloseButton {
+  height: 36px;
+  min-width: 74px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.orderDetailList {
+  padding: 14px 18px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.orderDetailItemCard {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.orderDetailItemName {
+  color: #0f172a;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.orderDetailItemPrice {
+  margin: 0;
+  color: #64748b;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.orderDetailOptionList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.orderDetailOptionItem {
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.orderDetailModalFooter {
+  padding: 12px 18px 16px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.orderDetailTotalText {
+  display: block;
+  color: #0f172a;
+  font-size: 34px;
+  font-weight: 900;
 }
 
 .primaryButton,
@@ -812,6 +1043,11 @@
   .orderMetaGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .orderBottomRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 @media (max-width: 640px) {
@@ -844,8 +1080,7 @@
   }
 
   .orderTypeTabs {
-    margin-top: 2px;
-    margin-bottom: 12px;
+    margin: 0;
     gap: 6px;
   }
 
@@ -875,7 +1110,7 @@
     flex-direction: column;
   }
 
-  .statusBadge {
+  .orderHeaderActions {
     align-self: flex-start;
   }
 
@@ -922,8 +1157,479 @@
     width: 100%;
   }
 
-  .manualOrderModal {
+.manualOrderModal {
     padding: 16px;
     width: 100%;
+  }
+}
+
+.mainViewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+}
+
+.mainGrid {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 0;
+  padding:
+    var(--pos-page-padding-y)
+    var(--pos-page-padding-x)
+    calc(var(--pos-page-padding-y) + 6px);
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.description {
+  margin: 0 24px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.menuScrollArea {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 12px;
+  padding-bottom: 12px;
+  scrollbar-gutter: stable;
+}
+
+.posDashboardPanel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pos-panel-gap);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: var(--pos-radius-panel);
+  padding: var(--pos-panel-padding);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+}
+
+.posDashboardHero {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--pos-panel-gap);
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: var(--pos-radius-card);
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 34%),
+    linear-gradient(135deg, #f8fafc, #ffffff);
+  border: 1px solid #e2e8f0;
+}
+
+.posDashboardHeroActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.orderTypeSelect {
+  min-width: 180px;
+  height: 50px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #d8e0ea;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.posDashboardEyebrow {
+  margin: 0 0 10px;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.posDashboardTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.22;
+}
+
+.posDashboardDescription {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.posDashboardPrimaryButton,
+.posDashboardSummaryCard,
+.posQuickActionCard,
+.tableStatusModalCloseButton {
+  font-family: inherit;
+}
+
+.posDashboardPrimaryButton {
+  min-width: 160px;
+  height: 50px;
+  border: 0;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.posDashboardSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.posDashboardSummaryCard {
+  min-width: 0;
+  min-height: 110px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--pos-radius-card);
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.posDashboardSummaryCard:hover {
+  border-color: #0f172a;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.posDashboardSummaryLabel {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.posDashboardSummaryValue {
+  color: #0f172a;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.posDashboardSummaryHint {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.posQuickActionGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.posQuickActionCard {
+  min-height: 96px;
+  padding: 16px;
+  border: 1px solid #d8e0ea;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.posQuickActionCard:hover {
+  border-color: #0f172a;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.posQuickActionCard span {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.posQuickActionCard small {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.cookingStatusModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  background: rgba(15, 23, 42, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.cookingStatusModalPanel {
+  width: min(1000px, calc(100vw - 48px));
+  height: min(720px, calc(100vh - 48px));
+  background: #f3f6fa;
+  border: 1px solid #dbe3ef;
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.orderStatusModalPanel {
+  width: min(1200px, calc(100vw - 48px));
+  height: min(760px, calc(100vh - 48px));
+}
+
+.cookingStatusModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px;
+  border-bottom: 1px solid #dbe3ef;
+  background: #ffffff;
+}
+
+.cookingStatusModalTitle {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.cookingStatusModalDescription {
+  margin: 10px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.orderStatusModalTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.orderStatusModalCountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background-color: #f3f4f6;
+  color: #111827;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.cookingStatusModalBody {
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+}
+
+.orderStatusModalBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+.cookingStatusModalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #dbe3ef;
+  background: #ffffff;
+}
+
+.tableStatusModalCloseButton {
+  width: 112px;
+  height: 38px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tableStatusModalCloseButtonText {
+  width: auto;
+  min-width: 92px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+@media (max-width: 1023px) {
+  .posQuickActionGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .orderStatusModalBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detailPanel {
+    max-height: 340px;
+  }
+}
+
+@media (max-width: 640px) {
+  .mainGrid {
+    padding: 8px 10px 12px;
+  }
+
+  .menuScrollArea {
+    padding-right: 0;
+  }
+
+  .posDashboardHero {
+    padding: 14px;
+  }
+
+  .posDashboardTitle {
+    font-size: 22px;
+    line-height: 1.25;
+  }
+
+  .posDashboardSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cookingStatusModalOverlay {
+    padding: 12px;
+  }
+
+  .orderStatusModalPanel {
+    width: min(1200px, calc(100vw - 24px));
+    height: min(760px, calc(100vh - 24px));
+  }
+
+  .posQuickActionGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .orderStatusModalBody {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .detailPanel {
+    max-height: 340px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .posDashboardHero {
+    padding: 16px;
+  }
+
+  .posDashboardTitle {
+    font-size: 24px;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .posDashboardHero {
+    padding: 20px;
+  }
+
+  .posDashboardTitle {
+    font-size: 28px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .posDashboardTitle {
+    font-size: 30px;
+  }
+
+  .posDashboardDescription {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 639px) {
+  .posShell {
+    min-width: 0;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .page {
+    --pos-page-padding-x: 14px;
+    --pos-page-padding-y: 10px;
+    --pos-panel-padding: 16px;
+    --pos-panel-gap: 14px;
+    --pos-card-padding: 14px;
+    --pos-card-gap: 12px;
+    --pos-radius-panel: 16px;
+    --pos-radius-card: 14px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page {
+    --pos-page-padding-x: 16px;
+    --pos-page-padding-y: 10px;
+    --pos-panel-padding: 22px;
+    --pos-panel-gap: 18px;
+    --pos-card-padding: 16px;
+    --pos-card-gap: 12px;
+    --pos-radius-panel: 18px;
+    --pos-radius-card: 16px;
+  }
+
+  .posShell {
+    min-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .page {
+    --pos-page-padding-x: 20px;
+    --pos-page-padding-y: 14px;
+    --pos-panel-padding: 24px;
+    --pos-panel-gap: 20px;
+    --pos-card-padding: 18px;
+    --pos-card-gap: 14px;
+    --pos-radius-panel: 20px;
+    --pos-radius-card: 18px;
   }
 }

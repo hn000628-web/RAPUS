@@ -27,14 +27,21 @@ export type BusinessStatusFilter =
   | 'OPEN'
   | 'CLOSED'
 
+export type PlaceSearchScope =
+  | 'ALL'
+  | 'POST'
+  | 'PRODUCT'
+
 type Props = {
   industryFilters: PlaceIndustryFilter[]
   selectedIndustry: string
   selectedSort: PlaceSortType
   selectedBusinessStatus: BusinessStatusFilter
+  selectedSearchScope: PlaceSearchScope
   onSelectIndustry: (value: string) => void
   onSelectSort: (value: PlaceSortType) => void
   onSelectBusinessStatus: (value: BusinessStatusFilter) => void
+  onSelectSearchScope: (value: PlaceSearchScope) => void
   onReset: () => void
 }
 
@@ -70,14 +77,34 @@ const BUSINESS_STATUS_FILTERS: Array<{
   }
 ]
 
+const SEARCH_SCOPE_FILTERS: Array<{
+  label: string
+  value: PlaceSearchScope
+}> = [
+  {
+    label: '전체',
+    value: 'ALL'
+  },
+  {
+    label: '포스트',
+    value: 'POST'
+  },
+  {
+    label: '프로덕트',
+    value: 'PRODUCT'
+  }
+]
+
 export default function PlaceFeedSidebar({
   industryFilters,
   selectedIndustry,
   selectedSort,
   selectedBusinessStatus,
+  selectedSearchScope,
   onSelectIndustry,
   onSelectSort,
   onSelectBusinessStatus,
+  onSelectSearchScope,
   onReset
 }: Props) {
   const [isIndustryDropdownOpen, setIsIndustryDropdownOpen] =
@@ -85,6 +112,8 @@ export default function PlaceFeedSidebar({
   const [isSortDropdownOpen, setIsSortDropdownOpen] =
     useState(false)
   const [isBusinessStatusDropdownOpen, setIsBusinessStatusDropdownOpen] =
+    useState(false)
+  const [isSearchScopeDropdownOpen, setIsSearchScopeDropdownOpen] =
     useState(false)
 
   const selectedIndustryLabel = industryFilters.find((filter) => {
@@ -97,6 +126,10 @@ export default function PlaceFeedSidebar({
 
   const selectedBusinessStatusLabel = BUSINESS_STATUS_FILTERS.find((filter) => {
     return filter.value === selectedBusinessStatus
+  })?.label || '전체'
+
+  const selectedSearchScopeLabel = SEARCH_SCOPE_FILTERS.find((filter) => {
+    return filter.value === selectedSearchScope
   })?.label || '전체'
 
   const handleSelectIndustry = (value: string) => {
@@ -112,6 +145,11 @@ export default function PlaceFeedSidebar({
   const handleSelectBusinessStatus = (value: BusinessStatusFilter) => {
     onSelectBusinessStatus(value)
     setIsBusinessStatusDropdownOpen(false)
+  }
+
+  const handleSelectSearchScope = (value: PlaceSearchScope) => {
+    onSelectSearchScope(value)
+    setIsSearchScopeDropdownOpen(false)
   }
 
   return (
@@ -214,6 +252,50 @@ export default function PlaceFeedSidebar({
                         : null)
                     }}
                     onClick={() => handleSelectBusinessStatus(filter.value)}
+                  >
+                    {filter.label}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section style={filterGroupStyle}>
+        <div style={filterLabelStyle}>
+          검색영역
+        </div>
+
+        <div style={dropdownContainerStyle}>
+          <button
+            type="button"
+            onClick={() => {
+              setIsSearchScopeDropdownOpen((prev) => !prev)
+            }}
+            style={industryDropdownButtonStyle}
+          >
+            <span>{selectedSearchScopeLabel}</span>
+            <span style={dropdownArrowStyle}>▼</span>
+          </button>
+
+          {isSearchScopeDropdownOpen && (
+            <div style={sortDropdownPanelStyle}>
+              {SEARCH_SCOPE_FILTERS.map((filter) => {
+                const selected =
+                  selectedSearchScope === filter.value
+
+                return (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    style={{
+                      ...industryOptionButtonStyle,
+                      ...(selected
+                        ? selectedIndustryOptionButtonStyle
+                        : null)
+                    }}
+                    onClick={() => handleSelectSearchScope(filter.value)}
                   >
                     {filter.label}
                   </button>

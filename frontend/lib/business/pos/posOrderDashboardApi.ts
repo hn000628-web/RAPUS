@@ -27,6 +27,7 @@ export type PosOrderDashboardUiCategory =
   | 'KIOSK'
 
 export type PosOrderDashboardUiStatus =
+  | '대기'
   | '접수'
   | '처리중'
   | '완료'
@@ -43,6 +44,10 @@ export type PosOrderDashboardDisplayStatusGroup =
   | 'PROGRESS'
   | 'DONE'
   | 'CANCELED'
+
+export type PosOrderCompositionType =
+  | 'SINGLE'
+  | 'COMPOSITE'
 
 export type PosOrderStatus =
   | 'CREATED'
@@ -79,6 +84,9 @@ export type PosOrderDashboardItem = {
   summary: string
   source: string
   itemCount: number
+  orderItemCount: number
+  orderCompositionType: PosOrderCompositionType
+  orderCompositionLabel: string
   totalQuantity: number
   tableCookingStatus?: PosTableCookingStatus | null
   displayStatusLabel?: string
@@ -103,6 +111,10 @@ export type PosOrderDashboardDetail = {
   paymentStatus: string
   amount: number
   summary: string
+  itemCount: number
+  orderItemCount: number
+  orderCompositionType: PosOrderCompositionType
+  orderCompositionLabel: string
   subtotalAmount: number
   discountAmount: number
   taxAmount: number

@@ -1,16 +1,16 @@
 ﻿'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
-import PosTopbar from '../components/PosTopbar'
-import PosSidebar from '../components/PosSidebar'
-import { usePosKeyboardMode } from '../components/PosKeyboardModeContext'
-import { PosMenuKey } from '../components/posTypes'
+import PosTopbar from '../../components/PosTopbar'
+import PosHeaderMenuBar from '../../components/PosHeaderMenuBar'
+import { usePosKeyboardMode } from '../../components/PosKeyboardModeContext'
+import { PosMenuKey } from '../../components/posTypes'
 import {
   TABLE_POS_SIDEBAR_MENUS,
   TABLE_POS_SIDEBAR_PATHS
-} from '../components/tablePosMenuConfig'
+} from '../../components/tablePosMenuConfig'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   fetchPosOrderDashboard,
@@ -161,209 +161,6 @@ const getMockOrderDisplayCategoryLabel = (
   return '배달 주문'
 }
 
-const MOCK_NON_TABLE_ORDERS: DisplayOrder[] = [
-  {
-    id: -101,
-    orderId: -101,
-    orderNo: 'R-001',
-    orderCode: 'MOCK-R-001',
-    revisionCode: null,
-    category: 'RESERVATION',
-    categoryLabel: '예약 주문',
-    status: '접수',
-    orderStatus: 'CONFIRMED',
-    paymentStatus: 'UNPAID',
-    amount: 54000,
-    receivedAt: '2026-05-18 11:30:00',
-    receivedAtText: '오늘 11:30',
-    summary: '예약 코스 세트 외 2개',
-    source: '18:30 예약 · 4명',
-    itemCount: 3,
-    totalQuantity: 4,
-    sourceMode: 'MOCK'
-  },
-  {
-    id: -102,
-    orderId: -102,
-    orderNo: 'R-002',
-    orderCode: 'MOCK-R-002',
-    revisionCode: null,
-    category: 'RESERVATION',
-    categoryLabel: '예약 주문',
-    status: '처리중',
-    orderStatus: 'PREPARING',
-    paymentStatus: 'UNPAID',
-    amount: 38000,
-    receivedAt: '2026-05-18 12:10:00',
-    receivedAtText: '오늘 12:10',
-    summary: '런치 예약 메뉴 외 1개',
-    source: '19:00 예약 · 2명',
-    itemCount: 2,
-    totalQuantity: 2,
-    sourceMode: 'MOCK'
-  },
-  {
-    id: -201,
-    orderId: -201,
-    orderNo: 'D-001',
-    orderCode: 'MOCK-D-001',
-    revisionCode: null,
-    category: 'DELIVERY',
-    categoryLabel: '배달 주문',
-    status: '접수',
-    orderStatus: 'CONFIRMED',
-    paymentStatus: 'PAID',
-    amount: 26000,
-    receivedAt: '2026-05-18 12:22:00',
-    receivedAtText: '오늘 12:22',
-    summary: '불고기피자 외 1개',
-    source: '서울시 강남구 테헤란로 10',
-    itemCount: 2,
-    totalQuantity: 2,
-    sourceMode: 'MOCK'
-  },
-  {
-    id: -202,
-    orderId: -202,
-    orderNo: 'D-002',
-    orderCode: 'MOCK-D-002',
-    revisionCode: null,
-    category: 'DELIVERY',
-    categoryLabel: '배달 주문',
-    status: '처리중',
-    orderStatus: 'PREPARING',
-    paymentStatus: 'PAID',
-    amount: 31500,
-    receivedAt: '2026-05-18 12:35:00',
-    receivedAtText: '오늘 12:35',
-    summary: '클래식버거 세트 외 2개',
-    source: '서울시 송파구 올림픽로 88',
-    itemCount: 3,
-    totalQuantity: 3,
-    sourceMode: 'MOCK'
-  },
-  {
-    id: -301,
-    orderId: -301,
-    orderNo: 'P-001',
-    orderCode: 'MOCK-P-001',
-    revisionCode: null,
-    category: 'PICKUP',
-    categoryLabel: '픽업 주문',
-    status: '접수',
-    orderStatus: 'CONFIRMED',
-    paymentStatus: 'PAID',
-    amount: 18000,
-    receivedAt: '2026-05-18 12:40:00',
-    receivedAtText: '오늘 12:40',
-    summary: '아메리카노 외 3개',
-    source: '픽업 예정 13:00',
-    itemCount: 4,
-    totalQuantity: 4,
-    sourceMode: 'MOCK'
-  },
-  {
-    id: -302,
-    orderId: -302,
-    orderNo: 'P-002',
-    orderCode: 'MOCK-P-002',
-    revisionCode: null,
-    category: 'PICKUP',
-    categoryLabel: '픽업 주문',
-    status: '완료',
-    orderStatus: 'COMPLETED',
-    paymentStatus: 'PAID',
-    amount: 22000,
-    receivedAt: '2026-05-18 12:05:00',
-    receivedAtText: '오늘 12:05',
-    summary: '고구마피자',
-    source: '픽업 완료',
-    itemCount: 1,
-    totalQuantity: 1,
-    sourceMode: 'MOCK'
-  },
-  {
-    id: -401,
-    orderId: -401,
-    orderNo: 'Q-001',
-    orderCode: 'MOCK-Q-001',
-    revisionCode: null,
-    category: 'QR',
-    categoryLabel: 'QR 주문',
-    status: '접수',
-    orderStatus: 'CONFIRMED',
-    paymentStatus: 'UNPAID',
-    amount: 15000,
-    receivedAt: '2026-05-18 12:48:00',
-    receivedAtText: '오늘 12:48',
-    summary: '클래식버거',
-    source: 'QR-A12',
-    itemCount: 1,
-    totalQuantity: 1,
-    sourceMode: 'MOCK'
-  },
-  {
-    id: -402,
-    orderId: -402,
-    orderNo: 'Q-002',
-    orderCode: 'MOCK-Q-002',
-    revisionCode: null,
-    category: 'QR',
-    categoryLabel: 'QR 주문',
-    status: '취소',
-    orderStatus: 'CANCELLED',
-    paymentStatus: 'CANCELLED',
-    amount: 13000,
-    receivedAt: '2026-05-18 12:00:00',
-    receivedAtText: '오늘 12:00',
-    summary: '알뜰버거',
-    source: 'QR-B07',
-    itemCount: 1,
-    totalQuantity: 1,
-    sourceMode: 'MOCK'
-  },
-  {
-    id: -501,
-    orderId: -501,
-    orderNo: 'K-001',
-    orderCode: 'MOCK-K-001',
-    revisionCode: null,
-    category: 'KIOSK',
-    categoryLabel: '키오스크 주문',
-    status: '접수',
-    orderStatus: 'CONFIRMED',
-    paymentStatus: 'PAID',
-    amount: 29000,
-    receivedAt: '2026-05-18 12:52:00',
-    receivedAtText: '오늘 12:52',
-    summary: '새우피자 외 1개',
-    source: 'KIOSK-01',
-    itemCount: 2,
-    totalQuantity: 2,
-    sourceMode: 'MOCK'
-  },
-  {
-    id: -502,
-    orderId: -502,
-    orderNo: 'K-002',
-    orderCode: 'MOCK-K-002',
-    revisionCode: null,
-    category: 'KIOSK',
-    categoryLabel: '키오스크 주문',
-    status: '처리중',
-    orderStatus: 'PREPARING',
-    paymentStatus: 'PAID',
-    amount: 24000,
-    receivedAt: '2026-05-18 12:58:00',
-    receivedAtText: '오늘 12:58',
-    summary: '클래식버거 외 1개',
-    source: 'KIOSK-02',
-    itemCount: 2,
-    totalQuantity: 2,
-    sourceMode: 'MOCK'
-  }
-]
-
 const formatCurrency = (amount: number) => {
   return `${amount.toLocaleString('ko-KR')}원`
 }
@@ -413,8 +210,8 @@ const createNextMockOrder = (
     revisionCode: null,
     category,
     categoryLabel: getMockOrderDisplayCategoryLabel(category),
-    status: '접수',
-    orderStatus: 'CONFIRMED',
+    status: '대기',
+    orderStatus: 'CREATED',
     paymentStatus: 'UNPAID',
     amount,
     receivedAt: formatKoreanDateTime(now),
@@ -422,6 +219,9 @@ const createNextMockOrder = (
     summary: form.menuSummary,
     source,
     itemCount: 1,
+    orderItemCount: 1,
+    orderCompositionType: 'SINGLE',
+    orderCompositionLabel: '단일 주문',
     totalQuantity: 1,
     sourceMode: 'MOCK'
   }
@@ -475,16 +275,20 @@ const getOrderDisplayStatusClassName = (
 const getDisplayOrderStatusLabel = (
   order: PosOrderDashboardItem | PosOrderDashboardDetail
 ) => {
+  if (order.orderStatus === 'CREATED') {
+    return '대기'
+  }
+
+  if (order.orderStatus === 'CONFIRMED') {
+    return '접수'
+  }
+
   if (order.displayStatusLabel) {
     return order.displayStatusLabel
   }
 
   if (order.category !== 'TABLE') {
     return order.status
-  }
-
-  if (order.orderStatus === 'CREATED' || order.orderStatus === 'CONFIRMED') {
-    return '접수(조리대기)'
   }
 
   if (order.orderStatus === 'PREPARING') {
@@ -505,7 +309,7 @@ const getOrderDisplayStatusGroup = (
     return order.displayStatusGroup
   }
 
-  if (order.status === '접수') {
+  if (order.status === '대기' || order.status === '접수') {
     return 'RECEIVED'
   }
 
@@ -596,17 +400,15 @@ const isClosedOrderStatus = (status: PosOrderStatus) => {
 
 export default function PosOrdersPage() {
   const router = useRouter()
-  const pathname = usePathname()
-  const currentPathname = pathname ?? '/pos/orders'
   const { keyboardMode, toggleKeyboardMode } = usePosKeyboardMode()
   const { loading: authLoading, profile } = useAuth()
   const channelCode = String(profile?.channelCode ?? '').trim()
   const [activeCategory, setActiveCategory] =
     useState<PosOrderDashboardCategory>('ALL')
-  const [tableOrders, setTableOrders] =
+  const [apiOrders, setApiOrders] =
     useState<DisplayOrder[]>([])
   const [mockOrders, setMockOrders] =
-    useState<DisplayOrder[]>(MOCK_NON_TABLE_ORDERS)
+    useState<DisplayOrder[]>([])
   const [selectedOrder, setSelectedOrder] =
     useState<DisplayOrderDetail | null>(null)
   const [isLoadingOrders, setIsLoadingOrders] =
@@ -623,13 +425,8 @@ export default function PosOrdersPage() {
     useState<ManualOrderType>('PICKUP')
   const [manualOrderForm, setManualOrderForm] =
     useState<ManualOrderForm>(INITIAL_MANUAL_ORDER_FORM)
-
-  const activeSideMenu: Extract<
-    PosMenuKey,
-    'TABLE' | 'COOKING' | 'ORDER_HISTORY' | 'RESERVATION' | 'SALES_HISTORY'
-  > = currentPathname === '/pos/orders' || currentPathname.startsWith('/pos/orders/')
-    ? 'ORDER_HISTORY'
-    : 'TABLE'
+  const [selectedOrderModal, setSelectedOrderModal] =
+    useState<PosOrderDashboardDisplayStatusGroup | null>(null)
 
   const getCategoryMeta = (category: PosOrderDashboardCategory) => {
     if (category === 'ALL') {
@@ -650,17 +447,15 @@ export default function PosOrdersPage() {
   const orders = useMemo(() => {
     if (activeCategory === 'ALL') {
       return [
-        ...tableOrders,
+        ...apiOrders,
         ...mockOrders
       ]
     }
-
-    if (activeCategory === 'TABLE') {
-      return tableOrders
-    }
-
-    return mockOrders.filter((order) => order.category === activeCategory)
-  }, [activeCategory, mockOrders, tableOrders])
+    return [
+      ...apiOrders.filter((order) => order.category === activeCategory),
+      ...mockOrders.filter((order) => order.category === activeCategory)
+    ]
+  }, [activeCategory, apiOrders, mockOrders])
 
   const summaryItems: SummaryItem[] = useMemo(() => {
     const summary = orders.reduce(
@@ -698,22 +493,33 @@ export default function PosOrdersPage() {
     ]
   }, [orders])
 
-  const loadOrders = useCallback(async () => {
-    const shouldFetchTableOrders =
-      activeCategory === 'ALL' || activeCategory === 'TABLE'
+  const receivedCount = summaryItems.find((item) => item.label === '접수')?.value ?? '0건'
+  const progressCount = summaryItems.find((item) => item.label === '처리중')?.value ?? '0건'
+  const doneCount = summaryItems.find((item) => item.label === '완료')?.value ?? '0건'
+  const canceledCount = summaryItems.find((item) => item.label === '취소')?.value ?? '0건'
 
-    if (!shouldFetchTableOrders) {
-      setIsLoadingOrders(false)
-      setErrorMessage('')
-      return
+  const modalStatusLabelMap: Record<PosOrderDashboardDisplayStatusGroup, string> = {
+    RECEIVED: '접수대기',
+    PROGRESS: '진행중',
+    DONE: '완료',
+    CANCELED: '취소'
+  }
+
+  const selectedModalOrders = useMemo(() => {
+    if (!selectedOrderModal) {
+      return []
     }
 
+    return orders.filter((order) => getOrderDisplayStatusGroup(order) === selectedOrderModal)
+  }, [orders, selectedOrderModal])
+
+  const loadOrders = useCallback(async () => {
     if (authLoading) {
       return
     }
 
     if (!channelCode) {
-      setTableOrders([])
+      setApiOrders([])
       setErrorMessage('주문현황을 조회할 채널 정보를 확인할 수 없습니다.')
       return
     }
@@ -723,13 +529,13 @@ export default function PosOrdersPage() {
     try {
       const response = await fetchPosOrderDashboard({
         channelCode,
-        category: 'TABLE',
+        category: activeCategory,
         status: 'ALL',
         limit: 100,
         offset: 0
       })
 
-      setTableOrders(
+      setApiOrders(
         response.items.map((order) => ({
           ...order,
           sourceMode: 'API'
@@ -737,8 +543,8 @@ export default function PosOrdersPage() {
       )
       setErrorMessage('')
     } catch {
-      setTableOrders([])
-      setErrorMessage('테이블 주문현황을 불러오지 못했습니다.')
+      setApiOrders([])
+      setErrorMessage('주문현황을 불러오지 못했습니다.')
     } finally {
       setIsLoadingOrders(false)
     }
@@ -944,6 +750,27 @@ export default function PosOrdersPage() {
     }
   }
 
+  const handleOpenOrderStatusModal = (status: PosOrderDashboardDisplayStatusGroup) => {
+    setSelectedOrderModal(status)
+  }
+
+  const handleCloseOrderStatusModal = () => {
+    setSelectedOrderModal(null)
+    setSelectedOrder(null)
+  }
+
+  const handleCloseOrderDetailModal = () => {
+    setSelectedOrder(null)
+  }
+
+  const handlePrintOrder = () => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    window.print()
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.posShell}>
@@ -962,315 +789,332 @@ export default function PosOrdersPage() {
           </div>
         </div>
 
-        <main className={styles.main}>
-          <div className={styles.contentLayout}>
-            <PosSidebar
-              activeMenu={activeSideMenu}
-              onChangeMenu={handleChangeMenu}
-              menuOptions={TABLE_POS_SIDEBAR_MENUS}
-              className={styles.restaurantSidebar}
-            />
-
-            <section className={styles.ordersPanel} aria-label="주문 목록">
-              <div className={styles.panelHeader}>
-                <div>
-                  <h2 className={styles.panelTitle}>
-                    {getCategoryMeta(activeCategory).title}
-                  </h2>
-                  <p className={styles.panelDescription}>
-                    {getCategoryMeta(activeCategory).description}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className={styles.createOrderButton}
-                  onClick={handleOpenManualOrderModal}
-                >
-                  주문등록
-                </button>
-              </div>
-
-              <div className={styles.orderTypeTabs} aria-label="주문 유형 필터">
-                {ORDER_TYPE_TABS.map((category) => {
-                  const isActive = activeCategory === category.key
-
-                  return (
-                    <button
-                      key={category.key}
-                      type="button"
-                      className={`
-                        ${styles.orderTypeTab} ${isActive ? styles.orderTypeTabActive : ''}
-                      `}
-                      onClick={() => handleChangeCategory(category.key)}
-                    >
-                      {category.title}
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className={styles.summaryGrid} aria-label="상태 요약">
-                {summaryItems.map((item) => (
-                  <article key={item.label} className={styles.summaryCard}>
-                    <span className={styles.summaryLabel}>{item.label}</span>
-                    <strong className={styles.summaryValue}>{item.value}</strong>
-                  </article>
-                ))}
-              </div>
+        <div className={styles.mainViewport}>
+          <div className={styles.mainGrid}>
+            <main className={styles.main}>
+              <PosHeaderMenuBar
+                activeMenu="ORDER_HISTORY"
+                onChangeMenu={handleChangeMenu}
+                menuOptions={TABLE_POS_SIDEBAR_MENUS}
+              />
 
               {errorMessage ? (
-                <div className={styles.errorBox}>{errorMessage}</div>
+                <p className={styles.description}>{errorMessage}</p>
               ) : null}
 
-              <div className={styles.orderList}>
-                {isLoadingOrders ? (
-                  <div className={styles.loadingState}>
-                    주문현황을 불러오는 중입니다.
-                  </div>
-                ) : null}
+              <div className={styles.menuScrollArea}>
+                <section className={styles.posDashboardPanel}>
+                  <article className={styles.posDashboardHero}>
+                    <div>
+                      <p className={styles.posDashboardEyebrow}>요식업 POS 주문현황</p>
+                      <h1 className={styles.posDashboardTitle}>오늘 주문 운영 현황</h1>
+                      <p className={styles.posDashboardDescription}>
+                        오늘 접수된 주문 상태를 확인하고 접수대기/진행중/완료/취소 목록을 빠르게 확인합니다.
+                      </p>
+                    </div>
+                    <div className={styles.posDashboardHeroActions}>
+                      <select
+                        aria-label="주문 유형 필터"
+                        className={styles.orderTypeSelect}
+                        value={activeCategory}
+                        onChange={(event) => {
+                          handleChangeCategory(event.target.value as PosOrderDashboardCategory)
+                        }}
+                      >
+                        {ORDER_TYPE_TABS.map((category) => (
+                          <option key={category.key} value={category.key}>
+                            {category.title}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className={styles.posDashboardPrimaryButton}
+                        onClick={handleOpenManualOrderModal}
+                      >
+                        주문등록
+                      </button>
+                    </div>
+                  </article>
 
-                {!isLoadingOrders && orders.length === 0 ? (
-                  <div className={styles.emptyState}>
-                    현재 표시할 주문이 없습니다.
-                  </div>
-                ) : null}
-
-                {!isLoadingOrders && orders.map((order) => {
-                  const isTableOrder = order.category === 'TABLE'
-
-                  return (
-                    <article
-                      key={order.orderId}
-                      className={
-                        selectedOrder?.orderId === order.orderId
-                          ? styles.orderCardSelected
-                          : styles.orderCard
-                      }
+                  <section className={styles.posDashboardSummaryGrid}>
+                    <button
+                      type="button"
+                      className={styles.posDashboardSummaryCard}
+                      onClick={() => handleOpenOrderStatusModal('RECEIVED')}
                     >
-                      <div className={styles.orderCardHeader}>
-                        <div>
-                          <strong className={styles.orderNo}>{order.orderNo}</strong>
-                          <p className={styles.orderSummary}>{order.summary}</p>
+                      <span className={styles.posDashboardSummaryLabel}>접수대기</span>
+                      <strong className={styles.posDashboardSummaryValue}>{receivedCount}</strong>
+                      <small className={styles.posDashboardSummaryHint}>신규 접수 주문 확인</small>
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.posDashboardSummaryCard}
+                      onClick={() => handleOpenOrderStatusModal('PROGRESS')}
+                    >
+                      <span className={styles.posDashboardSummaryLabel}>진행중</span>
+                      <strong className={styles.posDashboardSummaryValue}>{progressCount}</strong>
+                      <small className={styles.posDashboardSummaryHint}>처리/조리 진행 주문 확인</small>
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.posDashboardSummaryCard}
+                      onClick={() => handleOpenOrderStatusModal('DONE')}
+                    >
+                      <span className={styles.posDashboardSummaryLabel}>완료</span>
+                      <strong className={styles.posDashboardSummaryValue}>{doneCount}</strong>
+                      <small className={styles.posDashboardSummaryHint}>완료된 주문 내역 확인</small>
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.posDashboardSummaryCard}
+                      onClick={() => handleOpenOrderStatusModal('CANCELED')}
+                    >
+                      <span className={styles.posDashboardSummaryLabel}>취소</span>
+                      <strong className={styles.posDashboardSummaryValue}>{canceledCount}</strong>
+                      <small className={styles.posDashboardSummaryHint}>취소 처리 주문 확인</small>
+                    </button>
+                  </section>
+                </section>
+              </div>
+            </main>
+          </div>
+        </div>
+      </div>
+
+      {selectedOrderModal ? (
+        <div className={styles.cookingStatusModalOverlay} role="dialog" aria-modal="true">
+          <div className={`${styles.cookingStatusModalPanel} ${styles.orderStatusModalPanel}`}>
+            <header className={styles.cookingStatusModalHeader}>
+              <div>
+                <div className={styles.orderStatusModalTitleRow}>
+                  <h2 className={styles.cookingStatusModalTitle}>{modalStatusLabelMap[selectedOrderModal]}</h2>
+                  <span className={styles.orderStatusModalCountBadge}>
+                    {selectedModalOrders.length}
+                  </span>
+                </div>
+                <p className={styles.cookingStatusModalDescription}>
+                  해당 상태의 주문 목록을 확인합니다.
+                </p>
+              </div>
+              <button
+                type="button"
+                className={`${styles.tableStatusModalCloseButton} ${styles.tableStatusModalCloseButtonText}`}
+                onClick={handleCloseOrderStatusModal}
+              >
+                닫기
+              </button>
+            </header>
+
+            <div className={`${styles.cookingStatusModalBody} ${styles.orderStatusModalBody}`}>
+              <section className={styles.ordersPanel} aria-label="주문 목록">
+                {errorMessage ? (
+                  <div className={styles.errorBox}>{errorMessage}</div>
+                ) : null}
+
+                <div className={styles.orderList}>
+                  {isLoadingOrders ? (
+                    <div className={styles.loadingState}>
+                      주문현황을 불러오는 중입니다.
+                    </div>
+                  ) : null}
+
+                  {!isLoadingOrders && selectedModalOrders.length === 0 ? (
+                    <div className={styles.emptyState}>
+                      현재 표시할 주문이 없습니다.
+                    </div>
+                  ) : null}
+
+                  {!isLoadingOrders && selectedModalOrders.map((order) => {
+                    const isTableOrder = order.category === 'TABLE'
+
+                    return (
+                      <article
+                        key={order.orderId}
+                        className={
+                          selectedOrder?.orderId === order.orderId
+                            ? styles.orderCardSelected
+                            : styles.orderCard
+                        }
+                      >
+                        <div className={styles.orderCardHeader}>
+                          <div>
+                            <div className={styles.orderNoRow}>
+                              <strong className={styles.orderNo}>{order.orderNo}</strong>
+                              <span
+                                className={
+                                  order.orderCompositionType === 'COMPOSITE'
+                                    ? `${styles.compositionBadge} ${styles.compositionBadgeComposite}`
+                                    : `${styles.compositionBadge} ${styles.compositionBadgeSingle}`
+                                }
+                              >
+                                {order.orderCompositionLabel}
+                              </span>
+                            </div>
+                            <p className={styles.orderSummary}>{order.summary}</p>
+                          </div>
+
+                          <div className={styles.orderHeaderActions}>
+                            <span className={`${styles.statusBadge} ${getOrderDisplayStatusClassName(order)}`}>
+                              {getDisplayOrderStatusLabel(order)}
+                            </span>
+                            <span className={styles.orderTypeInlineLabel}>
+                              {order.categoryLabel}
+                            </span>
+                            <button
+                              type="button"
+                              className={styles.orderPrintButton}
+                              onClick={handlePrintOrder}
+                            >
+                              인쇄
+                            </button>
+                          </div>
                         </div>
 
-                        <span className={`${styles.statusBadge} ${getOrderDisplayStatusClassName(order)}`}>
-                          {getDisplayOrderStatusLabel(order)}
-                        </span>
-                      </div>
+                        <div className={styles.orderBottomRow}>
+                          <div className={styles.orderMetaGrid}>
+                            <div className={styles.orderMetaItem}>
+                              <span className={styles.orderMetaLabel}>주문유형</span>
+                              <strong className={styles.orderMetaValue}>
+                                {order.categoryLabel}
+                              </strong>
+                            </div>
 
-                      <div className={styles.orderMetaGrid}>
-                        <div className={styles.orderMetaItem}>
-                          <span className={styles.orderMetaLabel}>주문유형</span>
-                          <strong className={styles.orderMetaValue}>
-                            {order.categoryLabel}
-                          </strong>
-                        </div>
+                            <div className={styles.orderMetaItem}>
+                              <span className={styles.orderMetaLabel}>결제금액</span>
+                              <strong className={styles.orderMetaValue}>
+                                {formatCurrency(order.amount)}
+                              </strong>
+                            </div>
 
-                        <div className={styles.orderMetaItem}>
-                          <span className={styles.orderMetaLabel}>결제금액</span>
-                          <strong className={styles.orderMetaValue}>
-                            {formatCurrency(order.amount)}
-                          </strong>
-                        </div>
+                            <div className={styles.orderMetaItem}>
+                              <span className={styles.orderMetaLabel}>주문시간</span>
+                              <strong className={styles.orderMetaValue}>{order.receivedAtText}</strong>
+                            </div>
 
-                        <div className={styles.orderMetaItem}>
-                          <span className={styles.orderMetaLabel}>주문시간</span>
-                          <strong className={styles.orderMetaValue}>{order.receivedAtText}</strong>
-                        </div>
+                            <div className={styles.orderMetaItem}>
+                              <span className={styles.orderMetaLabel}>주소</span>
+                              <strong className={styles.orderMetaValue}>{order.source}</strong>
+                            </div>
+                          </div>
 
-                        <div className={styles.orderMetaItem}>
-                          <span className={styles.orderMetaLabel}>주소</span>
-                          <strong className={styles.orderMetaValue}>{order.source}</strong>
-                        </div>
-                      </div>
-
-                      <div className={styles.orderActions}>
-                        <button
-                          type="button"
-                          className={styles.secondaryButton}
-                          onClick={() => handleSelectOrder(order.orderId)}
-                          disabled={isLoadingDetail}
-                        >
-                          주문상세확인
-                        </button>
-                        {!isTableOrder ? (
-                          <>
+                          <div className={styles.orderActions}>
                             <button
                               type="button"
                               className={styles.secondaryButton}
-                              onClick={() => handleUpdateStatus(order.orderId, 'PREPARING')}
-                              disabled={isUpdatingStatus || isClosedOrderStatus(order.orderStatus)}
+                              onClick={() => handleSelectOrder(order.orderId)}
+                              disabled={isLoadingDetail}
                             >
-                              처리 시작
+                              주문상세확인
                             </button>
-                            <button
-                              type="button"
-                              className={styles.primaryButton}
-                              onClick={() => handleUpdateStatus(order.orderId, 'COMPLETED')}
-                              disabled={isUpdatingStatus || isClosedOrderStatus(order.orderStatus)}
-                            >
-                              완료
-                            </button>
-                          </>
-                        ) : null}
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
+                            {!isTableOrder ? (
+                            <>
+                              {selectedOrderModal === 'RECEIVED' ? (
+                                <button
+                                  type="button"
+                                  className={styles.secondaryButton}
+                                  onClick={() => handleUpdateStatus(order.orderId, 'PREPARING')}
+                                  disabled={isUpdatingStatus || isClosedOrderStatus(order.orderStatus)}
+                                >
+                                  접수진행
+                                </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                className={styles.secondaryButton}
+                                onClick={() => handleUpdateStatus(order.orderId, 'CANCELLED')}
+                                disabled={isUpdatingStatus || isClosedOrderStatus(order.orderStatus)}
+                              >
+                                취소
+                              </button>
+                              {selectedOrderModal !== 'RECEIVED' ? (
+                                <button
+                                  type="button"
+                                  className={styles.primaryButton}
+                                  onClick={() => handleUpdateStatus(order.orderId, 'COMPLETED')}
+                                  disabled={isUpdatingStatus || isClosedOrderStatus(order.orderStatus)}
+                                >
+                                  완료
+                                </button>
+                              ) : null}
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      </article>
+                    )
+                  })}
+                </div>
             </section>
 
-            <aside className={styles.detailPanel} aria-label="주문 상세">
-              <h2 className={styles.detailTitle}>주문안내</h2>
+            </div>
 
-              {isLoadingDetail ? (
-                <div className={styles.detailEmpty}>
-                  <strong className={styles.detailEmptyTitle}>
-                    주문 상세를 불러오는 중입니다.
-                  </strong>
-                </div>
-              ) : selectedOrder ? (
-                <div className={styles.detailBody}>
-                  <div className={styles.detailHeader}>
-                    <strong className={styles.detailOrderNo}>{selectedOrder.orderNo}</strong>
-                    <span
-                      className={`${styles.statusBadge} ${getOrderDisplayStatusClassName(selectedOrder)}`}
+            {selectedOrder ? (
+              <div
+                className={styles.orderDetailModalOverlay}
+                role="presentation"
+                onClick={handleCloseOrderDetailModal}
+              >
+                <section
+                  className={styles.orderDetailModal}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="주문 상세 내역"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <header className={styles.orderDetailModalHeader}>
+                    <div>
+                      <p className={styles.orderDetailPaymentGuide}>결제 가능합니다.</p>
+                      <h3 className={styles.orderDetailTitle}>
+                        주문 내역
+                      </h3>
+                      <p className={styles.orderDetailOrderCode}>
+                        주문번호 {selectedOrder.orderNo}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.orderDetailCloseButton}
+                      onClick={handleCloseOrderDetailModal}
                     >
-                      {getDisplayOrderStatusLabel(selectedOrder)}
-                    </span>
-                  </div>
+                      닫기
+                    </button>
+                  </header>
 
-                  <div className={styles.detailList}>
-                    <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>주문유형</span>
-                      <strong className={styles.detailValue}>
-                        {selectedOrder.categoryLabel}
-                      </strong>
-                    </div>
-
-                    <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>결제금액</span>
-                      <strong className={styles.detailValue}>
-                        {formatCurrency(selectedOrder.amount)}
-                      </strong>
-                    </div>
-
-                    <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>주문시간</span>
-                      <strong className={styles.detailValue}>{selectedOrder.receivedAt}</strong>
-                    </div>
-
-                    <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>주소</span>
-                      <strong className={styles.detailValue}>{selectedOrder.source}</strong>
-                    </div>
-
-                    <div className={styles.detailRow}>
-                        <span className={styles.detailLabel}>메뉴</span>
-                      <strong className={styles.detailValue}>
-                        {selectedOrder.summary}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div className={styles.memoBox}>
-                    <span className={styles.memoLabel}>주문 상품</span>
-                    {selectedOrder.items.length > 0 ? (
-                      selectedOrder.items.map((item) => (
-                        <p key={item.id} className={styles.memoText}>
-                          {item.productName} x {item.quantity} · {formatCurrency(item.lineTotalAmount)}
+                  <div className={styles.orderDetailList}>
+                    {selectedOrder.items.map((item) => (
+                      <article key={item.id} className={styles.orderDetailItemCard}>
+                        <strong className={styles.orderDetailItemName}>{item.productName}</strong>
+                        <p className={styles.orderDetailItemPrice}>
+                          {item.quantity}개 · {formatCurrency(item.lineTotalAmount)}
                         </p>
-                      ))
-                    ) : (
-                      <p className={styles.memoText}>주문 상품이 없습니다.</p>
-                    )}
+                        {item.options.length > 0 ? (
+                          <ul className={styles.orderDetailOptionList}>
+                            {item.options.map((option) => (
+                              <li key={option.id} className={styles.orderDetailOptionItem}>
+                                - 옵션: {option.optionValueName} X {option.quantity} · +{formatCurrency(option.lineOptionAmount)}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </article>
+                    ))}
                   </div>
 
-                  {selectedOrder.fulfillment ? (
-                    <div className={styles.memoBox}>
-                      <span className={styles.memoLabel}>수령/전달 정보</span>
-                      <p className={styles.memoText}>
-                        {selectedOrder.fulfillment.deliveryAddress ??
-                          selectedOrder.fulfillment.pickupExpectedAt ??
-                          selectedOrder.fulfillment.reservationExpectedAt ??
-                          selectedOrder.fulfillment.kioskDeviceCode ??
-                          selectedOrder.fulfillment.qrCodeValue ??
-                          selectedOrder.fulfillment.sourceLabelSnapshot ??
-                          '-'}
-                      </p>
-                    </div>
-                  ) : null}
+                  <footer className={styles.orderDetailModalFooter}>
+                    <strong className={styles.orderDetailTotalText}>
+                      총 금액 : {formatCurrency(selectedOrder.totalAmount)}
+                    </strong>
+                  </footer>
+                </section>
+              </div>
+            ) : null}
 
-                  {selectedOrder.memo ? (
-                    <div className={styles.memoBox}>
-                      <span className={styles.memoLabel}>요청 메모</span>
-                      <p className={styles.memoText}>{selectedOrder.memo}</p>
-                    </div>
-                  ) : null}
+          </div>
+        </div>
+      ) : null}
 
-                  {selectedOrder.fulfillment?.customerRequestMemo ? (
-                    <div className={styles.memoBox}>
-                      <span className={styles.memoLabel}>고객 요청</span>
-                      <p className={styles.memoText}>
-                        {selectedOrder.fulfillment.customerRequestMemo}
-                      </p>
-                    </div>
-                  ) : null}
-
-                  <div className={styles.memoBox}>
-                    <span className={styles.memoLabel}>상태 이력</span>
-                    <p className={styles.memoText}>
-                      {selectedOrder.statusEvents.length}건
-                    </p>
-                  </div>
-
-                  {selectedOrder.category === 'TABLE' ? (
-                    <div className={styles.memoBox}>
-                      <span className={styles.memoLabel}>상태 처리 안내</span>
-                      <p className={styles.memoText}>
-                        테이블 주문 상태는 조리현황 및 테이블 현황에서 처리합니다.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className={styles.detailActions}>
-                      <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => handleUpdateStatus(selectedOrder.orderId, 'CONFIRMED')}
-                        disabled={isUpdatingStatus || isClosedOrderStatus(selectedOrder.orderStatus)}
-                      >
-                        접수
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.primaryButton}
-                        onClick={() => handleUpdateStatus(selectedOrder.orderId, 'COMPLETED')}
-                        disabled={isUpdatingStatus || isClosedOrderStatus(selectedOrder.orderStatus)}
-                      >
-                        완료
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.secondaryButton}
-                        onClick={() => handleUpdateStatus(selectedOrder.orderId, 'CANCELLED')}
-                        disabled={isUpdatingStatus || isClosedOrderStatus(selectedOrder.orderStatus)}
-                      >
-                        취소
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className={styles.detailEmpty}>
-                  <strong className={styles.detailEmptyTitle}>주문을 선택하세요</strong>
-                  <p className={styles.detailEmptyText}>
-                    주문 목록에서 주문을 선택하면 우측 상세 패널에서 상태와 결제 정보를 확인합니다.
-                  </p>
-                </div>
-              )}
-            </aside>
-
-            {isManualOrderModalOpen ? (
+      {isManualOrderModalOpen ? (
               <div
                 className={styles.manualOrderModalOverlay}
                 role="presentation"
@@ -1487,10 +1331,7 @@ export default function PosOrdersPage() {
                   </footer>
                 </section>
               </div>
-            ) : null}
-          </div>
-        </main>
+      ) : null}
       </div>
-    </div>
   )
 }

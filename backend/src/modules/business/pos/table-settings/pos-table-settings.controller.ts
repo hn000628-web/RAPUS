@@ -52,13 +52,17 @@ export class BusinessPosTableSettingsController {
   findAll(
     @Query('profileId', ParseIntPipe) profileId: number,
     @Query('channelCode') channelCode: string,
-    @Query('resourceType') resourceType?: PosResourceType | 'ALL'
+    @Query('resourceType') resourceType?: PosResourceType | 'ALL',
+    @Query('floor') floor?: string,
+    @Query('zone') zone?: string
   ): BusinessPosTableSettingsListResponse {
 
     return this.businessPosTableSettingsService.findAll(
       profileId,
       channelCode,
-      resourceType
+      resourceType,
+      floor,
+      zone
     )
 
   }

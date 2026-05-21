@@ -6,7 +6,7 @@
 // - 카테고리관리 탭 관리형 목업 타입 확장
 
 // SECTION 01 : MODULE TYPE
-export type PosTableSettingsModule = 'MENU' | 'CATEGORY' | 'TABLE'
+export type PosTableSettingsModule = 'MENU' | 'CATEGORY' | 'TABLE' | 'LAYOUT'
 
 // SECTION 02 : MENU MOCK TYPE
 export type PosTableSettingsMenuItem = {

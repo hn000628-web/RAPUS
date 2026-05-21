@@ -31,6 +31,16 @@ export type PosTableItem = {
   tableNo: number
   label: string
   amount: number
+  floor?: string
+  zone?: string
+  floorSortOrder?: number
+  zoneSortOrder?: number
+  layoutX?: number
+  layoutY?: number
+  layoutWidth?: number
+  layoutHeight?: number
+  layoutRotate?: number
+  layoutShape?: string
   resourceStatus?: string
   status: 'EMPTY' | 'USING' | 'PAYMENT_WAITING' | 'CHECKOUT_PENDING' | 'CLEANING' | 'CLEAN_DONE'
   cookingStatusLabel?: string
@@ -74,6 +84,8 @@ export type PosCookingTicket = {
   optionText?: string
   requestText?: string
   orderedAt: string
+  cookingStartedAt?: string
+  cookingCompletedAt?: string
   elapsedMinutes: number
   status: PosCookingStatus
 }

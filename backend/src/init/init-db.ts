@@ -4053,6 +4053,16 @@ locationName TEXT NOT NULL,
 locationGroupName TEXT,
 capacity INTEGER,
 tableOptionName TEXT,
+floor TEXT DEFAULT '1층',
+zone TEXT DEFAULT '홀',
+floorSortOrder INTEGER DEFAULT 1,
+zoneSortOrder INTEGER DEFAULT 1,
+layoutX INTEGER DEFAULT 0,
+layoutY INTEGER DEFAULT 0,
+layoutWidth INTEGER DEFAULT 180,
+layoutHeight INTEGER DEFAULT 140,
+layoutRotate INTEGER DEFAULT 0,
+layoutShape TEXT DEFAULT 'RECT',
 tableCode TEXT
 CHECK(
   tableCode IS NULL
@@ -5085,6 +5095,66 @@ safeAddColumn(
 
 safeAddColumn(
   'pos_locations',
+  'floor',
+  "TEXT DEFAULT '1층'"
+)
+
+safeAddColumn(
+  'pos_locations',
+  'zone',
+  "TEXT DEFAULT '홀'"
+)
+
+safeAddColumn(
+  'pos_locations',
+  'floorSortOrder',
+  'INTEGER DEFAULT 1'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'zoneSortOrder',
+  'INTEGER DEFAULT 1'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutX',
+  'INTEGER DEFAULT 0'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutY',
+  'INTEGER DEFAULT 0'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutWidth',
+  'INTEGER DEFAULT 180'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutHeight',
+  'INTEGER DEFAULT 140'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutRotate',
+  'INTEGER DEFAULT 0'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutShape',
+  "TEXT DEFAULT 'RECT'"
+)
+
+safeAddColumn(
+  'pos_locations',
   'tableCode',
   "TEXT CHECK(tableCode IS NULL OR tableCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9]')"
 )
@@ -5216,6 +5286,16 @@ if (!posLocationsSupportsWaitingStatus || posLocationsHasLegacyLocationNameUniqu
       locationGroupName TEXT,
       capacity INTEGER,
       tableOptionName TEXT,
+      floor TEXT DEFAULT '1층',
+      zone TEXT DEFAULT '홀',
+      floorSortOrder INTEGER DEFAULT 1,
+      zoneSortOrder INTEGER DEFAULT 1,
+      layoutX INTEGER DEFAULT 0,
+      layoutY INTEGER DEFAULT 0,
+      layoutWidth INTEGER DEFAULT 180,
+      layoutHeight INTEGER DEFAULT 140,
+      layoutRotate INTEGER DEFAULT 0,
+      layoutShape TEXT DEFAULT 'RECT',
       tableCode TEXT CHECK(
         tableCode IS NULL
         OR tableCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9]'
@@ -5257,17 +5337,17 @@ if (!posLocationsSupportsWaitingStatus || posLocationsHasLegacyLocationNameUniqu
         locationGroupName,
         capacity,
         tableOptionName,
-        CASE
-          WHEN tableCode IS NULL THEN NULL
-          WHEN EXISTS (
-            SELECT 1
-            FROM pos_locations prev
-            WHERE prev.channelCode = pos_locations.channelCode
-              AND prev.tableCode = pos_locations.tableCode
-              AND prev.id < pos_locations.id
-          ) THEN NULL
-          ELSE tableCode
-        END AS tableCode,
+        floor,
+        zone,
+        floorSortOrder,
+        zoneSortOrder,
+        layoutX,
+        layoutY,
+        layoutWidth,
+        layoutHeight,
+        layoutRotate,
+        layoutShape,
+        tableCode,
         qrStatus,
         qrBaseUrl,
         qrRoutePath,
@@ -5300,7 +5380,27 @@ if (!posLocationsSupportsWaitingStatus || posLocationsHasLegacyLocationNameUniqu
         locationGroupName,
         capacity,
         tableOptionName,
-        tableCode,
+        COALESCE(floor, '1층'),
+        COALESCE(zone, '홀'),
+        COALESCE(floorSortOrder, 1),
+        COALESCE(zoneSortOrder, 1),
+        COALESCE(layoutX, 0),
+        COALESCE(layoutY, 0),
+        COALESCE(layoutWidth, 180),
+        COALESCE(layoutHeight, 140),
+        COALESCE(layoutRotate, 0),
+        COALESCE(layoutShape, 'RECT'),
+        CASE
+          WHEN tableCode IS NULL THEN NULL
+          WHEN EXISTS (
+            SELECT 1
+            FROM pos_locations prev
+            WHERE prev.channelCode = pos_locations.channelCode
+              AND prev.tableCode = pos_locations.tableCode
+              AND prev.id < pos_locations.id
+          ) THEN NULL
+          ELSE tableCode
+        END,
         qrStatus,
         qrBaseUrl,
         qrRoutePath,
@@ -5622,6 +5722,12 @@ safeAddColumn(
 )
 
 safeAddColumn(
+  'pos_orders',
+  'customerChannelCode',
+  'TEXT'
+)
+
+safeAddColumn(
   'pos_order_items',
   'orderCode',
   'TEXT'
@@ -5797,6 +5903,11 @@ ON pos_orders(orderDate)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_pos_orders_order_year_month_day
 ON pos_orders(orderYear, orderMonth, orderDay)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_orders_customer_channel
+ON pos_orders(customerChannelCode)
 `)
 
 db.exec(`
@@ -6444,6 +6555,21 @@ ON pos_locations(tableTypeCode)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_pos_locations_channel_table_type
 ON pos_locations(channelCode, tableTypeCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_locations_channel_floor
+ON pos_locations(channelCode, floor)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_locations_channel_floor_zone
+ON pos_locations(channelCode, floor, zone)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_locations_floor_zone_sort
+ON pos_locations(channelCode, floorSortOrder, zoneSortOrder)
 `)
 
 db.exec(`

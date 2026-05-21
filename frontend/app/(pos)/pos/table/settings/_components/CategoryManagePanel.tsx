@@ -28,6 +28,7 @@ type CategoryManagePanelProps = {
   onCreateActionChange?: (action: (() => void) | null) => void
   onSavingChange?: (saving: boolean) => void
   onSaveSuccess?: () => void
+  viewMode?: 'DASHBOARD' | 'LIST'
   hideCreateButton?: boolean
 }
 
@@ -51,13 +52,13 @@ type PresetCategory = {
 }
 
 const PRESET_CATEGORIES: PresetCategory[] = [
-  { key: 'MAIN', label: '硫붿씤', categoryCode: 'MAIN', categoryName: '硫붿씤 硫붾돱' },
-  { key: 'SUB', label: '?쒕툕', categoryCode: 'SUB', categoryName: '?쒕툕 硫붾돱' },
+  { key: 'MAIN', label: '메인', categoryCode: 'MAIN', categoryName: '메인 메뉴' },
+  { key: 'SUB', label: '서브', categoryCode: 'SUB', categoryName: '서브 메뉴' },
   { key: 'SIDE', label: 'SIDE', categoryCode: 'SIDE', categoryName: 'SIDE CATEGORY' },
   { key: 'DRINK', label: 'DRINK', categoryCode: 'DRINK', categoryName: 'DRINK CATEGORY' },
   { key: 'SERVICE', label: 'SERVICE', categoryCode: 'CUSTOM', categoryName: 'SERVICE CATEGORY' },
-  { key: 'ALCOHOL', label: '?뚯퐳', categoryCode: 'ALCOHOL', categoryName: '二쇰쪟' },
-  { key: 'CUSTOM', label: '而ㅼ뒪?', categoryCode: 'CUSTOM', categoryName: '??移댄뀒怨좊━' }
+  { key: 'ALCOHOL', label: '주류', categoryCode: 'ALCOHOL', categoryName: '주류' },
+  { key: 'CUSTOM', label: '커스텀', categoryCode: 'CUSTOM', categoryName: '새 카테고리' }
 ]
 
 const MAX_CATEGORY_COUNT = 10
@@ -146,7 +147,7 @@ function mapCategoryRowToItem(row: PosProductCategory): CategoryItem {
   return {
     id: String(row.id),
     categoryCode: code,
-    categoryName: String(row.categoryName || '').trim() || '移댄뀒怨좊━',
+    categoryName: String(row.categoryName || '').trim() || '카테고리',
     sortOrder: Number(row.sortOrder || 0),
     isDefault: Number(row.isDefault || 0) === 1,
     isRequired: code === 'MAIN',
@@ -170,7 +171,7 @@ function sortByOrder(items: CategoryItem[]): CategoryItem[] {
 function normalizeCategoryPayloadItems(items: CategoryItem[]) {
   return resequence(sortByOrder(items)).map((item) => ({
     categoryCode: item.categoryCode,
-    categoryName: item.categoryName.trim() || '移댄뀒怨좊━',
+    categoryName: item.categoryName.trim() || '카테고리',
     sortOrder: item.sortOrder,
     isActive: item.isActive ? 1 : 0,
     isDefault: item.isDefault ? 1 : 0,
@@ -186,6 +187,7 @@ export default function CategoryManagePanel({
   onCreateActionChange,
   onSavingChange,
   onSaveSuccess,
+  viewMode = 'LIST',
   hideCreateButton
 }: CategoryManagePanelProps) {
   const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null)
@@ -222,7 +224,7 @@ export default function CategoryManagePanel({
 
       setCategories(nextItems)
     } catch (error) {
-      console.error('移댄뀒怨좊━ 紐⑸줉 議고쉶 ?ㅽ뙣', error)
+      console.error('카테고리 목록 조회 실패', error)
       setCategories([])
     } finally {
       setIsLoading(false)
@@ -257,7 +259,7 @@ export default function CategoryManagePanel({
         await loadCategories()
         return true
       } catch (error) {
-        console.error('移댄뀒怨좊━ ????ㅽ뙣', error)
+        console.error('카테고리 저장 실패', error)
         return false
       } finally {
         setIsSaving(false)
@@ -497,7 +499,7 @@ export default function CategoryManagePanel({
     <section className={styles.categoryPanel}>
       <header className={styles.panelHeader}>
         <div>
-          <h2 className={styles.moduleTitle}>移댄뀒怨좊━愿由?</h2>
+          <h2 className={styles.moduleTitle}>카테고리관리</h2>
         </div>
         <div className={styles.panelActions}>
           {!hideCreateButton ? (
@@ -507,146 +509,151 @@ export default function CategoryManagePanel({
               onClick={handleOpenCreateModal}
               disabled={isSaving || isCategoryLimitReached}
             >
-              + 移댄뀒怨좊━ 異붽?
+              + 카테고리추가
             </button>
           ) : null}
         </div>
       </header>
 
-      <div className={styles.summaryGrid}>
-        <article className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>?꾩껜 移댄뀒怨좊━</p>
-          <p className={styles.summaryValue}>{summary.total}媛?</p>
-        </article>
-        <article className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>湲곕낯 移댄뀒怨좊━</p>
-          <p className={styles.summaryValue}>{summary.defaults}媛?</p>
-        </article>
-        <article className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>?ъ슜以?</p>
-          <p className={styles.summaryValue}>{summary.active}媛?</p>
-        </article>
-        <article className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>鍮꾪솢??</p>
-          <p className={styles.summaryValue}>{summary.inactive}媛?</p>
-        </article>
-      </div>
-
-      <article className={styles.categoryEditorCard}>
-        <div className={styles.editorTitleBlock}>
-          <h3 className={styles.editorTitle}>移댄뀒怨좊━ ?몄쭛</h3>
-          <p className={styles.editorDescription}>?섏젙/??젣??利됱떆 諛섏쁺?섍퀬 紐⑸줉? ?먮룞 ?숆린?붾맗?덈떎.</p>
+      {viewMode === 'DASHBOARD' ? (
+        <div className={styles.summaryGrid}>
+          <article className={styles.summaryCard}>
+            <p className={styles.summaryLabel}>전체 카테고리</p>
+            <p className={styles.summaryValue}>{summary.total}개</p>
+          </article>
+          <article className={styles.summaryCard}>
+            <p className={styles.summaryLabel}>기본 카테고리</p>
+            <p className={styles.summaryValue}>{summary.defaults}개</p>
+          </article>
+          <article className={styles.summaryCard}>
+            <p className={styles.summaryLabel}>활성 카테고리</p>
+            <p className={styles.summaryValue}>{summary.active}개</p>
+          </article>
+          <article className={styles.summaryCard}>
+            <p className={styles.summaryLabel}>비활성 카테고리</p>
+            <p className={styles.summaryValue}>{summary.inactive}개</p>
+          </article>
         </div>
+      ) : (
+        <article className={styles.categoryEditorCard}>
+          <div className={styles.editorTitleBlock}>
+            <h3 className={styles.editorTitle}>카테고리 목록</h3>
+            <p className={styles.editorDescription}>수정/삭제가 즉시 반영되고 목록이 자동 동기화됩니다.</p>
+          </div>
 
-        <div className={styles.categoryRows}>
-          {categories.map((item, index) => {
-            const isFirst = index === 0
-            const isLast = index === categories.length - 1
-            const activeLock = item.categoryCode === 'MAIN' && item.isRequired
+          <div className={styles.categoryRows}>
+            {categories.map((item, index) => {
+              const isFirst = index === 0
+              const isLast = index === categories.length - 1
+              const activeLock = item.categoryCode === 'MAIN' && item.isRequired
 
-            return (
-              <article key={item.id} className={styles.categoryRow}>
-                <div className={styles.categoryCodeArea}>
-                  <p className={styles.categoryCode}>{item.categoryCode}</p>
-                  <button
-                    type="button"
-                    className={item.deletable ? styles.deleteButton : styles.deleteBlockedButton}
-                    disabled={!item.deletable || isSaving}
-                    onClick={() => {
-                      if (!item.deletable) {
-                        return
-                      }
-                      void handleDelete(item.id)
-                    }}
-                  >
-                    ??젣
-                  </button>
-                </div>
-
-                <div className={styles.categoryNameArea}>
-                  <label htmlFor={`category-name-${item.id}`} className={styles.categoryLabel}>
-                    移댄뀒怨좊━紐?                  </label>
-                  <input
-                    id={`category-name-${item.id}`}
-                    className={styles.categoryInput}
-                    value={item.categoryName}
-                    onChange={(event) => handleNameChange(item.id, event.target.value)}
-                    onBlur={() => {
-                      void handleNameCommit()
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault()
-                        void handleNameCommit()
-                      }
-                    }}
-                    disabled={isSaving}
-                  />
-                </div>
-
-                <div className={styles.categoryControlArea}>
-                  <div className={styles.controlBlock}>
-                    <span className={styles.controlLabel}>?쒖꽌</span>
-                    <div className={styles.reorderButtons}>
-                      <button
-                        type="button"
-                        className={styles.reorderButton}
-                        disabled={isFirst || isSaving}
-                        onClick={() => {
-                          void handleMove(index, -1)
-                        }}
-                      >
-                        ??                      </button>
-                      <button
-                        type="button"
-                        className={styles.reorderButton}
-                        disabled={isLast || isSaving}
-                        onClick={() => {
-                          void handleMove(index, 1)
-                        }}
-                      >
-                        ??                      </button>
-                    </div>
-                  </div>
-
-                  <div className={styles.controlBlock}>
-          <span className={styles.controlLabel}>湲곕낯媛?</span>
-                    <span className={styles.itemBadge}>{item.isDefault ? '湲곕낯' : '而ㅼ뒪?'}</span>
-                  </div>
-
-                  <div className={styles.controlBlock}>
-                    <span className={styles.controlLabel}>?곹깭</span>
+              return (
+                <article key={item.id} className={styles.categoryRow}>
+                  <div className={styles.categoryCodeArea}>
+                    <p className={styles.categoryCode}>{item.categoryCode}</p>
                     <button
                       type="button"
-                      className={`${styles.pillButton} ${item.isActive ? styles.pillButtonActive : ''}`}
+                      className={item.deletable ? styles.deleteButton : styles.deleteBlockedButton}
+                      disabled={!item.deletable || isSaving}
                       onClick={() => {
-                        void handleToggleActive(item.id)
+                        if (!item.deletable) {
+                          return
+                        }
+                        void handleDelete(item.id)
                       }}
-                      disabled={(activeLock && item.isActive) || isSaving}
                     >
-                      {item.isActive ? 'ON' : 'OFF'}
+                      삭제
                     </button>
                   </div>
 
-                  <div className={styles.controlBlock}>
-                    <span className={styles.controlLabel}>?깆씤?몄쬆</span>
-                    <span className={styles.itemBadge}>
-                      {item.requiresAdultVerification ? 'ADULT' : 'NORMAL'}
-                    </span>
+                  <div className={styles.categoryNameArea}>
+                    <label htmlFor={`category-name-${item.id}`} className={styles.categoryLabel}>
+                      카테고리명
+                    </label>
+                    <input
+                      id={`category-name-${item.id}`}
+                      className={styles.categoryInput}
+                      value={item.categoryName}
+                      onChange={(event) => handleNameChange(item.id, event.target.value)}
+                      onBlur={() => {
+                        void handleNameCommit()
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault()
+                          void handleNameCommit()
+                        }
+                      }}
+                      disabled={isSaving}
+                    />
                   </div>
-                </div>
-              </article>
-            )
-          })}
-        </div>
-      </article>
+
+                  <div className={styles.categoryControlArea}>
+                    <div className={styles.controlBlock}>
+                      <span className={styles.controlLabel}>정렬</span>
+                      <div className={styles.reorderButtons}>
+                        <button
+                          type="button"
+                          className={styles.reorderButton}
+                          disabled={isFirst || isSaving}
+                          onClick={() => {
+                            void handleMove(index, -1)
+                          }}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.reorderButton}
+                          disabled={isLast || isSaving}
+                          onClick={() => {
+                            void handleMove(index, 1)
+                          }}
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className={styles.controlBlock}>
+                      <span className={styles.controlLabel}>기본값</span>
+                      <span className={styles.itemBadge}>{item.isDefault ? '기본' : '커스텀'}</span>
+                    </div>
+
+                    <div className={styles.controlBlock}>
+                      <span className={styles.controlLabel}>운영 상태</span>
+                      <button
+                        type="button"
+                        className={`${styles.pillButton} ${item.isActive ? styles.pillButtonActive : ''}`}
+                        onClick={() => {
+                          void handleToggleActive(item.id)
+                        }}
+                        disabled={(activeLock && item.isActive) || isSaving}
+                      >
+                        {item.isActive ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+
+                    <div className={styles.controlBlock}>
+                      <span className={styles.controlLabel}>권한/유형</span>
+                      <span className={styles.itemBadge}>
+                        {item.requiresAdultVerification ? 'ADULT' : 'NORMAL'}
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        </article>
+      )}
 
       {isPresetModalOpen && typeof document !== 'undefined'
         ? createPortal(
             <div style={PRESET_MODAL_OVERLAY_STYLE}>
               <div style={PRESET_MODAL_CARD_STYLE}>
-                <h3 style={PRESET_MODAL_TITLE_STYLE}>移댄뀒怨좊━ 異붽?</h3>
-                <p style={PRESET_MODAL_DESC_STYLE}>異붽???移댄뀒怨좊━ ?좏삎???좏깮?섏꽭??</p>
+                <h3 style={PRESET_MODAL_TITLE_STYLE}>카테고리 추가</h3>
+                <p style={PRESET_MODAL_DESC_STYLE}>추가할 카테고리 유형을 선택해 주세요.</p>
 
                 <div style={PRESET_GRID_STYLE}>
                   {PRESET_CATEGORIES.map((preset) => {
@@ -685,7 +692,7 @@ export default function CategoryManagePanel({
                     onClick={() => setIsPresetModalOpen(false)}
                     disabled={isSaving}
                   >
-                    ?リ린
+                    닫기
                   </button>
                 </div>
               </div>
@@ -697,8 +704,8 @@ export default function CategoryManagePanel({
       <BaseModal
         open={isCreateSuccessModalOpen}
         type="success"
-        title="移댄뀒怨좊━ 異붽? ?꾨즺"
-        description="?좏깮??移댄뀒怨좊━媛 ??λ릺?덉뒿?덈떎."
+        title="카테고리 추가 완료"
+        description="선택한 카테고리가 등록되었습니다."
         onClose={() => setIsCreateSuccessModalOpen(false)}
       />
     </section>

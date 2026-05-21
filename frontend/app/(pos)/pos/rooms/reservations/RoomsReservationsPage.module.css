@@ -48,7 +48,7 @@
   display: grid;
   gap: 16px;
   width: 100%;
-  padding: 16px;
+  padding: 10px 16px 16px;
   box-sizing: border-box;
   grid-template-columns: 180px minmax(0, 1fr) minmax(0, 1fr);
 }

@@ -28,15 +28,15 @@ export const TABLE_POS_SIDEBAR_MENUS: PosMenuOption[] = [
   },
   {
     key: 'MENU_MANAGE',
-    label: '메뉴관리'
+    label: '테이블/메뉴관리'
   }
 ]
 
 export const TABLE_POS_SIDEBAR_PATHS: Record<TablePosSidebarMenuKey, string> = {
   TABLE: '/pos/table',
-  COOKING: '/pos/cooking',
-  ORDER_HISTORY: '/pos/orders',
-  RESERVATION: '/pos/reservations',
+  COOKING: '/pos/table/cooking',
+  ORDER_HISTORY: '/pos/table/orders',
+  RESERVATION: '/pos/table/reservations',
   SALES_HISTORY: '/pos/table/stay-sales',
   MENU_MANAGE: '/pos/table/settings'
 }

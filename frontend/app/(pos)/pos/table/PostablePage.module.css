@@ -1,0 +1,743 @@
+/* FILE : frontend/app/(pos)/pos/table/PosTablePage.module.css */
+/* ROOT : frontend/app/(pos)/pos/table/PosTablePage.module.css */
+/* STATUS : CREATE */
+/* ROLE : POS TABLE PAGE DEDICATED STYLE */
+/* CHANGE SUMMARY :
+- /pos/table 전용 CSS 모듈 분리
+- /pos/table/settings 기준 운영 밀도/여백으로 간격 통일
+- 테이블 캔버스/카드 동작 스타일은 유지
+*/
+
+.page {
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f7fb;
+}
+
+.posShell {
+  min-width: 1024px;
+  width: 100%;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbarWrap {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  flex: 0 0 64px;
+  height: 64px;
+  min-height: 64px;
+  width: 100%;
+  overflow: visible;
+  background-color: #f5f7fb;
+}
+
+.topbarInner {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.mainViewport {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+.mainGrid {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: grid;
+  gap: 0;
+  width: 100%;
+  padding: 14px 20px 28px;
+  box-sizing: border-box;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.tablePageGrid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.main {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.header {
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.description {
+  margin: 6px 0 0;
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.salesFilterGuide {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.menuScrollArea {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 10px;
+  padding-bottom: 12px;
+  scrollbar-gutter: stable;
+}
+
+.posDashboardPanel {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+  box-sizing: border-box;
+}
+
+.posDashboardHero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 34%),
+    linear-gradient(135deg, #f8fafc, #ffffff);
+  border: 1px solid #e2e8f0;
+}
+
+.posDashboardEyebrow {
+  margin: 0 0 10px;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.posDashboardTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.22;
+}
+
+.posDashboardDescription {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+.posDashboardPrimaryButton,
+.posDashboardSummaryCard,
+.tableStatusModalCloseButton {
+  font-family: inherit;
+}
+
+.posDashboardPrimaryButton {
+  min-width: 160px;
+  height: 50px;
+  border: 0;
+  border-radius: 12px;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.posDashboardSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.posTableSummaryGrid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.posDashboardSummaryCard {
+  min-width: 0;
+  min-height: 110px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.posDashboardSummaryCardClickable {
+  text-align: left;
+  cursor: pointer;
+}
+
+.posDashboardSummaryCardClickable:hover {
+  border-color: #0f172a;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.posDashboardSummaryLabel {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.posDashboardSummaryValue {
+  color: #0f172a;
+  font-size: 26px;
+  font-weight: 900;
+}
+
+.tableStatusModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.48);
+  box-sizing: border-box;
+}
+
+.tableStatusModalPanel {
+  width: min(1200px, calc(100vw - 48px));
+  height: min(820px, calc(100vh - 48px));
+  max-height: calc(100vh - 48px);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tableStatusModalHeader {
+  flex: 0 0 auto;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.tableStatusModalTitle {
+  margin: 0;
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.tableStatusModalDescription {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tableStatusModalCloseButton {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #d8e0ea;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 900;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.tableStatusModalCloseButtonText {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 86px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.tableStatusModalBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 16px 24px 20px;
+}
+
+.tableStatusModalBody .tableLayoutCanvas {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.tableStatusHeaderFilters {
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.tableSelectRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tableSelectField {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.tableSelectLabel {
+  font-size: 14px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.tableSelectBox {
+  min-width: 180px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tableFloorSelectBox,
+.tableStatusSelectBox {
+  min-width: 120px;
+  width: 120px;
+}
+
+.tableZoneSelectBox {
+  min-width: 140px;
+  width: 140px;
+}
+
+.tableLayoutCanvas {
+  position: relative;
+  min-height: 560px;
+  border: 1px solid #dbe4ef;
+  border-radius: 16px;
+  background:
+    linear-gradient(#eef2f7 1px, transparent 1px),
+    linear-gradient(90deg, #eef2f7 1px, transparent 1px),
+    #f8fafc;
+  background-size: 24px 24px;
+  overflow: auto;
+  padding: 16px 16px 80px;
+  scrollbar-gutter: stable;
+}
+
+.tableLayoutCard {
+  position: absolute;
+  z-index: 1;
+  pointer-events: auto;
+  box-sizing: border-box;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background-color: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  padding: 14px 12px;
+  cursor: pointer;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  overflow: hidden;
+  min-width: 180px;
+  min-height: 140px;
+}
+
+.tableLayoutCardWithCleanup {
+  min-height: 156px;
+}
+
+.tableLayoutCard:hover {
+  z-index: 10;
+  border-color: rgba(15, 23, 42, 0.28);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+}
+
+.tableLayoutCard:focus-visible,
+.tableLayoutCard:focus-within {
+  z-index: 10;
+}
+
+.tableLayoutCardRoom {
+  border-style: double;
+  border-width: 3px;
+  background-color: #fffdf7;
+}
+
+.tableLayoutCardRound {
+  min-width: 180px;
+  min-height: 180px;
+  /*
+   * 원형 카드의 사각 bounding box 투명 영역이
+   * 아래 카드 클릭을 가로채지 않도록 실제 hit 영역을 원형으로 맞춘다.
+   */
+  clip-path: circle(50% at 50% 50%);
+}
+
+.tableLayoutCardRound.tableLayoutCardWithCleanup {
+  min-width: 188px;
+  min-height: 188px;
+}
+
+.tableLayoutCardVertical {
+  justify-content: center;
+  align-items: center;
+  padding: 18px 10px;
+  gap: 6px;
+}
+
+.tableLayoutCardVertical.tableLayoutCardWithCleanup {
+  min-height: 172px;
+}
+
+.tableCardSelected {
+  border-color: #111827;
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.12);
+  background-color: #fbfdff;
+}
+
+.tableCardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  text-align: center;
+  pointer-events: none;
+}
+
+.tableLayoutCardVertical .tableCardContent {
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+}
+
+.tableName {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #111827;
+  margin: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tableLocationMeta {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #64748b;
+  margin: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tableAmount {
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.1;
+  color: #111827;
+  margin: 0;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.tableLayoutCardVertical .tableName {
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.tableLayoutCardVertical .tableLocationMeta {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.tableLayoutCardVertical .tableAmount {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.tableStatusRow {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+  pointer-events: none;
+}
+
+.tableCardStatusActionRow {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  margin-top: 4px;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  align-self: center;
+  pointer-events: auto;
+}
+
+.tableLayoutCardVertical .tableCardStatusActionRow {
+  gap: 4px;
+}
+
+.tableStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2f6fa4;
+  background-color: #e8f2fb;
+  white-space: nowrap;
+}
+
+.tableCookingStatus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #92400e;
+  background-color: #fef3c7;
+  white-space: nowrap;
+}
+
+.tableCardAction {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: calc(100% - 4px);
+  padding-top: 2px;
+  pointer-events: auto;
+}
+
+.cleanupStatusBadge {
+  height: 30px;
+  padding: 0 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.cleanupCompleteButton {
+  height: 32px;
+  min-width: 76px;
+  max-width: 100%;
+  padding: 0 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 13px;
+}
+
+.tableLayoutCardVertical .cleanupCompleteButton {
+  min-width: 72px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.tableOrderButton {
+  width: auto;
+  min-width: 96px;
+  max-width: calc(100% - 16px);
+  height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 10px;
+  background-color: #111827;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-sizing: border-box;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.emptyStateBox {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background-color: #ffffff;
+  padding: 20px;
+}
+
+.emptyStateTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.emptyStateText {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+@media (max-width: 980px) {
+  .tableStatusModalHeader {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .tableStatusHeaderFilters {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .mainGrid {
+    padding: 8px 10px 14px;
+  }
+
+  .menuScrollArea {
+    padding-right: 0;
+  }
+
+  .posDashboardPanel {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .posDashboardHero {
+    flex-direction: column;
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .posDashboardTitle {
+    font-size: 22px;
+    line-height: 1.25;
+  }
+
+  .posDashboardSummaryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .tableStatusModalOverlay {
+    padding: 12px;
+  }
+
+  .tableStatusModalPanel {
+    width: calc(100vw - 24px);
+    height: calc(100vh - 24px);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .posDashboardHero {
+    padding: 16px;
+  }
+
+  .posDashboardTitle {
+    font-size: 24px;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .posDashboardHero {
+    padding: 20px;
+  }
+
+  .posDashboardTitle {
+    font-size: 28px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .posDashboardTitle {
+    font-size: 30px;
+  }
+
+  .posDashboardDescription {
+    font-size: 15px;
+  }
+}

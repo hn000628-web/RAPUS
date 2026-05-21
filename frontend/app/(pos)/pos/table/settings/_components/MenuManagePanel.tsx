@@ -43,9 +43,14 @@ import styles from '../PosTableSettingsPage.module.css'
 type MenuManagePanelProps = {
   onCreateActionChange?: (action: (() => void) | null) => void
   hideCreateButton?: boolean
+  activeFilter?: MenuFilter
+  onActiveFilterChange?: (nextFilter: MenuFilter) => void
+  statusView?: MenuStatusView
+  onStatusViewChange?: (nextView: MenuStatusView) => void
 }
 
 type MenuFilter = 'ALL' | 'ON_SALE' | 'STOPPED' | 'HIDDEN'
+type MenuStatusView = MenuFilter | null
 
 type MenuCreatePreviewOption = {
   id: string
@@ -206,7 +211,11 @@ function parseMenuLimit(value: string): number | null {
 // SECTION 01 : COMPONENT
 export default function MenuManagePanel({
   onCreateActionChange,
-  hideCreateButton
+  hideCreateButton,
+  activeFilter: controlledActiveFilter,
+  onActiveFilterChange,
+  statusView: controlledStatusView,
+  onStatusViewChange
 }: MenuManagePanelProps) {
   const thumbnailInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -215,7 +224,8 @@ export default function MenuManagePanel({
   const [categories, setCategories] = useState<PosProductCategory[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [isCategoryLoading, setIsCategoryLoading] = useState<boolean>(false)
-  const [activeFilter, setActiveFilter] = useState<MenuFilter>('ALL')
+  const [internalActiveFilter, setInternalActiveFilter] = useState<MenuFilter>('ALL')
+  const [internalStatusView, setInternalStatusView] = useState<MenuStatusView>(null)
   const [isMenuCreateModalOpen, setIsMenuCreateModalOpen] = useState<boolean>(false)
   const [isMenuCreateSaving, setIsMenuCreateSaving] = useState<boolean>(false)
   const [editingMenuId, setEditingMenuId] = useState<number | null>(null)
@@ -233,6 +243,23 @@ export default function MenuManagePanel({
   const [menuCreateForm, setMenuCreateForm] = useState<MenuCreateMockForm>(
     () => createInitialMenuCreateForm()
   )
+  const activeFilter = controlledActiveFilter ?? internalActiveFilter
+  const selectedMenuStatusView = controlledStatusView ?? internalStatusView
+  const handleActiveFilterChange = useCallback((nextFilter: MenuFilter) => {
+    if (onActiveFilterChange) {
+      onActiveFilterChange(nextFilter)
+      return
+    }
+    setInternalActiveFilter(nextFilter)
+  }, [onActiveFilterChange])
+
+  const handleStatusViewChange = useCallback((nextView: MenuStatusView) => {
+    if (onStatusViewChange) {
+      onStatusViewChange(nextView)
+      return
+    }
+    setInternalStatusView(nextView)
+  }, [onStatusViewChange])
 
   const loadMenus = useCallback(async () => {
     setIsLoading(true)
@@ -257,7 +284,7 @@ export default function MenuManagePanel({
       const response = await getPosMenus(nextContext)
       setMenuItems(response.items ?? [])
     } catch (error) {
-      console.error('硫붾돱 紐⑸줉 議고쉶 ?ㅽ뙣', error)
+      console.error('메뉴 목록 조회 실패', error)
       setMenuItems([])
     } finally {
       setIsLoading(false)
@@ -271,7 +298,7 @@ export default function MenuManagePanel({
       const response = await getPosProductCategories()
       setCategories(response.categories ?? [])
     } catch (error) {
-      console.error('移댄뀒怨좊━ 紐⑸줉 議고쉶 ?ㅽ뙣', error)
+      console.error('카테고리 목록 조회 실패', error)
       setCategories([])
     } finally {
       setIsCategoryLoading(false)
@@ -362,20 +389,27 @@ export default function MenuManagePanel({
   }, [menuItems])
 
   const filteredItems = useMemo(() => {
-    if (activeFilter === 'ON_SALE') {
+    const targetFilter = selectedMenuStatusView ?? activeFilter
+
+    if (targetFilter === 'ON_SALE') {
       return menuItems.filter(isOnSale)
     }
 
-    if (activeFilter === 'STOPPED') {
+    if (targetFilter === 'STOPPED') {
       return menuItems.filter(isStopped)
     }
 
-    if (activeFilter === 'HIDDEN') {
+    if (targetFilter === 'HIDDEN') {
       return menuItems.filter(isHiddenOnTableOrder)
     }
 
     return menuItems
-  }, [activeFilter, menuItems])
+  }, [activeFilter, menuItems, selectedMenuStatusView])
+
+  const openStatusView = (nextFilter: MenuFilter) => {
+    handleActiveFilterChange(nextFilter)
+    handleStatusViewChange(nextFilter)
+  }
 
   const activeCategories = useMemo(
     () => categories.filter((category) => Number(category.isActive ?? 1) === 1),
@@ -513,7 +547,7 @@ export default function MenuManagePanel({
       })
       await loadMenus()
     } catch (error) {
-      console.error('POS 硫붾돱 ??젣 ?ㅽ뙣', error)
+      console.error('POS 메뉴 삭제 실패', error)
     } finally {
       setDeletingMenuId(null)
     }
@@ -685,7 +719,7 @@ export default function MenuManagePanel({
 
     return [
       {
-        optionName: values[0]?.optionValueName ?? '湲곕낯 ?듭뀡',
+        optionName: values[0]?.optionValueName ?? '기본 옵션',
         optionType: 'CUSTOM',
         isRequired: false,
         isMultiple: true,
@@ -702,14 +736,14 @@ export default function MenuManagePanel({
     const trimmedMenuName = menuCreateForm.menuName.trim()
 
     if (!trimmedMenuName) {
-      setMenuCreateErrorMessage('硫붾돱紐낆쓣 ?낅젰?섏꽭??')
+      setMenuCreateErrorMessage('메뉴명을 입력해 주세요')
       return
     }
 
     const basePrice = parseMenuPrice(menuCreateForm.basePrice)
 
     if (!Number.isFinite(basePrice) || basePrice < 0) {
-      setMenuCreateErrorMessage('湲곕낯媛寃⑹? 0???댁긽 ?レ옄濡??낅젰?섏꽭??')
+      setMenuCreateErrorMessage('기본가격은 0 이상의 숫자로 입력해 주세요')
       return
     }
 
@@ -730,12 +764,12 @@ export default function MenuManagePanel({
     }
 
     if (!context) {
-      setMenuCreateErrorMessage('POS ?ъ뾽???뺣낫瑜??뺤씤?????놁뒿?덈떎.')
+      setMenuCreateErrorMessage('POS 사업자 정보를 확인할 수 없습니다.')
       return
     }
 
     if (!menuCreateForm.categoryId || !selectedCreateCategory) {
-      setMenuCreateErrorMessage('移댄뀒怨좊━瑜??좏깮?섏꽭??')
+      setMenuCreateErrorMessage('카테고리를 선택해 주세요')
       return
     }
 
@@ -754,7 +788,7 @@ export default function MenuManagePanel({
     })
 
     if (hasInvalidOptionPrice) {
-      setMenuCreateErrorMessage('?듭뀡 異붽?湲덉븸? 0???댁긽 ?レ옄濡??낅젰?섏꽭??')
+      setMenuCreateErrorMessage('옵션 추가금액은 0 이상의 숫자로 입력해 주세요')
       return
     }
 
@@ -830,8 +864,8 @@ export default function MenuManagePanel({
       await loadMenus()
       closeMenuCreateModal()
     } catch (error) {
-      console.error('POS 硫붾돱 ????ㅽ뙣', error)
-      setMenuCreateErrorMessage('硫붾돱 ??μ뿉 ?ㅽ뙣?덉뒿?덈떎. ?낅젰媛믪쓣 ?뺤씤?섏꽭??')
+      console.error('POS 메뉴 저장 실패', error)
+      setMenuCreateErrorMessage('메뉴 저장에 실패했습니다. 입력값을 확인해 주세요')
     } finally {
       setIsMenuCreateSaving(false)
     }
@@ -875,149 +909,191 @@ export default function MenuManagePanel({
   const menuCreateLeftThumbnailRow = (
     <div className={styles.thumbnailPreviewRow}>
       {menuCreateThumbnailPreviewButton}
-      {menuCreateForm.thumbnailMockLabel ? (
-        <span className={styles.thumbnailFileName}>
-          {menuCreateForm.thumbnailMockLabel}
-        </span>
-      ) : null}
     </div>
   )
 
   const menuCreateRightThumbnailRow = (
     <div className={styles.thumbnailPreviewRow}>
       {menuCreateThumbnailPreviewButton}
-      {menuCreateForm.thumbnailMockLabel ? (
-        <span className={styles.thumbnailFileNamePreview}>
-          {menuCreateForm.thumbnailMockLabel}
-        </span>
-      ) : null}
     </div>
   )
 
   return (
     <>
       <section className={styles.modulePanel}>
-      <header className={styles.moduleHeader}>
-        <div className={styles.moduleHeaderRow}>
-          <h2 className={styles.moduleTitle}>메뉴관리</h2>
-          {!hideCreateButton ? (
-            <button
-              type="button"
-              className={styles.primaryInlineButton}
-              onClick={openMenuCreateModal}
-            >
-              + 메뉴추가
-            </button>
-          ) : null}
-        </div>
-      </header>
-
-      <div className={styles.summaryGrid}>
-        <article className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>전체 메뉴</p>
-          <p className={styles.summaryValue}>{summary.total}개</p>
-        </article>
-        <article className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>판매중</p>
-          <p className={styles.summaryValue}>{summary.onSale}개</p>
-        </article>
-        <article className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>품절/중지</p>
-          <p className={styles.summaryValue}>{summary.stopped}개</p>
-        </article>
-        <article className={styles.summaryCard}>
-          <p className={styles.summaryLabel}>숨김</p>
-          <p className={styles.summaryValue}>{summary.hidden}개</p>
-        </article>
-      </div>
-
-      <div className={styles.filterRow}>
-        <button
-          type="button"
-          className={`${styles.pillButton} ${activeFilter === 'ALL' ? styles.pillButtonActive : ''}`}
-          onClick={() => setActiveFilter('ALL')}
-        >
-          전체
-        </button>
-        <button
-          type="button"
-          className={`${styles.pillButton} ${activeFilter === 'ON_SALE' ? styles.pillButtonActive : ''}`}
-          onClick={() => setActiveFilter('ON_SALE')}
-        >
-          판매중
-        </button>
-        <button
-          type="button"
-          className={`${styles.pillButton} ${activeFilter === 'STOPPED' ? styles.pillButtonActive : ''}`}
-          onClick={() => setActiveFilter('STOPPED')}
-        >
-          품절
-        </button>
-        <button
-          type="button"
-          className={`${styles.pillButton} ${activeFilter === 'HIDDEN' ? styles.pillButtonActive : ''}`}
-          onClick={() => setActiveFilter('HIDDEN')}
-        >
-          숨김
-        </button>
-      </div>
-
-      <div className={styles.itemGrid}>
-        {isLoading ? (
-          <article className={styles.itemCard}>
-            <p className={styles.itemStatus}>메뉴 목록을 불러오는 중입니다.</p>
-          </article>
-        ) : filteredItems.length < 1 ? (
-          <article className={styles.itemCard}>
-            <p className={styles.itemStatus}>조회된 메뉴가 없습니다.</p>
-          </article>
-        ) : (
-          filteredItems.map((item) => (
-            <article key={item.id} className={styles.itemCard}>
-              <div className={styles.itemTop}>
-                <h3 className={styles.itemTitle}>{item.productName}</h3>
-                <p className={styles.itemPrice}>
-                  {Number(item.basePrice ?? 0).toLocaleString('ko-KR')}원
-                </p>
-              </div>
-              <p className={styles.itemStatus}>
-                {item.isSoldOut
-                  ? '품절'
-                  : item.menuStatus === 'STOPPED'
-                    ? '판매중지'
-                    : isHiddenOnTableOrder(item)
-                      ? '숨김'
-                      : '판매중'}
-              </p>
-              <div className={styles.cardActionRow}>
-                <button
-                  type="button"
-                  className={styles.cardActionButton}
-                  onClick={() => openMenuEditModal(item)}
-                >
-                  수정
-                </button>
-                <button type="button" className={styles.cardActionButton}>
-                  옵션
-                </button>
-                <button type="button" className={styles.cardActionButton}>
-                  숨김
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.cardActionButton} ${styles.cardDeleteButton}`}
-                  disabled={deletingMenuId === item.id}
-                  onClick={() => {
-                    void handleDeleteMenu(item)
+      {selectedMenuStatusView === null ? (
+        <header className={styles.moduleHeader}>
+          <div className={styles.moduleHeaderRow}>
+            <h2 className={styles.moduleTitle}>메뉴현황</h2>
+            {!hideCreateButton ? (
+              <label className={styles.tableManageSelectGroup}>
+                <span className={styles.tableManageFloorLabel}>필터</span>
+                <select
+                  className={styles.tableManageSelect}
+                  value={activeFilter}
+                  onChange={(event) => {
+                    const nextFilter =
+                      event.target.value as MenuFilter
+                    handleActiveFilterChange(nextFilter)
+                    if (selectedMenuStatusView !== null) {
+                      handleStatusViewChange(nextFilter)
+                    }
                   }}
+                  aria-label="메뉴 상태 필터"
                 >
-                  {deletingMenuId === item.id ? '삭제 중...' : '삭제'}
-                </button>
-              </div>
-            </article>
-          ))
-        )}
-      </div>
+                  <option value="ALL">전체</option>
+                  <option value="ON_SALE">판매중</option>
+                  <option value="STOPPED">품절/중지</option>
+                  <option value="HIDDEN">숨김</option>
+                </select>
+              </label>
+            ) : null}
+            {!hideCreateButton ? (
+              <button
+                type="button"
+                className={styles.primaryInlineButton}
+                onClick={openMenuCreateModal}
+              >
+                + 메뉴추가
+              </button>
+            ) : null}
+          </div>
+        </header>
+      ) : null}
+
+      {selectedMenuStatusView !== null ? (
+        <>
+          <div className={styles.itemGrid}>
+            {isLoading ? (
+              <article className={styles.itemCard}>
+                <p className={styles.itemStatus}>메뉴 목록을 불러오는 중입니다.</p>
+              </article>
+            ) : filteredItems.length < 1 ? (
+              <article className={styles.itemCard}>
+                <p className={styles.itemStatus}>조회된 메뉴가 없습니다.</p>
+              </article>
+            ) : (
+              filteredItems.map((item) => {
+                const thumbnailUrl = mediaUrl(item.thumbnail?.filePath)
+                const hasThumbnail = Boolean(thumbnailUrl)
+
+                return (
+                <article
+                  key={item.id}
+                  className={`${styles.itemCard} ${
+                    hasThumbnail ? styles.itemCardWithThumbnail : ''
+                  }`}
+                >
+                  {hasThumbnail ? (
+                    <div className={styles.itemThumbnailWrap}>
+                      <img
+                        src={thumbnailUrl}
+                        alt={item.productName}
+                        className={styles.itemThumbnailImage}
+                      />
+                      <span className={styles.itemThumbnailTitlePill}>
+                        {item.productName}
+                      </span>
+                      <span className={styles.itemThumbnailPricePill}>
+                        {Number(item.basePrice ?? 0).toLocaleString('ko-KR')}원
+                      </span>
+                    </div>
+                  ) : (
+                    <div className={styles.itemTop}>
+                      <h3 className={styles.itemTitle}>{item.productName}</h3>
+                      <p className={styles.itemPrice}>
+                        {Number(item.basePrice ?? 0).toLocaleString('ko-KR')}원
+                      </p>
+                    </div>
+                  )}
+                  <p className={styles.itemStatus}>
+                    {item.isSoldOut
+                      ? '품절'
+                      : item.menuStatus === 'STOPPED'
+                        ? '판매중지'
+                        : isHiddenOnTableOrder(item)
+                          ? '숨김'
+                          : '판매중'}
+                  </p>
+                  <div className={styles.cardActionRow}>
+                    <button
+                      type="button"
+                      className={styles.cardActionButton}
+                      onClick={() => openMenuEditModal(item)}
+                    >
+                      수정
+                    </button>
+                    <button type="button" className={styles.cardActionButton}>
+                      옵션
+                    </button>
+                    <button type="button" className={styles.cardActionButton}>
+                      숨김
+                    </button>
+                    <button
+                      type="button"
+                      className={`${styles.cardActionButton} ${styles.cardDeleteButton}`}
+                      disabled={deletingMenuId === item.id}
+                      onClick={() => {
+                        void handleDeleteMenu(item)
+                      }}
+                    >
+                      {deletingMenuId === item.id ? '삭제 중...' : '삭제'}
+                    </button>
+                  </div>
+                </article>
+                )
+              })
+            )}
+          </div>
+        </>
+      ) : (
+        <div className={`${styles.summaryGrid} ${styles.menuSummaryGrid}`}>
+          <button
+            type="button"
+            className={`${styles.summaryCard} ${styles.summaryCardButton} ${styles.menuSummaryCard} ${
+              activeFilter === 'ALL' ? styles.summaryCardActive : ''
+            }`}
+            onClick={() => openStatusView('ALL')}
+            aria-pressed={activeFilter === 'ALL'}
+          >
+            <p className={styles.summaryLabel}>전체 메뉴</p>
+            <p className={styles.summaryValue}>{summary.total}개</p>
+          </button>
+          <button
+            type="button"
+            className={`${styles.summaryCard} ${styles.summaryCardButton} ${styles.menuSummaryCard} ${
+              activeFilter === 'ON_SALE' ? styles.summaryCardActive : ''
+            }`}
+            onClick={() => openStatusView('ON_SALE')}
+            aria-pressed={activeFilter === 'ON_SALE'}
+          >
+            <p className={styles.summaryLabel}>판매중</p>
+            <p className={styles.summaryValue}>{summary.onSale}개</p>
+          </button>
+          <button
+            type="button"
+            className={`${styles.summaryCard} ${styles.summaryCardButton} ${styles.menuSummaryCard} ${
+              activeFilter === 'STOPPED' ? styles.summaryCardActive : ''
+            }`}
+            onClick={() => openStatusView('STOPPED')}
+            aria-pressed={activeFilter === 'STOPPED'}
+          >
+            <p className={styles.summaryLabel}>품절/중지</p>
+            <p className={styles.summaryValue}>{summary.stopped}개</p>
+          </button>
+          <button
+            type="button"
+            className={`${styles.summaryCard} ${styles.summaryCardButton} ${styles.menuSummaryCard} ${
+              activeFilter === 'HIDDEN' ? styles.summaryCardActive : ''
+            }`}
+            onClick={() => openStatusView('HIDDEN')}
+            aria-pressed={activeFilter === 'HIDDEN'}
+          >
+            <p className={styles.summaryLabel}>숨김</p>
+            <p className={styles.summaryValue}>{summary.hidden}개</p>
+          </button>
+        </div>
+      )}
 
       <BaseModal
         open={isMenuCreateModalOpen}
@@ -1028,7 +1104,19 @@ export default function MenuManagePanel({
         autoClose={false}
         hideDefaultButton
         showCloseButton
+        closeButtonInHeaderActions
         hideIcon
+        headerStyle={{ minHeight: 88, padding: 20 }}
+        headerRight={
+          <button
+            type="button"
+            className={styles.modalSubmitButton}
+            disabled={isMenuCreateSaving}
+            onClick={submitMenuCreate}
+          >
+            {isMenuCreateSaving ? '저장 중...' : '저장'}
+          </button>
+        }
         panelStyle={{
           width: 'min(1120px, calc(100vw - 48px))',
           maxHeight: 'calc(100dvh - 80px)',
@@ -1045,26 +1133,6 @@ export default function MenuManagePanel({
           background: '#f8fafc',
           boxSizing: 'border-box'
         }}
-        footer={
-        <div className={styles.modalFooter}>
-          <button
-            type="button"
-            className={styles.modalCancelButton}
-            disabled={isMenuCreateSaving}
-            onClick={closeMenuCreateModal}
-          >
-            취소
-          </button>
-          <button
-            type="button"
-            className={styles.modalSubmitButton}
-            disabled={isMenuCreateSaving}
-            onClick={submitMenuCreate}
-          >
-            {isMenuCreateSaving ? '저장 중...' : '저장'}
-          </button>
-        </div>
-        }
       >
               <div className={styles.modalCreateLayout}>
                 <div className={styles.modalFormColumn}>

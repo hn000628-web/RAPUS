@@ -17,7 +17,9 @@
 import {
   useEffect,
   useMemo,
-  useState
+  useState,
+  type ChangeEvent,
+  type FormEvent
 } from 'react'
 
 import {
@@ -72,6 +74,15 @@ type PosPaymentMethodOption = {
   keyCode: string
   keyNumber: string
   guideLabel: string
+}
+
+type PosReservationForm = {
+  reserverName: string
+  phoneNumber: string
+  reservationDate: string
+  reservationTime: string
+  partySize: string
+  memo: string
 }
 
 // SECTION 03 : CONSTANT
@@ -172,6 +183,8 @@ export default function PosTablePage() {
     useState<boolean>(false)
   const [isQrModalOpen, setIsQrModalOpen] =
     useState<boolean>(false)
+  const [isReservationModalOpen, setIsReservationModalOpen] =
+    useState<boolean>(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PosPaymentMethod | null>(null)
   const [currentBusinessName, setCurrentBusinessName] =
@@ -194,6 +207,15 @@ export default function PosTablePage() {
     useState<string | null>(null)
   const [receivedCashAmount, setReceivedCashAmount] =
     useState<number>(0)
+  const [reservationForm, setReservationForm] =
+    useState<PosReservationForm>({
+      reserverName: '',
+      phoneNumber: '',
+      reservationDate: '',
+      reservationTime: '',
+      partySize: '1',
+      memo: ''
+    })
 
   // SECTION 05 : DATA
 
@@ -567,6 +589,29 @@ export default function PosTablePage() {
 
   const handleOpenQrOrder = () => {
     setIsQrModalOpen(true)
+  }
+
+  const handleOpenReservationModal = () => {
+    setIsReservationModalOpen(true)
+  }
+
+  const handleCloseReservationModal = () => {
+    setIsReservationModalOpen(false)
+  }
+
+  const handleChangeReservationForm = (
+    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = event.target
+    setReservationForm((previousValue) => ({
+      ...previousValue,
+      [name]: value
+    }))
+  }
+
+  const handleSubmitReservationForm = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setIsReservationModalOpen(false)
   }
 
   const handleGoTableOverview = () => {
@@ -1187,6 +1232,14 @@ export default function PosTablePage() {
                     <button
                       type="button"
                       className={styles.qrOrderButton}
+                      onClick={handleOpenReservationModal}
+                    >
+                      예약
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.qrOrderButton}
                       onClick={handleOpenQrOrder}
                     >
                       QR 오더
@@ -1688,6 +1741,118 @@ export default function PosTablePage() {
         qrStatus={qrOrderUrl ? 'CONNECTED' : 'DISCONNECTED'}
         onClose={() => setIsQrModalOpen(false)}
       />
+
+      {isReservationModalOpen ? (
+        <div
+          className={styles.reservationModalOverlay}
+          role="presentation"
+          onClick={handleCloseReservationModal}
+        >
+          <section
+            className={styles.reservationModalPanel}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="table-reservation-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className={styles.reservationModalHeader}>
+              <h2 id="table-reservation-modal-title" className={styles.reservationModalTitle}>
+                {`${tableNoLabel} 테이블 예약 등록`}
+              </h2>
+              <p className={styles.reservationModalDescription}>
+                {`현재 선택된 ${tableNoLabel} 테이블 기준으로 예약 정보를 등록합니다.`}
+              </p>
+            </header>
+
+            <form className={styles.reservationForm} onSubmit={handleSubmitReservationForm}>
+              <div className={styles.reservationFieldGrid}>
+                <label className={styles.reservationField}>
+                  <span className={styles.reservationFieldLabel}>예약자명</span>
+                  <input
+                    name="reserverName"
+                    className={styles.reservationInput}
+                    value={reservationForm.reserverName}
+                    onChange={handleChangeReservationForm}
+                    placeholder="예약자명을 입력하세요"
+                  />
+                </label>
+
+                <label className={styles.reservationField}>
+                  <span className={styles.reservationFieldLabel}>연락처</span>
+                  <input
+                    name="phoneNumber"
+                    className={styles.reservationInput}
+                    value={reservationForm.phoneNumber}
+                    onChange={handleChangeReservationForm}
+                    placeholder="연락처를 입력하세요"
+                  />
+                </label>
+
+                <label className={styles.reservationField}>
+                  <span className={styles.reservationFieldLabel}>예약일</span>
+                  <input
+                    type="date"
+                    name="reservationDate"
+                    className={styles.reservationInput}
+                    value={reservationForm.reservationDate}
+                    onChange={handleChangeReservationForm}
+                  />
+                </label>
+
+                <label className={styles.reservationField}>
+                  <span className={styles.reservationFieldLabel}>예약시간</span>
+                  <input
+                    type="time"
+                    name="reservationTime"
+                    className={styles.reservationInput}
+                    value={reservationForm.reservationTime}
+                    onChange={handleChangeReservationForm}
+                  />
+                </label>
+
+                <label className={styles.reservationField}>
+                  <span className={styles.reservationFieldLabel}>인원</span>
+                  <input
+                    type="number"
+                    min={1}
+                    name="partySize"
+                    className={styles.reservationInput}
+                    value={reservationForm.partySize}
+                    onChange={handleChangeReservationForm}
+                  />
+                </label>
+
+                <label className={styles.reservationField}>
+                  <span className={styles.reservationFieldLabel}>메모</span>
+                  <textarea
+                    name="memo"
+                    className={styles.reservationTextarea}
+                    value={reservationForm.memo}
+                    onChange={handleChangeReservationForm}
+                    placeholder="요청사항을 입력하세요"
+                  />
+                </label>
+              </div>
+
+              <div className={styles.reservationModalActions}>
+                <button
+                  type="button"
+                  className={styles.reservationCancelButton}
+                  onClick={handleCloseReservationModal}
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className={styles.reservationSubmitButton}
+                >
+                  예약 등록
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1703,20 +1868,20 @@ function resolveCurrentPosTable(input: {
     return null
   }
 
-  const byId = Number.isFinite(routeTableNo)
-    ? tables.find((table) => table.id === routeTableNo)
-    : null
-
-  if (byId) {
-    return byId
-  }
-
   const bySortOrder = Number.isFinite(routeTableNo)
     ? tables.find((table) => table.sortOrder === routeTableNo)
     : null
 
   if (bySortOrder) {
     return bySortOrder
+  }
+
+  const byId = Number.isFinite(routeTableNo)
+    ? tables.find((table) => table.id === routeTableNo)
+    : null
+
+  if (byId) {
+    return byId
   }
 
   const normalizedLabel = routeTableNoRaw.trim()

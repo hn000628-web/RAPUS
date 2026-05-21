@@ -33,11 +33,15 @@
 }
 
 .topbarWrap {
+  position: sticky;
+  top: 0;
+  z-index: 70;
   flex: 0 0 64px;
   height: 64px;
   min-height: 64px;
   width: 100%;
   overflow: visible;
+  background-color: #f5f7fb;
 }
 
 .topbarInner {
@@ -61,12 +65,12 @@
   min-height: 0;
   overflow: hidden;
   display: grid;
-  gap: 10px !important;
-  column-gap: 10px !important;
-  row-gap: 10px !important;
+  gap: 16px !important;
+  column-gap: 16px !important;
+  row-gap: 16px !important;
   width: 100%;
   min-width: 0;
-  padding: 10px;
+  padding: 16px;
   box-sizing: border-box;
   grid-template-columns: 160px minmax(0, 1fr) minmax(0, 1fr) minmax(240px, 240px);
   min-width: 1032px;
@@ -1163,6 +1167,134 @@
   color: #475569;
   font-size: 12px;
   font-weight: 800;
+}
+
+.reservationModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  background: rgba(15, 23, 42, 0.52);
+}
+
+.reservationModalPanel {
+  width: min(560px, calc(100vw - 40px));
+  max-width: calc(100vw - 40px);
+  border-radius: 18px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.24);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reservationModalHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reservationModalTitle {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #0f172a;
+  word-break: keep-all;
+}
+
+.reservationModalDescription {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 600;
+  color: #64748b;
+  word-break: keep-all;
+}
+
+.reservationForm {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reservationFieldGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.reservationField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reservationFieldLabel {
+  font-size: 13px;
+  font-weight: 800;
+  color: #334155;
+}
+
+.reservationInput,
+.reservationTextarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.reservationInput {
+  height: 42px;
+  padding: 0 12px;
+}
+
+.reservationTextarea {
+  min-height: 92px;
+  resize: vertical;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
+.reservationModalActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.reservationCancelButton,
+.reservationSubmitButton {
+  min-width: 92px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reservationCancelButton {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.reservationSubmitButton {
+  border: 1px solid #0f172a;
+  background: #0f172a;
+  color: #ffffff;
 }
 
 @media (max-width: 768px) {

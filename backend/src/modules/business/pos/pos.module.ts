@@ -21,6 +21,7 @@ import { PosCategoriesService } from './categories/pos-categories.service'
 import { CookingModule } from './cooking/cooking.module'
 import { PosMenuController } from './menu/pos-menu.controller'
 import { PosMenuService } from './menu/pos-menu.service'
+import { CustomerPosOrderModule } from './order/customer/customer-pos-order.module'
 import { PosOrderDashboardController } from './order-dashboard/pos-order-dashboard.controller'
 import { PosOrderDashboardService } from './order-dashboard/pos-order-dashboard.service'
 import { PosOrderTypesModule } from './order-types/order-types.module'
@@ -34,6 +35,7 @@ import { BusinessPosTableSettingsService } from './table-settings/pos-table-sett
 
 @Module({
   imports: [
+    CustomerPosOrderModule,
     PosOrdersModule,
     PosOrderTypesModule,
     CookingModule
@@ -58,6 +60,7 @@ import { BusinessPosTableSettingsService } from './table-settings/pos-table-sett
     PosOrderDashboardService,
     PosRoomsService,
     BusinessPosTableSettingsService,
+    CustomerPosOrderModule,
     PosOrdersModule,
     PosOrderTypesModule,
     CookingModule

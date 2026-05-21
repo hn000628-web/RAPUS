@@ -56,6 +56,16 @@ export type BusinessPosTableSettingRow = {
   capacity: number | null
   tableOptionName: string | null
   tableTypeCode: string | null
+  floor: string | null
+  zone: string | null
+  floorSortOrder: number | null
+  zoneSortOrder: number | null
+  layoutX: number | null
+  layoutY: number | null
+  layoutWidth: number | null
+  layoutHeight: number | null
+  layoutRotate: number | null
+  layoutShape: string | null
   defaultPrice: number | null
   resourceStatus: PosResourceStatus
   lastStatusChangedAt: string | null
@@ -85,6 +95,16 @@ export type BusinessPosTableSettingResponse = {
   zoneName: string
   tableOptionName: string
   tableTypeCode: string
+  floor: string
+  zone: string
+  floorSortOrder: number
+  zoneSortOrder: number
+  layoutX: number
+  layoutY: number
+  layoutWidth: number
+  layoutHeight: number
+  layoutRotate: number
+  layoutShape: string
   defaultPrice: number
   resourceStatus: PosResourceStatus
   lastStatusChangedAt: string | null
@@ -110,6 +130,16 @@ export type CreateBusinessPosTableSettingInput = {
   zoneName: string
   tableOptionName: string
   tableTypeCode?: string
+  floor?: string
+  zone?: string
+  floorSortOrder?: number
+  zoneSortOrder?: number
+  layoutX?: number
+  layoutY?: number
+  layoutWidth?: number
+  layoutHeight?: number
+  layoutRotate?: number
+  layoutShape?: string
   resourceType?: PosResourceType
   defaultPrice?: number | string | null
   capacity?: number | null
@@ -123,6 +153,16 @@ export type UpdateBusinessPosTableSettingInput = {
   zoneName?: string
   tableOptionName?: string
   tableTypeCode?: string
+  floor?: string
+  zone?: string
+  floorSortOrder?: number
+  zoneSortOrder?: number
+  layoutX?: number
+  layoutY?: number
+  layoutWidth?: number
+  layoutHeight?: number
+  layoutRotate?: number
+  layoutShape?: string
   resourceType?: PosResourceType
   defaultPrice?: number | string | null
   capacity?: number | null
@@ -216,7 +256,9 @@ export class BusinessPosTableSettingsService {
   findAll(
     profileId: number,
     channelCode: string,
-    resourceType?: PosResourceType | 'ALL'
+    resourceType?: PosResourceType | 'ALL',
+    floor?: string,
+    zone?: string
   ): BusinessPosTableSettingsListResponse {
 
     this.assertBusinessProfile(
@@ -236,10 +278,39 @@ export class BusinessPosTableSettingsService {
 
     const normalizedResourceType =
       this.normalizeFilterResourceType(resourceType)
+    const normalizedFloor =
+      this.normalizeOptionalTextFilter(floor)
+    const normalizedZone =
+      this.normalizeOptionalTextFilter(zone)
+    const whereClauses = [
+      'profileId = ?',
+      'channelCode = ?',
+      'deletedAt IS NULL'
+    ]
+    const params: unknown[] = [
+      profileId,
+      channelCode
+    ]
+
+    if (normalizedResourceType === 'ALL') {
+      whereClauses.push(`locationType IN ('TABLE', 'ROOM', 'CUSTOM', 'SEAT', 'BOOTH')`)
+    } else {
+      whereClauses.push('locationType = ?')
+      params.push(this.resourceTypeToLocationType(normalizedResourceType))
+    }
+
+    if (normalizedFloor) {
+      whereClauses.push('floor = ?')
+      params.push(normalizedFloor)
+    }
+
+    if (normalizedZone) {
+      whereClauses.push('zone = ?')
+      params.push(normalizedZone)
+    }
 
     const rows =
-      normalizedResourceType === 'ALL'
-        ? db.prepare(`
+      db.prepare(`
         SELECT
           id,
           profileId,
@@ -250,6 +321,16 @@ export class BusinessPosTableSettingsService {
           capacity,
           tableOptionName,
           tableTypeCode,
+          floor,
+          zone,
+          floorSortOrder,
+          zoneSortOrder,
+          layoutX,
+          layoutY,
+          layoutWidth,
+          layoutHeight,
+          layoutRotate,
+          layoutShape,
           defaultPrice,
           resourceStatus,
           lastStatusChangedAt,
@@ -268,54 +349,9 @@ export class BusinessPosTableSettingsService {
           updatedAt,
           deletedAt
         FROM pos_locations
-        WHERE profileId = ?
-          AND channelCode = ?
-          AND locationType IN ('TABLE', 'ROOM', 'CUSTOM', 'SEAT', 'BOOTH')
-          AND deletedAt IS NULL
-        ORDER BY sortOrder ASC, id ASC
-      `).all(
-          profileId,
-          channelCode
-        ) as BusinessPosTableSettingRow[]
-        : db.prepare(`
-        SELECT
-          id,
-          profileId,
-          channelCode,
-          locationType,
-          locationName,
-          locationGroupName,
-          capacity,
-          tableOptionName,
-          tableTypeCode,
-          defaultPrice,
-          resourceStatus,
-          lastStatusChangedAt,
-          tableCode,
-          qrStatus,
-          qrBaseUrl,
-          qrRoutePath,
-          tableOrderUrl,
-          qrCodeValue,
-          qrGeneratedAt,
-          qrConnectedAt,
-          qrDisconnectedAt,
-          isActive,
-          sortOrder,
-          createdAt,
-          updatedAt,
-          deletedAt
-        FROM pos_locations
-        WHERE profileId = ?
-          AND channelCode = ?
-          AND locationType = ?
-          AND deletedAt IS NULL
-        ORDER BY sortOrder ASC, id ASC
-      `).all(
-          profileId,
-          channelCode,
-          this.resourceTypeToLocationType(normalizedResourceType)
-        ) as BusinessPosTableSettingRow[]
+        WHERE ${whereClauses.join(' AND ')}
+        ORDER BY floorSortOrder ASC, zoneSortOrder ASC, sortOrder ASC, id ASC
+      `).all(...params) as BusinessPosTableSettingRow[]
 
     return {
       tables: rows.map((row) => this.mapRowToResponse(row))
@@ -361,6 +397,26 @@ export class BusinessPosTableSettingsService {
       )
     const tableTypeCode =
       this.normalizeTableTypeCode(input.tableTypeCode)
+    const floor =
+      this.normalizeLocationText(input.floor, 'floor', '1층')
+    const zone =
+      this.normalizeLocationText(input.zone, 'zone', '홀')
+    const floorSortOrder =
+      this.normalizeLocationSortOrder(input.floorSortOrder)
+    const zoneSortOrder =
+      this.normalizeLocationSortOrder(input.zoneSortOrder)
+    const layoutX =
+      this.normalizeLayoutInteger(input.layoutX, 0, 'layoutX')
+    const layoutY =
+      this.normalizeLayoutInteger(input.layoutY, 0, 'layoutY')
+    const layoutWidth =
+      this.normalizeLayoutPositiveInteger(input.layoutWidth, 180, 'layoutWidth')
+    const layoutHeight =
+      this.normalizeLayoutPositiveInteger(input.layoutHeight, 140, 'layoutHeight')
+    const layoutRotate =
+      this.normalizeLayoutInteger(input.layoutRotate, 0, 'layoutRotate')
+    const layoutShape =
+      this.normalizeLayoutShape(input.layoutShape)
 
     const capacity =
       this.normalizeCapacity(input.capacity)
@@ -410,6 +466,16 @@ export class BusinessPosTableSettingsService {
             capacity,
             tableOptionName,
             tableTypeCode,
+            floor,
+            zone,
+            floorSortOrder,
+            zoneSortOrder,
+            layoutX,
+            layoutY,
+            layoutWidth,
+            layoutHeight,
+            layoutRotate,
+            layoutShape,
             defaultPrice,
             tableCode,
             qrStatus,
@@ -426,6 +492,16 @@ export class BusinessPosTableSettingsService {
             updatedAt
           )
           VALUES(
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             ?,
             ?,
             ?,
@@ -458,6 +534,16 @@ export class BusinessPosTableSettingsService {
           capacity,
           tableOptionName,
           tableTypeCode,
+          floor,
+          zone,
+          floorSortOrder,
+          zoneSortOrder,
+          layoutX,
+          layoutY,
+          layoutWidth,
+          layoutHeight,
+          layoutRotate,
+          layoutShape,
           defaultPrice,
           tableCode,
           qrBaseUrl,
@@ -542,6 +628,76 @@ export class BusinessPosTableSettingsService {
       setClauses.push('tableTypeCode = ?')
       params.push(
         this.normalizeTableTypeCode(input.tableTypeCode)
+      )
+    }
+
+    if (input.floor !== undefined) {
+      setClauses.push('floor = ?')
+      params.push(
+        this.normalizeLocationText(input.floor, 'floor', '1층')
+      )
+    }
+
+    if (input.zone !== undefined) {
+      setClauses.push('zone = ?')
+      params.push(
+        this.normalizeLocationText(input.zone, 'zone', '홀')
+      )
+    }
+
+    if (input.floorSortOrder !== undefined) {
+      setClauses.push('floorSortOrder = ?')
+      params.push(
+        this.normalizeLocationSortOrder(input.floorSortOrder)
+      )
+    }
+
+    if (input.zoneSortOrder !== undefined) {
+      setClauses.push('zoneSortOrder = ?')
+      params.push(
+        this.normalizeLocationSortOrder(input.zoneSortOrder)
+      )
+    }
+
+    if (input.layoutX !== undefined) {
+      setClauses.push('layoutX = ?')
+      params.push(
+        this.normalizeLayoutInteger(input.layoutX, 0, 'layoutX')
+      )
+    }
+
+    if (input.layoutY !== undefined) {
+      setClauses.push('layoutY = ?')
+      params.push(
+        this.normalizeLayoutInteger(input.layoutY, 0, 'layoutY')
+      )
+    }
+
+    if (input.layoutWidth !== undefined) {
+      setClauses.push('layoutWidth = ?')
+      params.push(
+        this.normalizeLayoutPositiveInteger(input.layoutWidth, 180, 'layoutWidth')
+      )
+    }
+
+    if (input.layoutHeight !== undefined) {
+      setClauses.push('layoutHeight = ?')
+      params.push(
+        this.normalizeLayoutPositiveInteger(input.layoutHeight, 140, 'layoutHeight')
+      )
+    }
+
+    if (input.layoutRotate !== undefined) {
+      setClauses.push('layoutRotate = ?')
+      params.push(
+        this.normalizeLayoutInteger(input.layoutRotate, 0, 'layoutRotate')
+      )
+    }
+
+    if (input.layoutShape !== undefined) {
+      setClauses.push('layoutShape = ?')
+      params.push(
+        this.normalizeLayoutShape(input.layoutShape)
       )
     }
 
@@ -1055,6 +1211,16 @@ export class BusinessPosTableSettingsService {
           capacity,
           tableOptionName,
           tableTypeCode,
+          floor,
+          zone,
+          floorSortOrder,
+          zoneSortOrder,
+          layoutX,
+          layoutY,
+          layoutWidth,
+          layoutHeight,
+          layoutRotate,
+          layoutShape,
           defaultPrice,
           resourceStatus,
           lastStatusChangedAt,
@@ -1175,6 +1341,105 @@ export class BusinessPosTableSettingsService {
 
     return value
 
+  }
+
+  private normalizeLocationText(
+    value: string | undefined,
+    fieldName: string,
+    fallbackValue: string
+  ): string {
+    if (value === undefined || value === null) {
+      return fallbackValue
+    }
+
+    if (typeof value !== 'string') {
+      throw new BadRequestException(`${fieldName} must be string`)
+    }
+
+    const trimmedValue =
+      value.trim()
+
+    return trimmedValue || fallbackValue
+  }
+
+  private normalizeOptionalTextFilter(
+    value: string | undefined
+  ): string | null {
+    if (value === undefined || value === null) {
+      return null
+    }
+
+    const trimmedValue =
+      String(value).trim()
+
+    return trimmedValue || null
+  }
+
+  private normalizeLocationSortOrder(
+    value: number | undefined
+  ): number {
+    if (value === undefined || value === null) {
+      return 1
+    }
+
+    if (!Number.isInteger(value)) {
+      throw new BadRequestException('location sort order must be integer')
+    }
+
+    return value
+  }
+
+  private normalizeLayoutInteger(
+    value: number | undefined,
+    fallbackValue: number,
+    fieldName: string
+  ): number {
+    if (value === undefined || value === null) {
+      return fallbackValue
+    }
+
+    if (!Number.isInteger(value)) {
+      throw new BadRequestException(`${fieldName} must be integer`)
+    }
+
+    return value
+  }
+
+  private normalizeLayoutPositiveInteger(
+    value: number | undefined,
+    fallbackValue: number,
+    fieldName: string
+  ): number {
+    if (value === undefined || value === null) {
+      return fallbackValue
+    }
+
+    if (!Number.isInteger(value) || value <= 0) {
+      throw new BadRequestException(`${fieldName} must be positive integer`)
+    }
+
+    return value
+  }
+
+  private normalizeLayoutShape(
+    value: string | null | undefined
+  ): string {
+    if (value === undefined || value === null) {
+      return 'RECT'
+    }
+
+    const normalizedValue =
+      String(value).trim().toUpperCase()
+
+    if (!normalizedValue) {
+      return 'RECT'
+    }
+
+    if (!['RECT', 'ROUND', 'ROOM'].includes(normalizedValue)) {
+      throw new BadRequestException('layoutShape is invalid')
+    }
+
+    return normalizedValue
   }
 
   private normalizeActiveValue(
@@ -1303,6 +1568,16 @@ export class BusinessPosTableSettingsService {
       zoneName: row.locationGroupName ?? '',
       tableOptionName: row.tableOptionName ?? '',
       tableTypeCode: this.normalizeTableTypeCode(row.tableTypeCode),
+      floor: row.floor?.trim() || '1층',
+      zone: row.zone?.trim() || '홀',
+      floorSortOrder: Number(row.floorSortOrder ?? 1),
+      zoneSortOrder: Number(row.zoneSortOrder ?? 1),
+      layoutX: Number(row.layoutX ?? 0),
+      layoutY: Number(row.layoutY ?? 0),
+      layoutWidth: Number(row.layoutWidth ?? 180),
+      layoutHeight: Number(row.layoutHeight ?? 140),
+      layoutRotate: Number(row.layoutRotate ?? 0),
+      layoutShape: this.normalizeLayoutShape(row.layoutShape),
       defaultPrice: Number(row.defaultPrice ?? 0),
       resourceStatus: row.resourceStatus,
       lastStatusChangedAt: row.lastStatusChangedAt,

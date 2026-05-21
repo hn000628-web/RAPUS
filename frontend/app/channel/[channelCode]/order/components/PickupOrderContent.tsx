@@ -1,23 +1,35 @@
 ﻿'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { CSSProperties } from 'react'
+import {
+  createCustomerOrder,
+  getCustomerOrderBootstrap,
+  type CreateCustomerOrderRequest,
+  type CustomerOrderBootstrapResponse,
+} from '@/lib/business/pos/customerOrderApi'
 
 type Props = {
   channelCode: string
   activeCategoryKey: string
+  categorySidebar?: ReactNode
+  embedInModal?: boolean
 }
 
 type OrderMenuItem = {
   id: string
   categoryKey: string
+  productId: number
   name: string
   description: string
   price: number
+  options: OrderOptionItem[]
 }
 
 type OrderOptionItem = {
   id: string
+  optionId: number
+  optionValueId: number
   label: string
   price: number
 }
@@ -28,63 +40,13 @@ type PickupTimeItem = {
   description: string
 }
 
-const MOCK_MENU_ITEMS: OrderMenuItem[] = [
-  {
-    id: 'kimchi-stew',
-    categoryKey: 'MAIN',
-    name: '김치찌개',
-    description: '기본 300g 기준 메뉴입니다.',
-    price: 3000
-  },
-  {
-    id: 'cola',
-    categoryKey: 'DRINK',
-    name: '콜라',
-    description: '1.5L 음료입니다.',
-    price: 2000
-  },
-  {
-    id: 'rice',
-    categoryKey: 'SIDE',
-    name: '공기밥',
-    description: '추가 공기밥입니다.',
-    price: 1000
-  },
-  {
-    id: 'ramen',
-    categoryKey: 'SIDE',
-    name: '라면사리',
-    description: '찌개류에 추가 가능한 사리입니다.',
-    price: 1500
-  },
-  {
-    id: 'egg-roll',
-    categoryKey: 'SUB',
-    name: '계란말이',
-    description: '서브 메뉴입니다.',
-    price: 4500
-  },
-  {
-    id: 'water',
-    categoryKey: 'DRINK',
-    name: '생수',
-    description: '500ml 생수입니다.',
-    price: 1000
-  }
-]
+type PickupPaymentMethodItem = {
+  id: 'ONLINE_PREPAID' | 'ON_SITE_PAYMENT'
+  title: string
+  description: string
+}
 
-const MOCK_OPTION_ITEMS: OrderOptionItem[] = [
-  {
-    id: 'basic',
-    label: '기본값',
-    price: 0
-  },
-  {
-    id: 'extra-spicy',
-    label: '맵게',
-    price: 0
-  }
-]
+const MOCK_MENU_ITEMS: OrderMenuItem[] = []
 
 const PICKUP_TIME_ITEMS: PickupTimeItem[] = [
   {
@@ -109,19 +71,36 @@ const PICKUP_TIME_ITEMS: PickupTimeItem[] = [
   }
 ]
 
+const PICKUP_PAYMENT_METHOD_ITEMS: PickupPaymentMethodItem[] = [
+  {
+    id: 'ONLINE_PREPAID',
+    title: '선결제(온라인)',
+    description: '주문 시 온라인으로 결제합니다.'
+  },
+  {
+    id: 'ON_SITE_PAYMENT',
+    title: '현장결제',
+    description: '픽업 수령 시 매장에서 결제합니다.'
+  }
+]
+
 const EMPTY_MENU_ITEM: OrderMenuItem = {
   id: 'empty',
-  categoryKey: 'MAIN',
+  categoryKey: 'ALL',
+  productId: -1,
   name: '메뉴 없음',
   description: '선택 가능한 메뉴가 없습니다.',
-  price: 0
+  price: 0,
+  options: []
 }
 
 const contentStyle: CSSProperties = {
   width: '100%',
   display: 'flex',
   flexDirection: 'column',
-  gap: '10px'
+  gap: '10px',
+  paddingBottom: '118px',
+  boxSizing: 'border-box'
 }
 
 const introCardStyle: CSSProperties = {
@@ -361,6 +340,47 @@ const pickupTimeDescStyle: CSSProperties = {
   color: '#6b7280'
 }
 
+const paymentMethodGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: '10px'
+}
+
+const paymentMethodCardStyle: CSSProperties = {
+  minHeight: '92px',
+  padding: '14px',
+  border: '1px solid #dbe2ea',
+  borderRadius: '16px',
+  backgroundColor: '#ffffff',
+  textAlign: 'left',
+  cursor: 'pointer',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '8px'
+}
+
+const paymentMethodCardSelectedStyle: CSSProperties = {
+  ...paymentMethodCardStyle,
+  borderWidth: '2px',
+  borderColor: '#0f172a',
+  backgroundColor: '#f8fafc',
+  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.12)'
+}
+
+const paymentMethodTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: '15px',
+  fontWeight: 900,
+  color: '#111827'
+}
+
+const paymentMethodDescStyle: CSSProperties = {
+  margin: 0,
+  fontSize: '12px',
+  lineHeight: 1.45,
+  color: '#6b7280'
+}
+
 const inputGroupStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
@@ -412,14 +432,13 @@ const totalRowStyle: CSSProperties = {
 }
 
 const orderButtonStyle: CSSProperties = {
-  width: '100%',
-  height: '56px',
-  marginTop: '18px',
+  minWidth: '180px',
+  height: '48px',
   border: 'none',
   borderRadius: '12px',
   backgroundColor: '#111827',
   color: '#ffffff',
-  fontSize: '17px',
+  fontSize: '16px',
   fontWeight: 900,
   cursor: 'pointer'
 }
@@ -432,14 +451,190 @@ const noticeStyle: CSSProperties = {
   textAlign: 'center'
 }
 
+const footerBarStyle: CSSProperties = {
+  width: '100%',
+  minHeight: '56px',
+  padding: '0',
+  border: 'none',
+  backgroundColor: 'transparent',
+  boxShadow: 'none',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '14px',
+  boxSizing: 'border-box'
+}
+
+const footerBarViewportStyle: CSSProperties = {
+  position: 'fixed',
+  left: 0,
+  right: 0,
+  bottom: 0,
+  zIndex: 90,
+  borderTop: '1px solid #dbe2ea',
+  backgroundColor: '#ffffff',
+  boxShadow: '0 -8px 24px rgba(15, 23, 42, 0.08)'
+}
+
+const footerBarInnerStyle: CSSProperties = {
+  width: '100%',
+  maxWidth: '1120px',
+  margin: '0 auto',
+  padding: '10px 24px calc(10px + env(safe-area-inset-bottom))',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '14px',
+  boxSizing: 'border-box'
+}
+
+const footerTotalStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'baseline',
+  gap: '8px',
+  minWidth: 0,
+  color: '#0f172a'
+}
+
+const footerTotalLabelStyle: CSSProperties = {
+  fontSize: '18px',
+  fontWeight: 900,
+  whiteSpace: 'nowrap'
+}
+
+const footerTotalAmountStyle: CSSProperties = {
+  fontSize: '28px',
+  fontWeight: 1000,
+  letterSpacing: '-0.02em',
+  whiteSpace: 'nowrap'
+}
+
+const modalOverlayStyle: CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  zIndex: 1000,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '24px',
+  backgroundColor: 'rgba(15, 23, 42, 0.45)',
+  overflowY: 'auto',
+  boxSizing: 'border-box'
+}
+
+const modalPanelStyle: CSSProperties = {
+  width: 'min(100%, 760px)',
+  maxHeight: 'min(86vh, 820px)',
+  borderRadius: '22px',
+  backgroundColor: '#ffffff',
+  border: '1px solid #dbe2ea',
+  boxShadow: '0 20px 50px rgba(15, 23, 42, 0.2)',
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column'
+}
+
+const modalHeaderStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '10px',
+  padding: '16px 18px',
+  borderBottom: '1px solid #e5e7eb'
+}
+
+const modalTitleStyle: CSSProperties = {
+  margin: 0,
+  fontSize: '22px',
+  fontWeight: 900,
+  color: '#0f172a'
+}
+
+const modalCloseButtonStyle: CSSProperties = {
+  minWidth: '48px',
+  height: '34px',
+  padding: '0 12px',
+  border: '1px solid #dbe2ea',
+  borderRadius: '999px',
+  backgroundColor: '#ffffff',
+  color: '#0f172a',
+  fontSize: '13px',
+  fontWeight: 800,
+  whiteSpace: 'nowrap',
+  cursor: 'pointer'
+}
+
+const modalBodyStyle: CSSProperties = {
+  padding: '16px',
+  overflowY: 'auto'
+}
+
+const pickupModalGridStyle: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+  gap: '12px',
+  alignItems: 'start'
+}
+
+const pickupModalColumnStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '12px',
+  minWidth: 0
+}
+
+const modalFooterStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  gap: '8px',
+  padding: '12px 16px calc(12px + env(safe-area-inset-bottom))',
+  borderTop: '1px solid #e5e7eb',
+  backgroundColor: '#ffffff'
+}
+
+const modalSecondaryButtonStyle: CSSProperties = {
+  minWidth: '96px',
+  height: '40px',
+  border: '1px solid #d1d5db',
+  borderRadius: '10px',
+  backgroundColor: '#ffffff',
+  color: '#111827',
+  fontSize: '14px',
+  fontWeight: 800,
+  cursor: 'pointer'
+}
+
+const modalPrimaryButtonStyle: CSSProperties = {
+  minWidth: '130px',
+  height: '40px',
+  border: 'none',
+  borderRadius: '10px',
+  backgroundColor: '#111827',
+  color: '#ffffff',
+  fontSize: '14px',
+  fontWeight: 900,
+  cursor: 'pointer'
+}
+
 function formatPrice(value: number): string {
   return `${value.toLocaleString('ko-KR')}원`
 }
 
 export default function PickupOrderContent({
   channelCode,
-  activeCategoryKey
+  activeCategoryKey,
+  categorySidebar,
+  embedInModal = false
 }: Props) {
+  const [isLoadingMenus, setIsLoadingMenus] = useState<boolean>(false)
+  const [menuError, setMenuError] = useState<string | null>(null)
+  const [orderSubmitError, setOrderSubmitError] = useState<string | null>(null)
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false)
+  const [bootstrapData, setBootstrapData] = useState<CustomerOrderBootstrapResponse | null>(null)
+  const [orderResult, setOrderResult] = useState<{ orderCode: string, revisionCode: string } | null>(null)
+  const [menuItems, setMenuItems] = useState<OrderMenuItem[]>(MOCK_MENU_ITEMS)
+
   const [selectedMenuId, setSelectedMenuId] = useState<string>(MOCK_MENU_ITEMS[0]?.id || '')
   const [quantity, setQuantity] = useState<number>(1)
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([])
@@ -449,6 +644,8 @@ export default function PickupOrderContent({
   const [pickupExpectedAt, setPickupExpectedAt] = useState<string>('')
   const [memo, setMemo] = useState<string>('')
   const [isCompactLayout, setIsCompactLayout] = useState<boolean>(false)
+  const [isPickupModalOpen, setIsPickupModalOpen] = useState<boolean>(false)
+  const [pickupPaymentMethodId, setPickupPaymentMethodId] = useState<'ONLINE_PREPAID' | 'ON_SITE_PAYMENT'>('ON_SITE_PAYMENT')
 
   useEffect(() => {
     function updateCompactLayout() {
@@ -463,9 +660,89 @@ export default function PickupOrderContent({
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadBootstrap() {
+      if (!channelCode) {
+        setMenuItems([])
+        setBootstrapData(null)
+        return
+      }
+
+      setIsLoadingMenus(true)
+      setMenuError(null)
+
+      try {
+        const response = await getCustomerOrderBootstrap({
+          providerChannelCode: channelCode,
+          orderFlowType: 'PICKUP',
+        })
+
+        if (cancelled) {
+          return
+        }
+
+        setBootstrapData(response)
+
+        const mappedItems: OrderMenuItem[] = response.products.map((product) => {
+          const categoryKey = response.categories.find((category) => category.id === product.categoryId)?.categoryCode
+            ?? 'UNCATEGORIZED'
+          return {
+            id: String(product.id),
+            productId: product.id,
+            categoryKey,
+            name: product.productName,
+            description: product.productDescription ?? '',
+            price: product.basePrice,
+            options: product.options.flatMap((option) =>
+              option.values.map((value) => ({
+                id: `${option.id}:${value.id}`,
+                optionId: option.id,
+                optionValueId: value.id,
+                label: option.optionName.trim() === value.optionValueName.trim()
+                  ? option.optionName
+                  : `${option.optionName} - ${value.optionValueName}`,
+                price: value.priceDelta,
+              }))
+            ),
+          }
+        })
+
+        setMenuItems(mappedItems)
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+        setMenuItems([])
+        setBootstrapData(null)
+        setMenuError(
+          error instanceof Error && error.message
+            ? `메뉴 정보를 불러오지 못했습니다. (${error.message})`
+            : '메뉴 정보를 불러오지 못했습니다.'
+        )
+      } finally {
+        if (!cancelled) {
+          setIsLoadingMenus(false)
+        }
+      }
+    }
+
+    void loadBootstrap()
+
+    return () => {
+      cancelled = true
+    }
+  }, [channelCode])
+
   const visibleProducts = useMemo(() => {
-    return MOCK_MENU_ITEMS.filter((item) => item.categoryKey === activeCategoryKey)
-  }, [activeCategoryKey])
+    if (activeCategoryKey === 'ALL') {
+      return menuItems
+    }
+
+    const filtered = menuItems.filter((item) => item.categoryKey === activeCategoryKey)
+    return filtered.length > 0 ? filtered : menuItems
+  }, [activeCategoryKey, menuItems])
 
   useEffect(() => {
     if (visibleProducts.length === 0) {
@@ -483,16 +760,20 @@ export default function PickupOrderContent({
   }, [selectedMenuId, visibleProducts])
 
   const selectedMenu = useMemo(() => {
-    return MOCK_MENU_ITEMS.find((item) => item.id === selectedMenuId) || EMPTY_MENU_ITEM
-  }, [selectedMenuId])
+    return menuItems.find((item) => item.id === selectedMenuId) || EMPTY_MENU_ITEM
+  }, [selectedMenuId, menuItems])
 
   const selectedOptions = useMemo(() => {
-    return MOCK_OPTION_ITEMS.filter((item) => selectedOptionIds.includes(item.id))
-  }, [selectedOptionIds])
+    return selectedMenu.options.filter((item) => selectedOptionIds.includes(item.id))
+  }, [selectedOptionIds, selectedMenu.options])
 
   const selectedPickupTime = useMemo(() => {
     return PICKUP_TIME_ITEMS.find((item) => item.id === pickupTimeId) || PICKUP_TIME_ITEMS[0]
   }, [pickupTimeId])
+
+  const selectedPickupPaymentMethod = useMemo(() => {
+    return PICKUP_PAYMENT_METHOD_ITEMS.find((item) => item.id === pickupPaymentMethodId) || PICKUP_PAYMENT_METHOD_ITEMS[1]
+  }, [pickupPaymentMethodId])
 
   const optionTotal = useMemo(() => {
     return selectedOptions.reduce((sum, item) => sum + item.price, 0)
@@ -541,8 +822,72 @@ export default function PickupOrderContent({
     })
   }
 
-  function handleSubmitOrder() {
-    window.alert('픽업 주문 생성 기능은 이후 API/DB 연결 단계에서 구현합니다.')
+  async function handleSubmitOrder() {
+    if (isSubmittingOrder) {
+      return
+    }
+
+    if (!channelCode) {
+      setOrderSubmitError('채널 정보를 확인하지 못했습니다.')
+      return
+    }
+
+    if (!selectedMenu || selectedMenu.productId < 1) {
+      setOrderSubmitError('주문할 메뉴를 선택해 주세요.')
+      return
+    }
+
+    setIsSubmittingOrder(true)
+    setOrderSubmitError(null)
+
+    const payload: CreateCustomerOrderRequest = {
+      providerChannelCode: channelCode,
+      orderSource: 'ONLINE',
+      orderFlowType: 'PICKUP',
+      customerName: customerName.trim() || undefined,
+      customerPhone: customerPhone.trim() || undefined,
+      memo: memo.trim() || undefined,
+      fulfillment: {
+        pickupExpectedAt: pickupExpectedAt.trim() || selectedPickupTime?.label || undefined,
+        customerRequestMemo: memo.trim() || undefined,
+      },
+      items: [
+        {
+          posProductId: selectedMenu.productId,
+          quantity,
+          options: selectedOptions.map((option) => ({
+            productOptionId: option.optionId,
+            productOptionValueId: option.optionValueId,
+            quantity: 1,
+          })),
+        },
+      ],
+    }
+
+    try {
+      const response = await createCustomerOrder(payload)
+      setOrderResult({
+        orderCode: response.order.orderCode,
+        revisionCode: response.order.revisionCode,
+      })
+      setIsPickupModalOpen(false)
+    } catch (error) {
+      setOrderSubmitError(
+        error instanceof Error && error.message
+          ? `주문을 접수하지 못했습니다. (${error.message})`
+          : '주문을 접수하지 못했습니다.'
+      )
+    } finally {
+      setIsSubmittingOrder(false)
+    }
+  }
+
+  function handleOpenPickupModal() {
+    setIsPickupModalOpen(true)
+  }
+
+  function handleClosePickupModal() {
+    setIsPickupModalOpen(false)
   }
 
   const IntroUI = (
@@ -558,6 +903,12 @@ export default function PickupOrderContent({
   const MenuSelectUI = (
     <section style={cardStyle}>
       <h3 style={sectionTitleStyle}>1. 메뉴 선택</h3>
+      {isLoadingMenus ? (
+        <p style={descriptionStyle}>메뉴 정보를 불러오는 중입니다.</p>
+      ) : null}
+      {menuError ? (
+        <p style={descriptionStyle}>{menuError}</p>
+      ) : null}
       <div style={menuGridStyle}>
         {visibleProducts.map((item) => {
           const isSelected = item.id === selectedMenuId
@@ -612,7 +963,7 @@ export default function PickupOrderContent({
     <section style={cardStyle}>
       <h3 style={sectionTitleStyle}>3. 옵션 선택</h3>
       <div style={optionListStyle}>
-        {MOCK_OPTION_ITEMS.map((item) => {
+        {selectedMenu.options.map((item) => {
           const checked = selectedOptionIds.includes(item.id)
 
           return (
@@ -636,7 +987,7 @@ export default function PickupOrderContent({
     </section>
   )
 
-  const PickupInfoUI = (
+  const PickupInfoLeftUI = (
     <section style={cardStyle}>
       <h3 style={sectionTitleStyle}>픽업 정보</h3>
       <p style={descriptionStyle}>주문 수령에 필요한 정보를 입력해 주세요.</p>
@@ -694,6 +1045,36 @@ export default function PickupOrderContent({
         })}
       </div>
 
+    </section>
+  )
+
+  const PickupInfoRightUI = (
+    <section style={cardStyle}>
+      <h3 style={sectionTitleStyle}>결제 방식</h3>
+      <div style={paymentMethodGridStyle}>
+        {PICKUP_PAYMENT_METHOD_ITEMS.map((item) => {
+          const isSelected = item.id === pickupPaymentMethodId
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={isSelected}
+              style={isSelected ? paymentMethodCardSelectedStyle : paymentMethodCardStyle}
+              onClick={() => {
+                setPickupPaymentMethodId(item.id)
+              }}
+            >
+              <h4 style={paymentMethodTitleStyle}>{item.title}</h4>
+              <p style={paymentMethodDescStyle}>{item.description}</p>
+            </button>
+          )
+        })}
+      </div>
+
+      <div style={{ height: '2px' }} />
+
+      <h3 style={sectionTitleStyle}>픽업 요청사항</h3>
       <textarea
         value={memo}
         style={memoStyle}
@@ -744,22 +1125,102 @@ export default function PickupOrderContent({
         <strong>{pickupExpectedAt.trim() || selectedPickupTime?.label || '-'}</strong>
       </div>
 
+      <div style={summaryRowStyle}>
+        <span>결제 방식</span>
+        <strong>{selectedPickupPaymentMethod.title}</strong>
+      </div>
+
       <div style={totalRowStyle}>
         <span>총 금액</span>
         <span>{formatPrice(totalAmount)}</span>
       </div>
 
-      <button type="button" style={orderButtonStyle} onClick={handleSubmitOrder}>
-        픽업 주문하기
-      </button>
-
       <div style={noticeStyle}>현재는 UI 목업 단계입니다. 실제 주문 저장/결제는 연결되어 있지 않습니다.</div>
+      {orderResult ? (
+        <div style={noticeStyle}>
+          주문 접수 완료: {orderResult.orderCode} / {orderResult.revisionCode}
+        </div>
+      ) : null}
+      {orderSubmitError ? (
+        <div style={noticeStyle}>{orderSubmitError}</div>
+      ) : null}
     </section>
   )
 
+  const FooterBarUI = (
+    <footer
+      style={
+        embedInModal
+          ? {
+              ...footerBarViewportStyle,
+              position: 'sticky',
+              left: 'auto',
+              right: 'auto',
+              bottom: 0,
+              zIndex: 1
+            }
+          : footerBarViewportStyle
+      }
+    >
+      <div
+        style={
+          isCompactLayout
+            ? {
+                ...footerBarInnerStyle,
+                alignItems: 'stretch',
+                flexDirection: 'column'
+              }
+            : footerBarInnerStyle
+        }
+      >
+        <div
+          style={
+            isCompactLayout
+              ? {
+                  ...footerBarStyle,
+                  alignItems: 'stretch',
+                  flexDirection: 'column'
+                }
+              : footerBarStyle
+          }
+        >
+          <div style={footerTotalStyle}>
+            <span style={footerTotalLabelStyle}>합계 :</span>
+            <strong style={footerTotalAmountStyle}>{formatPrice(totalAmount)}</strong>
+          </div>
+
+          <button
+            type="button"
+            style={
+              isCompactLayout
+                ? {
+                    ...orderButtonStyle,
+                    width: '100%'
+                  }
+                : orderButtonStyle
+            }
+            onClick={handleOpenPickupModal}
+          >
+            픽업 주문하기
+          </button>
+        </div>
+      </div>
+    </footer>
+  )
+
   return (
-    <section style={contentStyle}>
+    <section
+      style={
+        embedInModal
+          ? {
+              ...contentStyle,
+              paddingBottom: '12px'
+            }
+          : contentStyle
+      }
+    >
       {IntroUI}
+      {categorySidebar}
 
       <section style={responsiveOrderGridStyle}>
         <section style={columnStyle}>{MenuSelectUI}</section>
@@ -767,13 +1228,52 @@ export default function PickupOrderContent({
         <section style={columnStyle}>
           {QuantityUI}
           {OptionUI}
-          {PickupInfoUI}
         </section>
 
         <aside style={columnStyle}>
           {SummaryUI}
         </aside>
       </section>
+
+      {FooterBarUI}
+
+      {isPickupModalOpen ? (
+        <div style={modalOverlayStyle}>
+          <section style={modalPanelStyle}>
+            <header style={modalHeaderStyle}>
+              <h3 style={modalTitleStyle}>픽업 주문하기</h3>
+              <button type="button" style={modalCloseButtonStyle} onClick={handleClosePickupModal}>
+                닫기
+              </button>
+            </header>
+
+            <div style={modalBodyStyle}>
+              <div
+                style={
+                  isCompactLayout
+                    ? {
+                        ...pickupModalGridStyle,
+                        gridTemplateColumns: '1fr'
+                      }
+                    : pickupModalGridStyle
+                }
+              >
+                <section style={pickupModalColumnStyle}>{PickupInfoLeftUI}</section>
+                <section style={pickupModalColumnStyle}>{PickupInfoRightUI}</section>
+              </div>
+            </div>
+
+            <footer style={modalFooterStyle}>
+              <button type="button" style={modalSecondaryButtonStyle} onClick={handleClosePickupModal}>
+                취소
+              </button>
+              <button type="button" style={modalPrimaryButtonStyle} onClick={handleSubmitOrder} disabled={isSubmittingOrder}>
+                {isSubmittingOrder ? '주문 접수중...' : '픽업 주문하기'}
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
     </section>
   )
 }

@@ -40,6 +40,10 @@ export type PosOrderDashboardDisplayStatusGroup =
   | 'DONE'
   | 'CANCELED'
 
+export type PosOrderCompositionType =
+  | 'SINGLE'
+  | 'COMPOSITE'
+
 export type PosOrderStatus =
   | 'CREATED'
   | 'CONFIRMED'
@@ -94,6 +98,9 @@ export type PosOrderDashboardItem = {
   summary: string
   source: string
   itemCount: number
+  orderItemCount: number
+  orderCompositionType: PosOrderCompositionType
+  orderCompositionLabel: string
   totalQuantity: number
   tableCookingStatus?: PosTableCookingStatus | null
   displayStatusLabel?: string
@@ -341,7 +348,9 @@ export function buildOrderSummary(
       : productName
   }
 
-  return `${productName} 외 ${itemCount - 1}개`
+  const headQuantity = totalQuantity > 0 ? totalQuantity : 1
+
+  return `${productName} ${headQuantity}개 x 외`
 }
 
 function normalizeInteger(
