@@ -61,6 +61,9 @@ export type CustomerOrderProductResponse = {
   allowDineIn: number
   allowTakeout: number
   allowDelivery: number
+  thumbnail: {
+    filePath: string | null
+  } | null
   options: CustomerOrderOptionResponse[]
 }
 

@@ -139,17 +139,18 @@ const orderFormOverlayStyle: CSSProperties = {
   position: 'fixed',
   inset: 0,
   display: 'flex',
-  alignItems: 'center',
+  alignItems: 'flex-start',
   justifyContent: 'center',
-  padding: '24px',
+  padding: '72px 24px 24px',
   background: 'rgba(15, 23, 42, 0.52)',
   zIndex: 1100,
-  boxSizing: 'border-box'
+  boxSizing: 'border-box',
+  overflowY: 'auto'
 }
 
 const orderFormPanelStyle: CSSProperties = {
   width: 'min(1180px, calc(100vw - 32px))',
-  maxHeight: 'calc(100vh - 48px)',
+  maxHeight: 'calc(100vh - 82px)',
   borderRadius: '24px',
   border: '1px solid #dbe2ea',
   background: '#ffffff',
@@ -173,6 +174,7 @@ const orderFormBodyStyle: CSSProperties = {
   minHeight: 0,
   flex: '1 1 auto',
   overflowY: 'auto',
+  overflowX: 'hidden',
   padding: '16px',
   boxSizing: 'border-box',
   background: '#f8fafc'
@@ -279,6 +281,7 @@ export default function ChannelOrder({ channelCode, autoOpenOrder = false }: Pro
       <OrderSidebar
         channelCode={channelCode}
         mode="MENU_CATEGORY"
+        showChannelCode={false}
         categories={pickupCategories}
         activeCategoryKey={pickupActiveCategoryKey}
         onChangeCategory={setPickupActiveCategoryKey}
@@ -291,6 +294,7 @@ export default function ChannelOrder({ channelCode, autoOpenOrder = false }: Pro
       <OrderSidebar
         channelCode={channelCode}
         mode="MENU_CATEGORY"
+        showChannelCode={false}
         categories={deliveryCategories}
         activeCategoryKey={deliveryActiveCategoryKey}
         onChangeCategory={setDeliveryActiveCategoryKey}

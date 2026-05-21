@@ -91,6 +91,9 @@ export type CustomerOrderProduct = {
   allowDineIn: number
   allowTakeout: number
   allowDelivery: number
+  thumbnail?: {
+    filePath: string | null
+  } | null
   options: CustomerOrderProductOption[]
 }
 

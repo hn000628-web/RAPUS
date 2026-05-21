@@ -11,6 +11,7 @@ import { usePathname, useRouter } from 'next/navigation'
 type Props = {
   channelCode: string
   mode?: 'ORDER_TYPE' | 'MENU_CATEGORY'
+  showChannelCode?: boolean
   categories?: Array<{
     key: string
     label: string
@@ -198,6 +199,7 @@ function isActivePath(pathname: string, targetPath: string, itemId: string): boo
 export default function OrderSidebar({
   channelCode,
   mode = 'ORDER_TYPE',
+  showChannelCode = true,
   categories = [],
   activeCategoryKey,
   onChangeCategory
@@ -388,7 +390,7 @@ export default function OrderSidebar({
     <aside style={sidebarStyle}>
       {mode === 'MENU_CATEGORY' ? null : HeaderUI}
       {mode === 'MENU_CATEGORY' ? CategoryMenuUI : OrderTypeMenuUI}
-      {ChannelCodeUI}
+      {showChannelCode ? ChannelCodeUI : null}
     </aside>
   )
 }

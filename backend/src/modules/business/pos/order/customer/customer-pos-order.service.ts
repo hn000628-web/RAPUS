@@ -54,6 +54,7 @@ type PosProductRow = {
   allowTakeout: number
   allowDelivery: number
   productKind: 'MAIN_PRODUCT' | 'SUB_PRODUCT'
+  thumbnailFilePath: string | null
 }
 
 type OptionRow = {
@@ -157,7 +158,18 @@ export class CustomerPosOrderService {
         p.allowDineIn,
         p.allowTakeout,
         p.allowDelivery,
-        p.productKind
+        p.productKind,
+        (
+          SELECT a.filePath
+          FROM pos_product_thumbnails t
+          INNER JOIN image_assets a
+            ON a.id = t.imageAssetId
+          WHERE t.channelCode = p.channelCode
+            AND t.productId = p.id
+            AND t.isActive = 1
+          ORDER BY t.sortOrder ASC, t.id DESC
+          LIMIT 1
+        ) AS thumbnailFilePath
       FROM pos_products p
       LEFT JOIN pos_product_categories c
         ON c.id = p.categoryId
@@ -256,6 +268,11 @@ export class CustomerPosOrderService {
       categories,
       products: filteredProducts.map((product) => ({
         ...product,
+        thumbnail: product.thumbnailFilePath
+          ? {
+              filePath: product.thumbnailFilePath,
+            }
+          : null,
         options: (optionsByProductId.get(product.id) ?? []).map((option) => ({
           id: option.id,
           optionName: option.optionName,
