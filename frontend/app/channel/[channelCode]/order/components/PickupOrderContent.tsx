@@ -8,6 +8,7 @@ import {
   type CreateCustomerOrderRequest,
   type CustomerOrderBootstrapResponse,
 } from '@/lib/business/pos/customerOrderApi'
+import { mediaUrl } from '@/lib/media'
 
 type Props = {
   channelCode: string
@@ -23,6 +24,7 @@ type OrderMenuItem = {
   name: string
   description: string
   price: number
+  thumbnailFilePath?: string | null
   options: OrderOptionItem[]
 }
 
@@ -96,10 +98,13 @@ const EMPTY_MENU_ITEM: OrderMenuItem = {
 
 const contentStyle: CSSProperties = {
   width: '100%',
+  maxWidth: '100%',
+  minWidth: 0,
   display: 'flex',
   flexDirection: 'column',
   gap: '10px',
   paddingBottom: '118px',
+  overflowX: 'hidden',
   boxSizing: 'border-box'
 }
 
@@ -204,6 +209,70 @@ const selectedMenuButtonStyle: CSSProperties = {
   boxShadow: '0 10px 24px rgba(15, 23, 42, 0.12)'
 }
 
+const menuImageButtonStyle: CSSProperties = {
+  ...menuButtonStyle,
+  padding: '0',
+  gap: '0',
+  justifyContent: 'stretch'
+}
+
+const selectedMenuImageButtonStyle: CSSProperties = {
+  ...selectedMenuButtonStyle,
+  padding: '0',
+  gap: '0',
+  justifyContent: 'stretch'
+}
+
+const menuThumbWrapStyle: CSSProperties = {
+  position: 'relative',
+  width: '100%',
+  minHeight: '124px',
+  height: '100%',
+  borderRadius: 'inherit',
+  overflow: 'hidden',
+  backgroundColor: '#f8fafc'
+}
+
+const menuThumbImageStyle: CSSProperties = {
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+  display: 'block'
+}
+
+const menuThumbTitlePillStyle: CSSProperties = {
+  position: 'absolute',
+  top: '8px',
+  left: '8px',
+  maxWidth: '70%',
+  padding: '6px 10px',
+  borderRadius: '999px',
+  backgroundColor: '#ffffff',
+  color: '#111827',
+  fontSize: '12px',
+  fontWeight: 800,
+  lineHeight: 1,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  boxShadow: '0 6px 16px rgba(15, 23, 42, 0.16)'
+}
+
+const menuThumbPricePillStyle: CSSProperties = {
+  position: 'absolute',
+  right: '8px',
+  bottom: '8px',
+  padding: '6px 10px',
+  borderRadius: '999px',
+  backgroundColor: '#ffffff',
+  color: '#111827',
+  fontSize: '12px',
+  fontWeight: 900,
+  lineHeight: 1,
+  whiteSpace: 'nowrap',
+  boxShadow: '0 6px 16px rgba(15, 23, 42, 0.16)'
+}
+
 const menuNameStyle: CSSProperties = {
   margin: 0,
   fontSize: '16px',
@@ -220,6 +289,18 @@ const menuDescStyle: CSSProperties = {
   lineHeight: 1.4,
   color: '#64748b',
   wordBreak: 'keep-all'
+}
+
+const selectedBadgeStyle: CSSProperties = {
+  flexShrink: 0,
+  padding: '2px 8px',
+  borderRadius: '999px',
+  backgroundColor: '#0f172a',
+  color: '#ffffff',
+  fontSize: '11px',
+  fontWeight: 900,
+  lineHeight: 1.4,
+  whiteSpace: 'nowrap'
 }
 
 const priceStyle: CSSProperties = {
@@ -453,6 +534,8 @@ const noticeStyle: CSSProperties = {
 
 const footerBarStyle: CSSProperties = {
   width: '100%',
+  maxWidth: '100%',
+  minWidth: 0,
   minHeight: '56px',
   padding: '0',
   border: 'none',
@@ -463,6 +546,13 @@ const footerBarStyle: CSSProperties = {
   justifyContent: 'space-between',
   gap: '14px',
   boxSizing: 'border-box'
+}
+
+const footerBarModalContainerStyle: CSSProperties = {
+  borderTop: '1px solid #e5e7eb',
+  backgroundColor: '#ffffff',
+  boxShadow: 'none',
+  minHeight: '76px'
 }
 
 const footerBarViewportStyle: CSSProperties = {
@@ -486,6 +576,19 @@ const footerBarInnerStyle: CSSProperties = {
   justifyContent: 'space-between',
   gap: '14px',
   boxSizing: 'border-box'
+}
+
+const footerBarInnerModalStyle: CSSProperties = {
+  width: '100%',
+  maxWidth: '100%',
+  margin: 0,
+  padding: '10px 16px calc(10px + env(safe-area-inset-bottom))',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '14px',
+  boxSizing: 'border-box',
+  backgroundColor: '#ffffff'
 }
 
 const footerTotalStyle: CSSProperties = {
@@ -646,6 +749,7 @@ export default function PickupOrderContent({
   const [isCompactLayout, setIsCompactLayout] = useState<boolean>(false)
   const [isPickupModalOpen, setIsPickupModalOpen] = useState<boolean>(false)
   const [pickupPaymentMethodId, setPickupPaymentMethodId] = useState<'ONLINE_PREPAID' | 'ON_SITE_PAYMENT'>('ON_SITE_PAYMENT')
+  const [failedMenuThumbnailKeys, setFailedMenuThumbnailKeys] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     function updateCompactLayout() {
@@ -695,6 +799,7 @@ export default function PickupOrderContent({
             name: product.productName,
             description: product.productDescription ?? '',
             price: product.basePrice,
+            thumbnailFilePath: product.thumbnail?.filePath ?? null,
             options: product.options.flatMap((option) =>
               option.values.map((value) => ({
                 id: `${option.id}:${value.id}`,
@@ -802,6 +907,23 @@ export default function PickupOrderContent({
     setSelectedMenuId(menuId)
     setQuantity(1)
     setSelectedOptionIds([])
+  }
+
+  function getMenuThumbnailKey(item: OrderMenuItem): string {
+    const path = item.thumbnailFilePath?.trim() ?? ''
+    return `${item.id}:${path || item.name}`
+  }
+
+  function markMenuThumbnailFailed(item: OrderMenuItem) {
+    const nextKey = getMenuThumbnailKey(item)
+    setFailedMenuThumbnailKeys((prev) => {
+      if (prev.has(nextKey)) {
+        return prev
+      }
+      const next = new Set(prev)
+      next.add(nextKey)
+      return next
+    })
   }
 
   function handleDecreaseQuantity() {
@@ -912,21 +1034,60 @@ export default function PickupOrderContent({
       <div style={menuGridStyle}>
         {visibleProducts.map((item) => {
           const isSelected = item.id === selectedMenuId
+          const thumbnailUrl = mediaUrl(item.thumbnailFilePath)
+          const thumbnailKey = getMenuThumbnailKey(item)
+          const shouldRenderImageCard =
+            Boolean(thumbnailUrl) &&
+            !failedMenuThumbnailKeys.has(thumbnailKey)
 
           return (
             <button
               key={item.id}
               type="button"
-              style={isSelected ? selectedMenuButtonStyle : menuButtonStyle}
+              style={
+                shouldRenderImageCard
+                  ? (isSelected ? selectedMenuImageButtonStyle : menuImageButtonStyle)
+                  : (isSelected ? selectedMenuButtonStyle : menuButtonStyle)
+              }
               onClick={() => {
                 handleSelectMenu(item.id)
               }}
             >
-              <span>
-                <h4 style={menuNameStyle}>{item.name}</h4>
-                <p style={menuDescStyle}>{item.description}</p>
-              </span>
-              <span style={priceStyle}>{formatPrice(item.price)}</span>
+              {shouldRenderImageCard ? (
+                <span style={menuThumbWrapStyle}>
+                  <img
+                    src={thumbnailUrl ?? ''}
+                    alt={item.name}
+                    style={menuThumbImageStyle}
+                    onError={() => {
+                      markMenuThumbnailFailed(item)
+                    }}
+                  />
+                  <span style={menuThumbTitlePillStyle}>{item.name}</span>
+                  <span style={menuThumbPricePillStyle}>{formatPrice(item.price)}</span>
+                  {isSelected ? (
+                    <span
+                      style={{
+                        ...selectedBadgeStyle,
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        zIndex: 1
+                      }}
+                    >
+                      선택됨
+                    </span>
+                  ) : null}
+                </span>
+              ) : (
+                <>
+                  <span>
+                    <h4 style={menuNameStyle}>{item.name}</h4>
+                    <p style={menuDescStyle}>{item.description}</p>
+                  </span>
+                  <span style={priceStyle}>{formatPrice(item.price)}</span>
+                </>
+              )}
             </button>
           )
         })}
@@ -1153,6 +1314,7 @@ export default function PickupOrderContent({
         embedInModal
           ? {
               ...footerBarViewportStyle,
+              ...footerBarModalContainerStyle,
               position: 'sticky',
               left: 'auto',
               right: 'auto',
@@ -1164,13 +1326,25 @@ export default function PickupOrderContent({
     >
       <div
         style={
-          isCompactLayout
-            ? {
-                ...footerBarInnerStyle,
-                alignItems: 'stretch',
-                flexDirection: 'column'
-              }
-            : footerBarInnerStyle
+          embedInModal
+            ? (
+              isCompactLayout
+                ? {
+                    ...footerBarInnerModalStyle,
+                    alignItems: 'stretch',
+                    flexDirection: 'column'
+                  }
+                : footerBarInnerModalStyle
+            )
+            : (
+              isCompactLayout
+                ? {
+                    ...footerBarInnerStyle,
+                    alignItems: 'stretch',
+                    flexDirection: 'column'
+                  }
+                : footerBarInnerStyle
+            )
         }
       >
         <div
@@ -1214,12 +1388,12 @@ export default function PickupOrderContent({
         embedInModal
           ? {
               ...contentStyle,
-              paddingBottom: '12px'
+              paddingBottom: '0'
             }
           : contentStyle
       }
     >
-      {IntroUI}
+      {!embedInModal ? IntroUI : null}
       {categorySidebar}
 
       <section style={responsiveOrderGridStyle}>

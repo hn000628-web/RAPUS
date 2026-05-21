@@ -1,14 +1,14 @@
-// FILE : frontend/app/channel/[channelCode]/order/components/DeliveryOrderContent.tsx
+﻿// FILE : frontend/app/channel/[channelCode]/order/components/DeliveryOrderContent.tsx
 // ROOT : frontend/app/channel/[channelCode]/order/components/DeliveryOrderContent.tsx
 // STATUS : CREATE MODE
 // ROLE : PUBLIC BUSINESS CHANNEL DELIVERY ORDER CONTENT COMPONENT
 // CHANGE SUMMARY :
-// - 배달 주문 전용 UI 본체 신규 생성
-// - 메뉴 선택 / 수량 선택 / 옵션 선택 / 배송지 / 연락처 / 배달 요청사항 / 주문 확인 UI 구성
-// - 태블릿 기준 2컬럼 주문 입력 구조 적용
-// - 모바일에서는 1컬럼으로 대응 가능한 grid 구조 적용
-// - 현재 단계는 UI only 목업 구조
-// - API 호출 / DB 접근 / 로그인 주소 조회 / 주문 생성 / 결제 연결 없음
+// - 諛곕떖 二쇰Ц ?꾩슜 UI 蹂몄껜 ?좉퇋 ?앹꽦
+// - 硫붾돱 ?좏깮 / ?섎웾 ?좏깮 / ?듭뀡 ?좏깮 / 諛곗넚吏 / ?곕씫泥?/ 諛곕떖 ?붿껌?ы빆 / 二쇰Ц ?뺤씤 UI 援ъ꽦
+// - ?쒕툝由?湲곗? 2而щ읆 二쇰Ц ?낅젰 援ъ“ ?곸슜
+// - 紐⑤컮?쇱뿉?쒕뒗 1而щ읆?쇰줈 ???媛?ν븳 grid 援ъ“ ?곸슜
+// - ?꾩옱 ?④퀎??UI only 紐⑹뾽 援ъ“
+// - API ?몄텧 / DB ?묎렐 / 濡쒓렇??二쇱냼 議고쉶 / 二쇰Ц ?앹꽦 / 寃곗젣 ?곌껐 ?놁쓬
 
 'use client'
 
@@ -31,6 +31,7 @@ import {
   type CustomerOrderBootstrapResponse
 } from '@/lib/business/pos/customerOrderApi'
 import { getMe } from '@/lib/authApi'
+import { mediaUrl } from '@/lib/media'
 import {
   listMyDeliveryAddresses,
   type DeliveryAddressItem,
@@ -51,6 +52,7 @@ type OrderMenuItem = {
   name: string
   description: string
   price: number
+  thumbnailFilePath?: string | null
 }
 
 type OrderOptionItem = {
@@ -168,10 +170,13 @@ const DELIVERY_FEE =
 
 const contentStyle: CSSProperties = {
   width: '100%',
+  maxWidth: '100%',
+  minWidth: 0,
   display: 'flex',
   flexDirection: 'column',
   gap: '10px',
   paddingBottom: '118px',
+  overflowX: 'hidden',
   boxSizing: 'border-box'
 }
 
@@ -274,6 +279,70 @@ const selectedMenuButtonStyle: CSSProperties = {
   border: '2px solid #111827',
   backgroundColor: '#f8fafc',
   boxShadow: '0 10px 24px rgba(15, 23, 42, 0.16)'
+}
+
+const menuImageButtonStyle: CSSProperties = {
+  ...menuButtonStyle,
+  padding: '0',
+  gap: '0',
+  justifyContent: 'stretch'
+}
+
+const selectedMenuImageButtonStyle: CSSProperties = {
+  ...selectedMenuButtonStyle,
+  padding: '0',
+  gap: '0',
+  justifyContent: 'stretch'
+}
+
+const menuThumbWrapStyle: CSSProperties = {
+  position: 'relative',
+  width: '100%',
+  minHeight: '124px',
+  height: '100%',
+  borderRadius: 'inherit',
+  overflow: 'hidden',
+  backgroundColor: '#f8fafc'
+}
+
+const menuThumbImageStyle: CSSProperties = {
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+  display: 'block'
+}
+
+const menuThumbTitlePillStyle: CSSProperties = {
+  position: 'absolute',
+  top: '8px',
+  left: '8px',
+  maxWidth: '70%',
+  padding: '6px 10px',
+  borderRadius: '999px',
+  backgroundColor: '#ffffff',
+  color: '#111827',
+  fontSize: '12px',
+  fontWeight: 800,
+  lineHeight: 1,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  boxShadow: '0 6px 16px rgba(15, 23, 42, 0.16)'
+}
+
+const menuThumbPricePillStyle: CSSProperties = {
+  position: 'absolute',
+  right: '8px',
+  bottom: '8px',
+  padding: '6px 10px',
+  borderRadius: '999px',
+  backgroundColor: '#ffffff',
+  color: '#111827',
+  fontSize: '12px',
+  fontWeight: 900,
+  lineHeight: 1,
+  whiteSpace: 'nowrap',
+  boxShadow: '0 6px 16px rgba(15, 23, 42, 0.16)'
 }
 
 const menuButtonTopStyle: CSSProperties = {
@@ -505,6 +574,8 @@ const totalRowStyle: CSSProperties = {
 
 const footerBarStyle: CSSProperties = {
   width: '100%',
+  maxWidth: '100%',
+  minWidth: 0,
   minHeight: '56px',
   padding: '0',
   border: 'none',
@@ -515,6 +586,13 @@ const footerBarStyle: CSSProperties = {
   justifyContent: 'space-between',
   gap: '14px',
   boxSizing: 'border-box'
+}
+
+const footerBarModalContainerStyle: CSSProperties = {
+  borderTop: '1px solid #e5e7eb',
+  backgroundColor: '#ffffff',
+  boxShadow: 'none',
+  minHeight: '76px'
 }
 
 const footerBarViewportStyle: CSSProperties = {
@@ -538,6 +616,19 @@ const footerBarInnerStyle: CSSProperties = {
   justifyContent: 'space-between',
   gap: '14px',
   boxSizing: 'border-box'
+}
+
+const footerBarInnerModalStyle: CSSProperties = {
+  width: '100%',
+  maxWidth: '100%',
+  margin: 0,
+  padding: '10px 16px calc(10px + env(safe-area-inset-bottom))',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '14px',
+  boxSizing: 'border-box',
+  backgroundColor: '#ffffff'
 }
 
 const footerTotalStyle: CSSProperties = {
@@ -754,6 +845,7 @@ export default function DeliveryOrderContent({
 
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] =
     useState<boolean>(false)
+  const [failedMenuThumbnailKeys, setFailedMenuThumbnailKeys] = useState<Set<string>>(new Set())
 
   // SECTION 08 : MEMO DATA
 
@@ -801,7 +893,8 @@ export default function DeliveryOrderContent({
           categoryKey: response.categories.find((category) => category.id === product.categoryId)?.categoryCode ?? 'UNCATEGORIZED',
           name: product.productName,
           description: product.productDescription ?? '',
-          price: product.basePrice
+          price: product.basePrice,
+          thumbnailFilePath: product.thumbnail?.filePath ?? null
         }))
 
         const nextOptionsByMenuId: Record<string, OrderOptionItem[]> = {}
@@ -945,6 +1038,24 @@ export default function DeliveryOrderContent({
     setSelectedMenuId(menuId)
     setQuantity(1)
     setSelectedOptionIds([])
+  }
+
+  function getMenuThumbnailKey(item: OrderMenuItem): string {
+    const path = item.thumbnailFilePath?.trim() ?? ''
+    return `${item.id}:${path || item.name}`
+  }
+
+  function markMenuThumbnailFailed(item: OrderMenuItem) {
+    const nextKey = getMenuThumbnailKey(item)
+    setFailedMenuThumbnailKeys((prev) => {
+      if (prev.has(nextKey)) {
+        return prev
+      }
+
+      const next = new Set(prev)
+      next.add(nextKey)
+      return next
+    })
   }
 
   function handleDecreaseQuantity() {
@@ -1151,8 +1262,12 @@ export default function DeliveryOrderContent({
       ) : null}
       <div style={menuGridStyle}>
         {visibleProducts.map(item => {
-          const isSelected =
-            item.id === selectedMenuId
+          const isSelected = item.id === selectedMenuId
+          const thumbnailUrl = mediaUrl(item.thumbnailFilePath)
+          const thumbnailKey = getMenuThumbnailKey(item)
+          const shouldRenderImageCard =
+            Boolean(thumbnailUrl) &&
+            !failedMenuThumbnailKeys.has(thumbnailKey)
 
           return (
             <button
@@ -1160,39 +1275,68 @@ export default function DeliveryOrderContent({
               type="button"
               aria-pressed={isSelected}
               style={
-                isSelected
-                  ? selectedMenuButtonStyle
-                  : menuButtonStyle
+                shouldRenderImageCard
+                  ? (isSelected ? selectedMenuImageButtonStyle : menuImageButtonStyle)
+                  : (isSelected ? selectedMenuButtonStyle : menuButtonStyle)
               }
               onClick={() => {
                 handleSelectMenu(item.id)
               }}
             >
-              <span>
-                <span style={menuButtonTopStyle}>
-                  <h4 style={menuNameStyle}>
-                    {item.name}
-                  </h4>
+              {shouldRenderImageCard ? (
+                <span style={menuThumbWrapStyle}>
+                  <img
+                    src={thumbnailUrl ?? ''}
+                    alt={item.name}
+                    style={menuThumbImageStyle}
+                    onError={() => {
+                      markMenuThumbnailFailed(item)
+                    }}
+                  />
+                  <span style={menuThumbTitlePillStyle}>{item.name}</span>
+                  <span style={menuThumbPricePillStyle}>{formatPrice(item.price)}</span>
                   {isSelected ? (
-                    <span style={selectedBadgeStyle}>선택됨</span>
+                    <span
+                      style={{
+                        ...selectedBadgeStyle,
+                        position: 'absolute',
+                        top: '8px',
+                        right: '8px',
+                        zIndex: 1
+                      }}
+                    >
+                      선택됨
+                    </span>
                   ) : null}
                 </span>
+              ) : (
+                <>
+                  <span>
+                    <span style={menuButtonTopStyle}>
+                      <h4 style={menuNameStyle}>
+                        {item.name}
+                      </h4>
+                      {isSelected ? (
+                        <span style={selectedBadgeStyle}>선택됨</span>
+                      ) : null}
+                    </span>
 
-                <p style={menuDescStyle}>
-                  {item.description}
-                </p>
-              </span>
+                    <p style={menuDescStyle}>
+                      {item.description}
+                    </p>
+                  </span>
 
-              <span style={priceStyle}>
-                {formatPrice(item.price)}
-              </span>
+                  <span style={priceStyle}>
+                    {formatPrice(item.price)}
+                  </span>
+                </>
+              )}
             </button>
           )
         })}
       </div>
     </section>
   )
-
   const SelectedMenuUI = (
     <div style={selectedMenuSummaryStyle}>
       <div style={menuNameStyle}>
@@ -1273,7 +1417,7 @@ export default function DeliveryOrderContent({
               <span style={priceStyle}>
                 {item.price > 0
                   ? `+ ${formatPrice(item.price)}`
-                  : '기본값'}
+                  : '기본가'}
               </span>
             </label>
           )
@@ -1293,7 +1437,7 @@ export default function DeliveryOrderContent({
           type="text"
           value={receiverName}
           style={inputStyle}
-          placeholder="수령인 이름"
+          placeholder="수령자 이름"
           onChange={event => {
             setReceiverName(event.target.value)
           }}
@@ -1314,7 +1458,7 @@ export default function DeliveryOrderContent({
           style={addressButtonStyle}
           onClick={handleAddressSearch}
         >
-          {isLoadingDeliveryAddresses ? '배송지 불러오는 중...' : '배송지 선택'}
+          {isLoadingDeliveryAddresses ? '배송지를 불러오는 중...' : '배송지 선택'}
         </button>
 
         {deliveryAddresses.length > 0 ? (
@@ -1417,7 +1561,7 @@ export default function DeliveryOrderContent({
       <textarea
         value={memo}
         style={memoStyle}
-        placeholder="예: 문 앞에 놓아주세요. 벨 누르지 말아주세요."
+        placeholder="문 앞에 놓아주세요, 벨 누르지 말아주세요"
         onChange={event => {
           setMemo(event.target.value)
         }}
@@ -1535,6 +1679,7 @@ export default function DeliveryOrderContent({
         embedInModal
           ? {
               ...footerBarViewportStyle,
+              ...footerBarModalContainerStyle,
               position: 'sticky',
               left: 'auto',
               right: 'auto',
@@ -1546,13 +1691,25 @@ export default function DeliveryOrderContent({
     >
       <div
         style={
-          isCompactLayout
-            ? {
-                ...footerBarInnerStyle,
-                alignItems: 'stretch',
-                flexDirection: 'column'
-              }
-            : footerBarInnerStyle
+          embedInModal
+            ? (
+              isCompactLayout
+                ? {
+                    ...footerBarInnerModalStyle,
+                    alignItems: 'stretch',
+                    flexDirection: 'column'
+                  }
+                : footerBarInnerModalStyle
+            )
+            : (
+              isCompactLayout
+                ? {
+                    ...footerBarInnerStyle,
+                    alignItems: 'stretch',
+                    flexDirection: 'column'
+                  }
+                : footerBarInnerStyle
+            )
         }
       >
         <div
@@ -1620,7 +1777,7 @@ export default function DeliveryOrderContent({
             </h2>
 
             <p style={modalDescriptionStyle}>
-              배송정보, 결제방식, 요청사항을 확인한 뒤 배달 주문을 등록합니다.
+              배송정보, 결제방식, 요청사항을 확인하고 배달 주문을 등록합니다.
             </p>
           </div>
 
@@ -1713,12 +1870,12 @@ export default function DeliveryOrderContent({
         embedInModal
           ? {
               ...contentStyle,
-              paddingBottom: '12px'
+              paddingBottom: '0'
             }
           : contentStyle
       }
     >
-      {IntroUI}
+      {!embedInModal ? IntroUI : null}
       {categorySidebar}
 
       <section style={responsiveOrderGridStyle}>
