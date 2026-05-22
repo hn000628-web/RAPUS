@@ -3,11 +3,11 @@
 // STATUS : MODIFY MODE
 // ROLE : PLACE FEED PAGE
 // CHANGE SUMMARY :
-// - ?곷떒 ??댄?????긽 "?뚮젅?댁뒪"濡?怨좎젙
-// - 吏??챸? ?ъ씠?쒕컮 ?꾩튂 ?곸뿭?먯꽌留??쒖떆
-// - buildRegionName() 援ъ“ ?좎?
-// - 湲곗〈 API / RegionContext / FeedRegionOverlay / ?쇱슦??援ъ“ ?좎?
-// - DB 吏곸젒 ?묎렐 ?놁쓬
+// - 상단 타이틀을 항상 "플레이스"로 고정
+// - 지역명은 카드 하단 메타 영역에서만 1회 표시
+// - buildRegionName() 구조 유지
+// - 기존 API / RegionContext / FeedRegionOverlay / 라우팅 구조 유지
+// - DB 직접 접근 없음
 
 'use client'
 
@@ -527,6 +527,29 @@ function PlaceFeedPageContent() {
 
   function formatPriceAmount(value: number) {
     return `${value.toLocaleString()}원`
+  }
+
+  function buildClosedOverlayMessage(value: string | null): string {
+    const raw = String(value || '').trim()
+    if (!raw) {
+      return '현재 영업이 종료되었습니다'
+    }
+
+    const normalized = raw.includes('·')
+      ? raw.split('·').slice(1).join('·').trim()
+      : raw.replace('영업종료', '').trim()
+
+    const candidate = normalized || raw
+    const hasMojibake =
+      candidate.includes('�') ||
+      candidate.includes('???') ||
+      /[ÃÂ�]/.test(candidate)
+
+    if (hasMojibake) {
+      return '현재 영업이 종료되었습니다'
+    }
+
+    return candidate
   }
 
   function isProductLikeItem(place: PlaceFeedItem): boolean {
@@ -1247,9 +1270,7 @@ function buildRepresentativePreviewItems(
                     영업종료
                   </div>
                   <div style={closedOverlayBottomLineStyle}>
-                    {place.closedOverlayText.includes('·')
-                      ? place.closedOverlayText.split('·')[1].trim()
-                      : place.closedOverlayText.replace('영업종료', '').trim() || place.closedOverlayText}
+                    {buildClosedOverlayMessage(place.closedOverlayText)}
                   </div>
                 </div>
               )}
@@ -2160,22 +2181,21 @@ const retryButtonStyle: CSSProperties = {
 
 /*
 VALIDATION:
-- ?⑥씪 ?뚯씪 ?듭퐫??異쒕젰
-- ?곷떒 ??댄?? "?뚮젅?댁뒪" 怨좎젙
-- 吏??챸? ?ъ씠?쒕컮 ?꾩튂 ?곸뿭?먯꽌留??쒖떆
-- 湲곗〈 page.tsx ?대? SidebarUI ?쒓굅 ?곹깭 ?좎?
-- PlaceFeedLayout 而댄룷?뚰듃 ?ъ슜 ?좎?
-- PlaceFeedSidebar 而댄룷?뚰듃 ?ъ슜 ?좎?
-- 紐⑤컮???꾪꽣??page.tsx?먯꽌 二쇱엯 ?좎?
-- getPlaceFeed() 怨듭슜 API ?곌껐 ?좎?
-- RegionContext + publicFeedRegion fallback ?좎?
-- FeedRegionOverlay ?곌껐 ?좎?
-- profileId ?ъ슜 ?놁쓬
-- channelCode 怨듦컻 ?대룞 湲곗? ?ъ슜
-- ?꾨줎??DB 吏곸젒 ?묎렐 ?놁쓬
-- 濡쒓렇??/ 鍮꾨줈洹몄씤 怨듯넻 READ ?쇰뱶 援ъ“ ?좎?
-- 移대뱶 grid minmax 180px ?곸슜
-- ?대?吏 aspectRatio 4 / 3 ?곸슜
+- 단일 파일 기준 코드 정합성 유지
+- 상단 타이틀 "플레이스" 고정
+- 지역명 중복 제거(카드 하단 메타 1회 표시)
+- 기존 page.tsx 기반 SidebarUI 구조 유지
+- PlaceFeedLayout, PlaceFeedSidebar 구성 유지
+- 모바일 필터는 page.tsx에서 주입 유지
+- getPlaceFeed() 공용 API 연결 유지
+- RegionContext + publicFeedRegion fallback 유지
+- FeedRegionOverlay 연결 유지
+- profileId 미사용 정책 유지
+- channelCode 공개 이동 구조 유지
+- 프론트 DB 직접 접근 없음
+- 비로그인/공용 READ 필드 구조 유지
+- 카드 grid minmax 180px 적용 유지
+- 이미지 aspectRatio 4 / 3 적용 유지
 */
 
 
