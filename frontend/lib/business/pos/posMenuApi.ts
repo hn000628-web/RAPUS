@@ -57,6 +57,11 @@ export type PosMenuOptionValue = {
   isActive: boolean
   optionValueType?: PosMenuOptionValueType
   isVisible?: boolean | number
+  isQuantityEnabled?: boolean | number
+  isQuantityLimitEnabled?: boolean | number
+  minOptionQuantity?: number | null
+  maxOptionQuantity?: number | null
+  defaultOptionQuantity?: number | null
   sortOrder?: number
 }
 

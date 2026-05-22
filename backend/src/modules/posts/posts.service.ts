@@ -128,6 +128,15 @@ export class PostsService {
     this.db.pragma('foreign_keys = ON')
   }
 
+  private createBusinessCode12(prefix = ''): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    let code = prefix.trim().toUpperCase()
+    while (code.length < 12) {
+      code += chars[Math.floor(Math.random() * chars.length)]
+    }
+    return code.slice(0, 12)
+  }
+
   // SECTION 05 : CREATE POST
 
   async createPost(
@@ -172,6 +181,7 @@ export class PostsService {
           INSERT INTO posts(
             profileId,
             channelCode,
+            postCode,
             regionId,
             contentType,
             content,
@@ -193,6 +203,7 @@ export class PostsService {
             ?,
             ?,
             ?,
+            ?,
             CURRENT_TIMESTAMP
           )
         `)
@@ -200,6 +211,7 @@ export class PostsService {
         const insertPostResult = insertPost.run(
           profile.id,
           profile.channelCode,
+          this.createBusinessCode12('PO'),
           regionId,
           GENERAL_CONTENT_TYPE,
           payloadDto.content.trim(),

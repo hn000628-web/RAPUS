@@ -40,6 +40,7 @@ import { getPosProductCategories } from '@/lib/business/pos/posCategoriesApi'
 import { getPosMenus, PosMenuContext, PosMenuItem as PosDbMenuItem } from '@/lib/business/pos/posMenuApi'
 import { cancelPosOrder, completePosPayment, createPosOrder, getActivePosOrder } from '@/lib/business/pos/posOrdersApi'
 import { getPosTableSettings, PosTableSettingItem, updatePosTableResourceStatus } from '@/lib/business/pos/posTableSettingsApi'
+import { mediaUrl } from '@/lib/media'
 
 // SECTION 02 : TYPE
 
@@ -54,6 +55,7 @@ type PosMenuItem = {
   name: string
   description: string
   price: number
+  thumbnailUrl: string | null
   options: PosMenuOption[]
 }
 type PosMenuOption = {
@@ -63,6 +65,11 @@ type PosMenuOption = {
   optionId?: number | null
   optionValueId?: number | null
   optionType?: 'SIZE' | 'TEMPERATURE' | 'ADDON' | 'CHOICE' | 'CUSTOM' | null
+  isQuantityEnabled: boolean
+  isQuantityLimitEnabled: boolean
+  minOptionQuantity: number
+  maxOptionQuantity: number | null
+  defaultOptionQuantity: number
 }
 
 type PosOrderType = 'DINE_IN' | 'TAKEOUT'
@@ -164,6 +171,8 @@ export default function PosTablePage() {
     useState<boolean>(false)
   const [menuLoadError, setMenuLoadError] =
     useState<string | null>(null)
+  const [failedMenuThumbnailKeys, setFailedMenuThumbnailKeys] =
+    useState<Set<string>>(new Set())
 
   const [quantities, setQuantities] =
     useState<Record<string, number>>({})
@@ -268,12 +277,19 @@ export default function PosTablePage() {
       orderItems.map((item) => {
         const optionQuantityMap = optionQuantitiesByMenu[item.id] ?? {}
         const selectedOptions = (item.options ?? [])
-          .map((option) => ({
-            id: option.id,
-            label: option.label,
-            quantity: optionQuantityMap[option.id] ?? 0,
-            extraPrice: option.extraPrice
-          }))
+          .map((option) => {
+            const quantity = getResolvedOptionQuantity(
+              option,
+              optionQuantityMap[option.id] ?? 0
+            )
+
+            return {
+              id: option.id,
+              label: option.label,
+              quantity,
+              extraPrice: option.extraPrice
+            }
+          })
           .filter((option) => option.quantity > 0)
 
         return {
@@ -295,11 +311,14 @@ export default function PosTablePage() {
         const optionQuantityMap = optionQuantitiesByMenu[item.id] ?? {}
 
         const optionAmount = item.options.reduce((optionSum, option) => {
-          const optionCount = optionQuantityMap[option.id] ?? 0
+          const optionCount = getResolvedOptionQuantity(
+            option,
+            optionQuantityMap[option.id] ?? 0
+          )
           return optionSum + option.extraPrice * optionCount
         }, 0)
 
-        return sum + optionAmount
+        return sum + optionAmount * item.quantity
       }, 0)
 
       return menuBaseAmount + optionExtraAmount
@@ -343,6 +362,11 @@ export default function PosTablePage() {
       () => isCleaningResourceStatus(currentPosTable?.resourceStatus),
       [currentPosTable?.resourceStatus]
     )
+
+  const findMenuOption = (menuId: string, optionId: string): PosMenuOption | null => {
+    const targetMenu = activeMenuItems.find((menu) => menu.id === menuId)
+    return targetMenu?.options.find((option) => option.id === optionId) ?? null
+  }
 
   // SECTION 06 : EVENT
   const isEditableTarget = (target: EventTarget | null) => {
@@ -405,28 +429,47 @@ export default function PosTablePage() {
   }
 
   const handleIncreaseOption = (menuId: string, optionId: string) => {
-    setIsOrderSubmitted(false)
-    setIsOrderConfirmed(false)
-    setOrderSubmitError(null)
-    setOptionQuantitiesByMenu((prev) => {
-      const currentMenuOptions = prev[menuId] ?? {}
-      return {
-        ...prev,
-        [menuId]: {
-          ...currentMenuOptions,
-          [optionId]: (currentMenuOptions[optionId] ?? 0) + 1
-        }
-      }
-    })
-  }
+    const targetOption = findMenuOption(menuId, optionId)
+    if (!targetOption?.isQuantityEnabled) {
+      return
+    }
 
-  const handleDecreaseOption = (menuId: string, optionId: string) => {
     setIsOrderSubmitted(false)
     setIsOrderConfirmed(false)
     setOrderSubmitError(null)
     setOptionQuantitiesByMenu((prev) => {
       const currentMenuOptions = prev[menuId] ?? {}
       const currentCount = currentMenuOptions[optionId] ?? 0
+      const nextCount = currentCount > 0
+        ? currentCount + 1
+        : getOptionDefaultQuantity(targetOption)
+
+      return {
+        ...prev,
+        [menuId]: {
+          ...currentMenuOptions,
+          [optionId]: getResolvedOptionQuantity(targetOption, nextCount)
+        }
+      }
+    })
+  }
+
+  const handleDecreaseOption = (menuId: string, optionId: string) => {
+    const targetOption = findMenuOption(menuId, optionId)
+    if (!targetOption?.isQuantityEnabled) {
+      return
+    }
+
+    setIsOrderSubmitted(false)
+    setIsOrderConfirmed(false)
+    setOrderSubmitError(null)
+    setOptionQuantitiesByMenu((prev) => {
+      const currentMenuOptions = prev[menuId] ?? {}
+      const currentCount = getResolvedOptionQuantity(
+        targetOption,
+        currentMenuOptions[optionId] ?? 0
+      )
+      const minQuantity = getOptionMinQuantity(targetOption)
 
       if (currentCount <= 0) {
         return prev
@@ -434,10 +477,36 @@ export default function PosTablePage() {
 
       const nextMenuOptions = { ...currentMenuOptions }
 
-      if (currentCount === 1) {
+      if (currentCount <= minQuantity) {
         delete nextMenuOptions[optionId]
       } else {
         nextMenuOptions[optionId] = currentCount - 1
+      }
+
+      return {
+        ...prev,
+        [menuId]: nextMenuOptions
+      }
+    })
+  }
+
+  const handleToggleSingleOption = (menuId: string, optionId: string) => {
+    const targetOption = findMenuOption(menuId, optionId)
+    if (!targetOption || targetOption.isQuantityEnabled) {
+      return
+    }
+
+    setIsOrderSubmitted(false)
+    setIsOrderConfirmed(false)
+    setOrderSubmitError(null)
+    setOptionQuantitiesByMenu((prev) => {
+      const currentMenuOptions = prev[menuId] ?? {}
+      const nextMenuOptions = { ...currentMenuOptions }
+
+      if ((currentMenuOptions[optionId] ?? 0) > 0) {
+        delete nextMenuOptions[optionId]
+      } else {
+        nextMenuOptions[optionId] = 1
       }
 
       return {
@@ -675,7 +744,10 @@ export default function PosTablePage() {
         const optionQuantityMap = optionQuantitiesByMenu[item.id] ?? {}
         const optionPayload = (item.options ?? [])
           .map((option) => {
-            const quantity = optionQuantityMap[option.id] ?? 0
+            const quantity = getResolvedOptionQuantity(
+              option,
+              optionQuantityMap[option.id] ?? 0
+            )
             if (quantity <= 0) {
               return null
             }
@@ -1017,7 +1089,10 @@ export default function PosTablePage() {
                 }
 
                 optionQuantityMap[matchedMenuOption.id] =
-                  (optionQuantityMap[matchedMenuOption.id] ?? 0) + activeOption.quantity
+                  getResolvedOptionQuantity(
+                    matchedMenuOption,
+                    (optionQuantityMap[matchedMenuOption.id] ?? 0) + activeOption.quantity
+                  )
               }
 
               if (Object.keys(optionQuantityMap).length > 0) {
@@ -1364,26 +1439,60 @@ export default function PosTablePage() {
                   <section className={styles.menuGrid}>
                     {visibleMenus.map((menu) => {
                       const isActive = selectedMenuId === menu.id
+                      const hasThumbnail =
+                        Boolean(menu.thumbnailUrl) &&
+                        !failedMenuThumbnailKeys.has(menu.id)
 
                       return (
                         <article
                           key={menu.id}
-                          className={`${styles.menuCard} ${isActive ? styles.menuCardActive : ''}`}
+                          className={[
+                            styles.menuCard,
+                            hasThumbnail ? styles.menuImageCard : '',
+                            isActive ? styles.menuCardActive : ''
+                          ].filter(Boolean).join(' ')}
                           onClick={() => handleSelectMenu(menu.id)}
                         >
-                          <div className={styles.menuTop}>
-                            <strong className={styles.menuName}>
-                              {menu.name}
-                            </strong>
+                          {hasThumbnail ? (
+                            <>
+                              <img
+                                className={styles.menuThumbnailImage}
+                                src={menu.thumbnailUrl || ''}
+                                alt={`${menu.name} 썸네일`}
+                                onError={() => {
+                                  setFailedMenuThumbnailKeys((prev) => {
+                                    const next = new Set(prev)
+                                    next.add(menu.id)
+                                    return next
+                                  })
+                                }}
+                              />
 
-                            <span className={styles.menuPrice}>
-                              {menu.price.toLocaleString('ko-KR')}원
-                            </span>
-                          </div>
+                              <strong className={styles.menuImageNamePill}>
+                                {menu.name}
+                              </strong>
 
-                          <p className={styles.menuDescription}>
-                            {menu.description}
-                          </p>
+                              <span className={styles.menuImagePricePill}>
+                                {menu.price.toLocaleString('ko-KR')}원
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <div className={styles.menuTop}>
+                                <strong className={styles.menuName}>
+                                  {menu.name}
+                                </strong>
+
+                                <span className={styles.menuPrice}>
+                                  {menu.price.toLocaleString('ko-KR')}원
+                                </span>
+                              </div>
+
+                              <p className={styles.menuDescription}>
+                                {menu.description}
+                              </p>
+                            </>
+                          )}
                         </article>
                       )
                     })}
@@ -1435,37 +1544,60 @@ export default function PosTablePage() {
                         <div className={styles.optionList}>
                           {selectedMenuOptions.map((option) => {
                             const selectedOptionCount =
-                              optionQuantitiesByMenu[selectedMenu.id]?.[option.id] ?? 0
+                              getResolvedOptionQuantity(
+                                option,
+                                optionQuantitiesByMenu[selectedMenu.id]?.[option.id] ?? 0
+                              )
+                            const maxOptionQuantity = getOptionMaxQuantity(option)
+                            const hasQuantityLimit =
+                              option.isQuantityEnabled &&
+                              option.isQuantityLimitEnabled &&
+                              maxOptionQuantity !== null
                             return (
                               <div key={option.id} className={styles.optionItem}>
                                 <span className={styles.optionLeft}>
+                                  {!option.isQuantityEnabled ? (
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedOptionCount > 0}
+                                      onChange={() => handleToggleSingleOption(selectedMenu.id, option.id)}
+                                    />
+                                  ) : null}
                                   <span>{option.label}</span>
                                 </span>
                                 <div className={styles.optionRight}>
                                   <strong className={styles.optionPrice}>
                                     {option.extraPrice > 0 ? `+ ${option.extraPrice.toLocaleString('ko-KR')}원` : '0원'}
                                   </strong>
-                                  <div className={styles.optionQuantityRow}>
-                                    <button
-                                      type="button"
-                                      className={styles.optionStepButton}
-                                      onClick={() => handleDecreaseOption(selectedMenu.id, option.id)}
-                                      disabled={selectedOptionCount <= 0}
-                                    >
-                                      -
-                                    </button>
-                                    <strong className={styles.optionQuantityValue}>
-                                      {selectedOptionCount}
-                                    </strong>
-                                    <button
-                                      type="button"
-                                      className={styles.optionStepButton}
-                                      onClick={() => handleIncreaseOption(selectedMenu.id, option.id)}
-                                    >
-                                      +
-                                    </button>
-                                  </div>
+                                  {option.isQuantityEnabled ? (
+                                    <div className={styles.optionQuantityRow}>
+                                      <button
+                                        type="button"
+                                        className={styles.optionStepButton}
+                                        onClick={() => handleDecreaseOption(selectedMenu.id, option.id)}
+                                        disabled={selectedOptionCount <= 0}
+                                      >
+                                        -
+                                      </button>
+                                      <strong className={styles.optionQuantityValue}>
+                                        {selectedOptionCount}
+                                      </strong>
+                                      <button
+                                        type="button"
+                                        className={styles.optionStepButton}
+                                        onClick={() => handleIncreaseOption(selectedMenu.id, option.id)}
+                                        disabled={maxOptionQuantity !== null && selectedOptionCount >= maxOptionQuantity}
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  ) : null}
                                 </div>
+                                {hasQuantityLimit ? (
+                                  <p className={styles.optionLimitNotice}>
+                                  최대 {maxOptionQuantity}개까지 선택할 수 있습니다.
+                                  </p>
+                                ) : null}
                               </div>
                             )
                           })}
@@ -1923,6 +2055,65 @@ function isCleaningResourceStatus(
   )
 }
 
+function getSafePositiveInteger(
+  value: number | string | null | undefined,
+  fallback: number
+): number {
+  const numericValue = Number(value)
+  return Number.isInteger(numericValue) && numericValue >= 1
+    ? numericValue
+    : fallback
+}
+
+function getSafeNullablePositiveInteger(
+  value: number | string | null | undefined
+): number | null {
+  const numericValue = Number(value)
+  return Number.isInteger(numericValue) && numericValue >= 1
+    ? numericValue
+    : null
+}
+
+function getOptionMinQuantity(option: PosMenuOption): number {
+  return getSafePositiveInteger(option.minOptionQuantity, 1)
+}
+
+function getOptionDefaultQuantity(option: PosMenuOption): number {
+  return getSafePositiveInteger(
+    option.defaultOptionQuantity ?? option.minOptionQuantity,
+    getOptionMinQuantity(option)
+  )
+}
+
+function getOptionMaxQuantity(option: PosMenuOption): number | null {
+  if (!option.isQuantityLimitEnabled) {
+    return null
+  }
+
+  return getSafeNullablePositiveInteger(option.maxOptionQuantity)
+}
+
+function getResolvedOptionQuantity(
+  option: PosMenuOption,
+  rawQuantity: number
+): number {
+  if (rawQuantity <= 0) {
+    return 0
+  }
+
+  if (!option.isQuantityEnabled) {
+    return 1
+  }
+
+  const minQuantity = getOptionMinQuantity(option)
+  const maxQuantity = getOptionMaxQuantity(option)
+  const normalizedQuantity = Math.max(minQuantity, rawQuantity)
+
+  return maxQuantity === null
+    ? normalizedQuantity
+    : Math.min(maxQuantity, normalizedQuantity)
+}
+
 function mapDbMenuToUiMenu(item: PosDbMenuItem): PosMenuItem {
   const normalizedOptions: PosMenuOption[] = (item.options ?? [])
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
@@ -1946,7 +2137,17 @@ function mapDbMenuToUiMenu(item: PosDbMenuItem): PosMenuItem {
             extraPrice: Number.isFinite(value.priceDelta) ? value.priceDelta : 0,
             optionId: Number.isFinite(groupId) && groupId > 0 ? groupId : null,
             optionValueId: Number.isFinite(valueId) && valueId > 0 ? valueId : null,
-            optionType: group.optionType ?? 'CUSTOM'
+            optionType: group.optionType ?? 'CUSTOM',
+            isQuantityEnabled: Boolean(value.isQuantityEnabled),
+            isQuantityLimitEnabled: Boolean(value.isQuantityLimitEnabled),
+            minOptionQuantity: getSafePositiveInteger(value.minOptionQuantity, 1),
+            maxOptionQuantity: Boolean(value.isQuantityLimitEnabled)
+              ? getSafeNullablePositiveInteger(value.maxOptionQuantity)
+              : null,
+            defaultOptionQuantity: getSafePositiveInteger(
+              value.defaultOptionQuantity ?? value.minOptionQuantity,
+              1
+            )
           }
         })
     })
@@ -1957,6 +2158,7 @@ function mapDbMenuToUiMenu(item: PosDbMenuItem): PosMenuItem {
     name: item.productName?.trim() || '상품명 미설정',
     description: item.productDescription?.trim() || '',
     price: Number.isFinite(item.basePrice) ? item.basePrice : 0,
+    thumbnailUrl: mediaUrl(item.thumbnail?.filePath) || null,
     options: normalizedOptions
   }
 }

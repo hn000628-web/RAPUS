@@ -199,6 +199,15 @@ const BUSINESS_POST_LIST_STATUSES: BusinessPostListStatus[] = [
 
 @Injectable()
 export class BusinessPostsService {
+  private createBusinessCode12(prefix = ''): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    let code = prefix.trim().toUpperCase()
+    while (code.length < 12) {
+      code += chars[Math.floor(Math.random() * chars.length)]
+    }
+    return code.slice(0, 12)
+  }
+
   // SECTION 05 : CREATE POST
 
   async createPost(
@@ -283,6 +292,7 @@ export class BusinessPostsService {
         INSERT INTO posts(
           profileId,
           channelCode,
+          postCode,
           regionId,
           contentType,
           postType,
@@ -302,6 +312,7 @@ export class BusinessPostsService {
           updatedAt
         )
         VALUES(
+          ?,
           ?,
           ?,
           ?,
@@ -325,6 +336,7 @@ export class BusinessPostsService {
       `).run(
         profile.id,
         profile.channelCode,
+        this.createBusinessCode12('PB'),
         regionId,
         postType,
         profile.primaryIndustryId,

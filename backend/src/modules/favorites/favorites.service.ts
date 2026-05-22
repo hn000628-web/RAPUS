@@ -53,9 +53,25 @@ type PostRow = {
 @Injectable()
 export class FavoritesService {
   private normalizeRequiredCode(value: unknown, fieldName: string): string {
-    const code = String(value ?? '').trim()
+    const code = String(value ?? '').trim().toUpperCase()
     if (!code) {
       throw new BadRequestException(`${fieldName} is required`)
+    }
+    return code
+  }
+
+  private normalizeChannelCode13(value: unknown, fieldName: string): string {
+    const code = this.normalizeRequiredCode(value, fieldName)
+    if (!/^[A-Z][A-Z0-9]{12}$/.test(code)) {
+      throw new BadRequestException(`${fieldName} must be a 13 character channelCode`)
+    }
+    return code
+  }
+
+  private normalizeBusinessCode12(value: unknown, fieldName: string): string {
+    const code = this.normalizeRequiredCode(value, fieldName)
+    if (!/^[A-Z0-9]{12}$/.test(code)) {
+      throw new BadRequestException(`${fieldName} must be a 12 character business code`)
     }
     return code
   }
@@ -70,7 +86,7 @@ export class FavoritesService {
 
   private getActorContext(user?: JwtUser): ActorContext {
     const actorProfileId = Number(user?.profileId ?? 0)
-    const actorChannelCode = String(user?.channelCode ?? '').trim()
+    const actorChannelCode = String(user?.channelCode ?? '').trim().toUpperCase()
 
     if (!actorProfileId || !actorChannelCode) {
       throw new UnauthorizedException('invalid auth context')
@@ -178,7 +194,7 @@ export class FavoritesService {
 
   toggleProfileFavorite(user: JwtUser | undefined, providerChannelCodeInput: string) {
     const actor = this.getActorContext(user)
-    const providerChannelCode = this.normalizeRequiredCode(providerChannelCodeInput, 'providerChannelCode')
+    const providerChannelCode = this.normalizeChannelCode13(providerChannelCodeInput, 'providerChannelCode')
     const provider = this.getProviderProfile(providerChannelCode)
 
     if (actor.actorChannelCode === providerChannelCode) {
@@ -257,8 +273,8 @@ export class FavoritesService {
     }
   ) {
     const actor = this.getActorContext(user)
-    const providerChannelCode = this.normalizeRequiredCode(params.providerChannelCode, 'providerChannelCode')
-    const productCode = this.normalizeRequiredCode(params.productCode, 'productCode')
+    const providerChannelCode = this.normalizeChannelCode13(params.providerChannelCode, 'providerChannelCode')
+    const productCode = this.normalizeBusinessCode12(params.productCode, 'productCode')
     const product = this.getTargetProduct(providerChannelCode, productCode)
     const provider = this.getProviderProfile(providerChannelCode)
 
@@ -388,8 +404,8 @@ export class FavoritesService {
     }
   ) {
     const actor = this.getActorContext(user)
-    const providerChannelCode = this.normalizeRequiredCode(params.providerChannelCode, 'providerChannelCode')
-    const postCode = this.normalizeRequiredCode(params.postCode, 'postCode')
+    const providerChannelCode = this.normalizeChannelCode13(params.providerChannelCode, 'providerChannelCode')
+    const postCode = this.normalizeBusinessCode12(params.postCode, 'postCode')
     const post = this.getTargetPost(providerChannelCode, postCode)
     const provider = this.getProviderProfile(providerChannelCode)
 
@@ -565,7 +581,7 @@ export class FavoritesService {
 
   getProfileFavoriteStatus(user: JwtUser | undefined, providerChannelCodeInput: string) {
     const actor = this.getActorContext(user)
-    const providerChannelCode = this.normalizeRequiredCode(providerChannelCodeInput, 'providerChannelCode')
+    const providerChannelCode = this.normalizeChannelCode13(providerChannelCodeInput, 'providerChannelCode')
 
     const row = db
       .prepare(
@@ -594,8 +610,8 @@ export class FavoritesService {
     }
   ) {
     const actor = this.getActorContext(user)
-    const providerChannelCode = this.normalizeRequiredCode(params.providerChannelCode, 'providerChannelCode')
-    const productCode = this.normalizeRequiredCode(params.productCode, 'productCode')
+    const providerChannelCode = this.normalizeChannelCode13(params.providerChannelCode, 'providerChannelCode')
+    const productCode = this.normalizeBusinessCode12(params.productCode, 'productCode')
 
     const row = db
       .prepare(
@@ -625,8 +641,8 @@ export class FavoritesService {
     }
   ) {
     const actor = this.getActorContext(user)
-    const providerChannelCode = this.normalizeRequiredCode(params.providerChannelCode, 'providerChannelCode')
-    const postCode = this.normalizeRequiredCode(params.postCode, 'postCode')
+    const providerChannelCode = this.normalizeChannelCode13(params.providerChannelCode, 'providerChannelCode')
+    const postCode = this.normalizeBusinessCode12(params.postCode, 'postCode')
 
     const row = db
       .prepare(

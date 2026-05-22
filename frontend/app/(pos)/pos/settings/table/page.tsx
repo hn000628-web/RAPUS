@@ -340,7 +340,7 @@ export default function PosTableSettingsPage() {
     const alphanumericOnly =
       uppercaseValue.replace(/[^A-Z0-9]/g, '')
 
-    return alphanumericOnly.slice(0, 3)
+    return alphanumericOnly.slice(0, 12)
   }
 
   // SECTION 08 : DATA LOAD FUNCTION

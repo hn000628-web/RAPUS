@@ -74,6 +74,11 @@ type OptionValueRow = {
   priceDelta: number
   isDefault: number
   isVisible: number
+  isQuantityEnabled: number
+  isQuantityLimitEnabled: number
+  minOptionQuantity: number
+  maxOptionQuantity: number | null
+  defaultOptionQuantity: number
 }
 
 type InsertResult = {
@@ -224,7 +229,12 @@ export class CustomerPosOrderService {
               optionValueName,
               priceDelta,
               isDefault,
-              isVisible
+              isVisible,
+              isQuantityEnabled,
+              isQuantityLimitEnabled,
+              minOptionQuantity,
+              maxOptionQuantity,
+              defaultOptionQuantity
             FROM pos_product_option_values
             WHERE channelCode = ?
               AND isActive = 1
@@ -287,6 +297,11 @@ export class CustomerPosOrderService {
             priceDelta: value.priceDelta,
             isDefault: value.isDefault,
             isVisible: value.isVisible,
+            isQuantityEnabled: value.isQuantityEnabled,
+            isQuantityLimitEnabled: value.isQuantityLimitEnabled,
+            minOptionQuantity: value.minOptionQuantity,
+            maxOptionQuantity: value.maxOptionQuantity,
+            defaultOptionQuantity: value.defaultOptionQuantity,
           })),
         })),
       })),
@@ -1132,7 +1147,12 @@ export class CustomerPosOrderService {
               optionValueName,
               priceDelta,
               isDefault,
-              isVisible
+              isVisible,
+              isQuantityEnabled,
+              isQuantityLimitEnabled,
+              minOptionQuantity,
+              maxOptionQuantity,
+              defaultOptionQuantity
             FROM pos_product_option_values
             WHERE id = ?
               AND optionId = ?
@@ -1153,6 +1173,23 @@ export class CustomerPosOrderService {
 
           const optionQuantity =
             this.normalizePositiveInteger(selected.quantity) ?? quantity
+          const minOptionQuantity = Math.max(1, Number(optionValue.minOptionQuantity ?? 1))
+          const maxOptionQuantity =
+            optionValue.isQuantityLimitEnabled !== 1 ||
+            optionValue.maxOptionQuantity === null ||
+            optionValue.maxOptionQuantity === undefined
+              ? null
+              : Math.max(1, Number(optionValue.maxOptionQuantity))
+
+          if (optionValue.isQuantityEnabled !== 1 && optionQuantity !== 1) {
+            throw new BadRequestException(`option quantity is not enabled. (${optionValue.optionValueName})`)
+          }
+          if (optionQuantity < minOptionQuantity) {
+            throw new BadRequestException(`option quantity is below minimum. (${optionValue.optionValueName})`)
+          }
+          if (maxOptionQuantity !== null && optionQuantity > maxOptionQuantity) {
+            throw new BadRequestException(`option quantity exceeds maximum. (${optionValue.optionValueName})`)
+          }
 
           validatedOptions.push({
             productOptionId: option.id,

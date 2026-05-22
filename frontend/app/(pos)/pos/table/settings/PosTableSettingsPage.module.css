@@ -1312,21 +1312,35 @@
   border-radius: 10px;
   background-color: #ffffff;
   padding: 8px 10px;
-  display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) minmax(120px, 0.7fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }
 
 .optionCheckLabel {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
+.optionQuantityLabel {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
 .optionInput,
-.optionPriceInput {
-  width: 100%;
+.optionPriceInput,
+.optionMaxQuantityInput {
+  width: auto;
   border: 1px solid #d1d5db;
   background-color: #ffffff;
   color: #111827;
@@ -1337,10 +1351,32 @@
   font-weight: 800;
 }
 
+.optionInput {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.optionPriceInput {
+  flex: 0 1 150px;
+  min-width: 120px;
+}
+
+.optionMaxQuantityInput {
+  flex: 0 1 110px;
+  min-width: 88px;
+}
+
 .optionInput:focus,
-.optionPriceInput:focus {
+.optionPriceInput:focus,
+.optionMaxQuantityInput:focus {
   outline: 2px solid #dbeafe;
   border-color: #2563eb;
+}
+
+.optionMaxQuantityInput:disabled {
+  background-color: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
 }
 
 .addOptionButton {
@@ -1358,6 +1394,7 @@
 }
 
 .optionDeleteButton {
+  flex: 0 0 auto;
   height: 32px;
   border: 1px solid #fecaca;
   background-color: #fff1f2;

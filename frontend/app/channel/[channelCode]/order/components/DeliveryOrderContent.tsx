@@ -36,6 +36,11 @@ import {
   getProductFavoriteStatus,
   toggleProductFavorite
 } from '@/lib/favoritesApi'
+import {
+  addCartItem,
+  type AddCartItemOptionInput,
+  type CartOptionType
+} from '@/lib/cartApi'
 import { getMe } from '@/lib/authApi'
 import { mediaUrl } from '@/lib/media'
 import {
@@ -66,6 +71,16 @@ type OrderOptionItem = {
   id: string
   label: string
   price: number
+  productOptionId?: number
+  productOptionValueId?: number
+  optionName?: string
+  optionType?: CartOptionType
+  optionValueName?: string
+  isQuantityEnabled?: boolean
+  isQuantityLimitEnabled?: boolean
+  minOptionQuantity?: number | null
+  maxOptionQuantity?: number | null
+  defaultOptionQuantity?: number | null
 }
 
 type DeliveryPaymentItem = {
@@ -77,6 +92,32 @@ type DeliveryPaymentItem = {
 type DeliveryAddressLoadContext = {
   profileId: number
   channelCode: string
+}
+
+type DeliveryDraftOrderOption = {
+  optionItemId: string
+  optionId: number | null
+  optionValueId: number | null
+  optionName: string
+  optionType: CartOptionType
+  optionValueName: string
+  isQuantityEnabled: boolean
+  isQuantityLimitEnabled: boolean
+  priceDelta: number
+  quantity: number
+  lineOptionAmount: number
+}
+
+type DeliveryDraftOrderItem = {
+  localItemId: string
+  productCode: string
+  productId?: number | null
+  productName: string
+  unitPrice: number
+  quantity: number
+  optionTotalAmount: number
+  lineTotalAmount: number
+  options: DeliveryDraftOrderOption[]
 }
 
 // SECTION 03 : CONSTANT
@@ -170,9 +211,6 @@ const EMPTY_MENU_ITEM: OrderMenuItem = {
   price: 0
 }
 
-const DELIVERY_FEE =
-  3000
-
 // SECTION 04 : STYLE
 
 const contentStyle: CSSProperties = {
@@ -217,15 +255,17 @@ const descriptionStyle: CSSProperties = {
 const orderGridStyle: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: 'minmax(280px, 1.1fr) minmax(280px, 1fr) minmax(260px, 320px)',
-  alignItems: 'start',
-  gap: '10px'
+  alignItems: 'stretch',
+  gap: '10px',
+  minHeight: 0
 }
 
 const columnStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '10px',
-  minWidth: 0
+  minWidth: 0,
+  minHeight: 0
 }
 
 const cardStyle: CSSProperties = {
@@ -243,7 +283,10 @@ const summaryCardStyle: CSSProperties = {
   position: 'sticky',
   top: '10px',
   borderColor: '#dbe2ea',
-  padding: '8px'
+  padding: '10px',
+  maxHeight: '100%',
+  overflowY: 'auto',
+  overflowX: 'hidden'
 }
 
 const sectionTitleStyle: CSSProperties = {
@@ -478,8 +521,8 @@ const optionListStyle: CSSProperties = {
 
 const optionLabelStyle: CSSProperties = {
   display: 'flex',
+  flexDirection: 'column',
   alignItems: 'center',
-  justifyContent: 'space-between',
   gap: '8px',
   minHeight: '52px',
   padding: '12px',
@@ -489,12 +532,67 @@ const optionLabelStyle: CSSProperties = {
   cursor: 'pointer'
 }
 
+const optionMainRowStyle: CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '8px'
+}
+
 const optionLeftStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: '10px',
   fontSize: '14px',
   fontWeight: 800,
+  color: '#111827'
+}
+
+const optionRightStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  gap: '8px',
+  flexShrink: 0
+}
+
+const optionQuantityLimitNoticeStyle: CSSProperties = {
+  width: '100%',
+  paddingLeft: '28px',
+  marginTop: '-2px',
+  color: '#64748b',
+  fontSize: '11px',
+  fontWeight: 700,
+  lineHeight: 1.35,
+  wordBreak: 'keep-all',
+  overflowWrap: 'break-word'
+}
+
+const optionQuantityControlStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px'
+}
+
+const optionQuantityButtonStyle: CSSProperties = {
+  width: '28px',
+  height: '28px',
+  border: '1px solid #d1d5db',
+  borderRadius: '999px',
+  backgroundColor: '#ffffff',
+  color: '#0f172a',
+  fontSize: '15px',
+  fontWeight: 900,
+  cursor: 'pointer',
+  lineHeight: 1
+}
+
+const optionQuantityNumberStyle: CSSProperties = {
+  minWidth: '20px',
+  textAlign: 'center',
+  fontSize: '13px',
+  fontWeight: 900,
   color: '#111827'
 }
 
@@ -612,6 +710,33 @@ const totalRowStyle: CSSProperties = {
   color: '#0f172a'
 }
 
+const summaryListStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '8px'
+}
+
+const summaryItemCardStyle: CSSProperties = {
+  padding: '12px',
+  borderRadius: '16px',
+  border: '1px solid #e5e7eb',
+  backgroundColor: '#ffffff',
+  boxShadow: '0 6px 16px rgba(15, 23, 42, 0.04)'
+}
+
+const summaryOptionListStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '4px',
+  padding: '4px 4px 0',
+  color: '#64748b',
+  fontSize: '12px',
+  fontWeight: 700,
+  lineHeight: 1.45,
+  wordBreak: 'keep-all',
+  overflowWrap: 'break-word'
+}
+
 const footerBarStyle: CSSProperties = {
   width: '100%',
   maxWidth: '100%',
@@ -700,6 +825,28 @@ const footerOrderButtonStyle: CSSProperties = {
   backgroundColor: '#111827',
   color: '#ffffff',
   fontSize: '16px',
+  fontWeight: 900,
+  cursor: 'pointer'
+}
+
+const footerActionGroupStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'flex-end',
+  gap: '10px',
+  minWidth: 0,
+  flex: '0 0 auto',
+  flexWrap: 'wrap'
+}
+
+const footerCartButtonStyle: CSSProperties = {
+  minWidth: '128px',
+  height: '48px',
+  border: '1px solid #cbd5e1',
+  borderRadius: '12px',
+  backgroundColor: '#ffffff',
+  color: '#111827',
+  fontSize: '15px',
   fontWeight: 900,
   cursor: 'pointer'
 }
@@ -829,6 +976,48 @@ function formatPrice(
   return `${value.toLocaleString('ko-KR')}원`
 }
 
+function normalizeCartOptionType(
+  value: string | null | undefined
+): CartOptionType {
+  const normalized =
+    String(value ?? '').trim().toUpperCase()
+
+  if (
+    normalized === 'SIZE' ||
+    normalized === 'TEMPERATURE' ||
+    normalized === 'ADDON' ||
+    normalized === 'CHOICE' ||
+    normalized === 'CUSTOM'
+  ) {
+    return normalized
+  }
+
+  return 'CUSTOM'
+}
+
+function getOptionDefaultQuantity(
+  option: OrderOptionItem
+): number {
+  return Math.max(1, Number(option.defaultOptionQuantity ?? option.minOptionQuantity ?? 1))
+}
+
+function getOptionMinQuantity(
+  option: OrderOptionItem
+): number {
+  return Math.max(1, Number(option.minOptionQuantity ?? 1))
+}
+
+function getOptionMaxQuantity(
+  option: OrderOptionItem
+): number | null {
+  if (!option.isQuantityLimitEnabled) {
+    return null
+  }
+
+  const value = Number(option.maxOptionQuantity)
+  return Number.isInteger(value) && value >= 1 ? value : null
+}
+
 // SECTION 06 : COMPONENT
 
 export default function DeliveryOrderContent({
@@ -842,6 +1031,7 @@ export default function DeliveryOrderContent({
   const [orderSubmitError, setOrderSubmitError] = useState<string | null>(null)
   const [deliveryAddressError, setDeliveryAddressError] = useState<string | null>(null)
   const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false)
+  const [isCartAdding, setIsCartAdding] = useState<boolean>(false)
   const [isLoadingDeliveryAddresses, setIsLoadingDeliveryAddresses] = useState<boolean>(false)
   const [bootstrapData, setBootstrapData] = useState<CustomerOrderBootstrapResponse | null>(null)
   const [orderResult, setOrderResult] = useState<{ orderCode: string, revisionCode: string } | null>(null)
@@ -857,10 +1047,13 @@ export default function DeliveryOrderContent({
     useState<string>(MOCK_MENU_ITEMS[0]?.id || '')
 
   const [quantity, setQuantity] =
-    useState<number>(1)
+    useState<number>(0)
 
   const [selectedOptionIds, setSelectedOptionIds] =
     useState<string[]>([])
+
+  const [selectedOptionQuantities, setSelectedOptionQuantities] =
+    useState<Record<string, number>>({})
 
   const [receiverName, setReceiverName] =
     useState<string>('')
@@ -888,6 +1081,7 @@ export default function DeliveryOrderContent({
   const [failedMenuThumbnailKeys, setFailedMenuThumbnailKeys] = useState<Set<string>>(new Set())
   const [favoriteProductMap, setFavoriteProductMap] = useState<Record<string, boolean>>({})
   const [favoriteProductLoadingMap, setFavoriteProductLoadingMap] = useState<Record<string, boolean>>({})
+  const [orderItems, setOrderItems] = useState<DeliveryDraftOrderItem[]>([])
 
   // SECTION 08 : MEMO DATA
 
@@ -948,7 +1142,17 @@ export default function DeliveryOrderContent({
               label: option.optionName.trim() === value.optionValueName.trim()
                 ? option.optionName
                 : `${option.optionName} - ${value.optionValueName}`,
-              price: value.priceDelta
+              price: value.priceDelta,
+              productOptionId: option.id,
+              productOptionValueId: value.id,
+              optionName: option.optionName,
+              optionType: normalizeCartOptionType(option.optionType),
+              optionValueName: value.optionValueName,
+              isQuantityEnabled: Boolean(value.isQuantityEnabled),
+              isQuantityLimitEnabled: Boolean(value.isQuantityLimitEnabled),
+              minOptionQuantity: value.minOptionQuantity ?? null,
+              maxOptionQuantity: value.maxOptionQuantity ?? null,
+              defaultOptionQuantity: value.defaultOptionQuantity ?? null
             }))
           ))
         })
@@ -1008,8 +1212,9 @@ export default function DeliveryOrderContent({
 
     if (!currentVisible) {
       setSelectedMenuId(visibleProducts[0].id)
-      setQuantity(1)
+      setQuantity(0)
       setSelectedOptionIds([])
+      setSelectedOptionQuantities({})
     }
   }, [selectedMenuId, visibleProducts])
 
@@ -1024,40 +1229,76 @@ export default function DeliveryOrderContent({
     menuOptionItemsByMenuId
   ])
 
-  const selectedPayment = useMemo(() => {
-    return DELIVERY_PAYMENT_ITEMS.find(item => {
-      return item.id === paymentId
-    }) || DELIVERY_PAYMENT_ITEMS[0]
-  }, [
-    paymentId
-  ])
+  const currentDraftOrderItem = useMemo<DeliveryDraftOrderItem | null>(() => {
+    const productCode = getItemProductCode(selectedMenu)
 
-  const optionTotal = useMemo(() => {
-    return selectedOptions.reduce((sum, item) => {
-      return sum + item.price
+    if (
+      !productCode ||
+      selectedMenu.id === EMPTY_MENU_ITEM.id ||
+      quantity <= 0
+    ) {
+      return null
+    }
+
+    const options = selectedOptions.map((option) => {
+      const [optionIdRaw, optionValueIdRaw] = option.id.split(':')
+      const optionId =
+        option.productOptionId ?? Number(optionIdRaw)
+      const optionValueId =
+        option.productOptionValueId ?? Number(optionValueIdRaw)
+      const optionQuantity =
+        option.isQuantityEnabled
+          ? Math.max(
+              getOptionMinQuantity(option),
+              selectedOptionQuantities[option.id] ?? getOptionDefaultQuantity(option)
+            )
+          : 1
+
+      return {
+        optionItemId: option.id,
+        optionId: Number.isInteger(optionId) ? optionId : null,
+        optionValueId: Number.isInteger(optionValueId) ? optionValueId : null,
+        optionName: option.optionName || option.label,
+        optionType: option.optionType ?? 'CUSTOM',
+        optionValueName: option.optionValueName || option.label,
+        isQuantityEnabled: Boolean(option.isQuantityEnabled),
+        isQuantityLimitEnabled: Boolean(option.isQuantityLimitEnabled),
+        priceDelta: option.price,
+        quantity: optionQuantity,
+        lineOptionAmount: option.price * optionQuantity
+      }
+    })
+
+    const optionTotalAmount = options.reduce((sum, option) => {
+      return sum + option.lineOptionAmount
     }, 0)
-  }, [
-    selectedOptions
-  ])
 
-  const itemUnitTotal = useMemo(() => {
-    return selectedMenu.price + optionTotal
+    return {
+      localItemId: productCode,
+      productCode,
+      productId: Number.isInteger(Number(selectedMenu.id))
+        ? Number(selectedMenu.id)
+        : null,
+      productName: selectedMenu.name,
+      unitPrice: selectedMenu.price,
+      quantity,
+      optionTotalAmount,
+      lineTotalAmount: (selectedMenu.price + optionTotalAmount) * quantity,
+      options
+    }
   }, [
-    selectedMenu.price,
-    optionTotal
-  ])
-
-  const menuTotalAmount = useMemo(() => {
-    return itemUnitTotal * quantity
-  }, [
-    itemUnitTotal,
+    selectedMenu,
+    selectedOptions,
+    selectedOptionQuantities,
     quantity
   ])
 
   const totalAmount = useMemo(() => {
-    return menuTotalAmount + DELIVERY_FEE
+    return orderItems.reduce((sum, item) => {
+      return sum + item.lineTotalAmount
+    }, 0)
   }, [
-    menuTotalAmount
+    orderItems
   ])
 
   const responsiveOrderGridStyle = useMemo<CSSProperties>(() => {
@@ -1078,9 +1319,21 @@ export default function DeliveryOrderContent({
   function handleSelectMenu(
     menuId: string
   ) {
+    const nextMenu = menuItems.find((item) => item.id === menuId)
+    const nextProductCode = nextMenu ? getItemProductCode(nextMenu) : null
+    const existingItem = nextProductCode
+      ? orderItems.find((item) => item.productCode === nextProductCode)
+      : null
+
     setSelectedMenuId(menuId)
-    setQuantity(1)
-    setSelectedOptionIds([])
+    setQuantity(existingItem?.quantity ?? 0)
+    setSelectedOptionIds(existingItem?.options.map((option) => option.optionItemId) ?? [])
+    setSelectedOptionQuantities(
+      existingItem?.options.reduce<Record<string, number>>((acc, option) => {
+        acc[option.optionItemId] = option.quantity
+        return acc
+      }, {}) ?? {}
+    )
   }
 
   function getMenuThumbnailKey(item: OrderMenuItem): string {
@@ -1096,6 +1349,37 @@ export default function DeliveryOrderContent({
     const raw = String(item.productCode ?? '').trim()
     return raw.length > 0 ? raw : null
   }
+
+  useEffect(() => {
+    const productCode = getItemProductCode(selectedMenu)
+
+    if (!productCode) {
+      return
+    }
+
+    setOrderItems((prev) => {
+      if (!currentDraftOrderItem) {
+        return prev.filter((item) => item.productCode !== productCode)
+      }
+
+      const exists = prev.some((item) => item.productCode === productCode)
+      if (!exists) {
+        return [
+          ...prev,
+          currentDraftOrderItem
+        ]
+      }
+
+      return prev.map((item) => (
+        item.productCode === productCode
+          ? currentDraftOrderItem
+          : item
+      ))
+    })
+  }, [
+    selectedMenu,
+    currentDraftOrderItem
+  ])
 
   useEffect(() => {
     if (!channelCode || menuItems.length === 0) {
@@ -1202,7 +1486,7 @@ export default function DeliveryOrderContent({
 
   function handleDecreaseQuantity() {
     setQuantity(prev => {
-      return Math.max(1, prev - 1)
+      return Math.max(0, prev - 1)
     })
   }
 
@@ -1215,11 +1499,29 @@ export default function DeliveryOrderContent({
   function handleToggleOption(
     optionId: string
   ) {
+    const targetOption =
+      (menuOptionItemsByMenuId[selectedMenuId] ?? []).find((item) => item.id === optionId)
+
     setSelectedOptionIds(prev => {
       if (prev.includes(optionId)) {
+        setSelectedOptionQuantities((quantityMap) => {
+          const next = { ...quantityMap }
+          delete next[optionId]
+          return next
+        })
         return prev.filter(id => {
           return id !== optionId
         })
+      }
+
+      if (targetOption?.isQuantityEnabled) {
+        setSelectedOptionQuantities((quantityMap) => ({
+          ...quantityMap,
+          [optionId]: Math.max(
+            getOptionMinQuantity(targetOption),
+            quantityMap[optionId] ?? getOptionDefaultQuantity(targetOption)
+          )
+        }))
       }
 
       return [
@@ -1227,6 +1529,76 @@ export default function DeliveryOrderContent({
         optionId
       ]
     })
+  }
+
+  function handleIncreaseOptionQuantity(
+    optionId: string,
+    event: MouseEvent<HTMLButtonElement>
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const targetOption =
+      (menuOptionItemsByMenuId[selectedMenuId] ?? []).find((item) => item.id === optionId)
+    if (!targetOption?.isQuantityEnabled) {
+      return
+    }
+    const maxQuantity = getOptionMaxQuantity(targetOption)
+    const isCurrentlySelected = selectedOptionIds.includes(optionId)
+
+    setSelectedOptionIds((prev) => (
+      prev.includes(optionId)
+        ? prev
+        : [
+            ...prev,
+            optionId
+          ]
+    ))
+    setSelectedOptionQuantities((prev) => ({
+      ...prev,
+      [optionId]: maxQuantity === null
+        ? isCurrentlySelected
+          ? (prev[optionId] ?? getOptionDefaultQuantity(targetOption)) + 1
+          : getOptionDefaultQuantity(targetOption)
+        : Math.min(
+            maxQuantity,
+            isCurrentlySelected
+              ? (prev[optionId] ?? getOptionDefaultQuantity(targetOption)) + 1
+              : getOptionDefaultQuantity(targetOption)
+          )
+    }))
+  }
+
+  function handleDecreaseOptionQuantity(
+    optionId: string,
+    event: MouseEvent<HTMLButtonElement>
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const targetOption =
+      (menuOptionItemsByMenuId[selectedMenuId] ?? []).find((item) => item.id === optionId)
+    if (!targetOption?.isQuantityEnabled) {
+      return
+    }
+
+    const minQuantity = getOptionMinQuantity(targetOption)
+    const currentQuantity = selectedOptionQuantities[optionId] ?? 0
+
+    if (currentQuantity <= minQuantity) {
+      setSelectedOptionIds((prev) => prev.filter((id) => id !== optionId))
+      setSelectedOptionQuantities((prev) => {
+        const next = { ...prev }
+        delete next[optionId]
+        return next
+      })
+      return
+    }
+
+    setSelectedOptionQuantities((prev) => ({
+      ...prev,
+      [optionId]: currentQuantity - 1
+    }))
   }
 
   function applyDeliveryAddress(
@@ -1286,6 +1658,11 @@ export default function DeliveryOrderContent({
   }
 
   function handleOpenDeliveryModal() {
+    if (orderItems.length === 0) {
+      setOrderSubmitError('주문내역에 담긴 메뉴가 없습니다.')
+      return
+    }
+
     setOrderSubmitError(null)
     setIsDeliveryModalOpen(true)
     if (deliveryAddresses.length < 1 && !isLoadingDeliveryAddresses) {
@@ -1295,6 +1672,75 @@ export default function DeliveryOrderContent({
 
   function handleCloseDeliveryModal() {
     setIsDeliveryModalOpen(false)
+  }
+
+  function buildCartOptions(
+    item: DeliveryDraftOrderItem
+  ): AddCartItemOptionInput[] {
+    return item.options
+      .map((option) => {
+        return {
+          productOptionId: option.optionId ?? undefined,
+          productOptionValueId: option.optionValueId ?? undefined,
+          optionNameSnapshot: option.optionName,
+          optionTypeSnapshot: option.optionType,
+          optionValueNameSnapshot: option.optionValueName,
+          priceDeltaSnapshot: option.priceDelta,
+          quantity: option.quantity
+        }
+      })
+      .filter((option) => (
+        Number.isInteger(option.productOptionId) &&
+        Number.isInteger(option.productOptionValueId)
+      ))
+  }
+
+  function handleAddCartItem() {
+    if (isCartAdding) {
+      return
+    }
+
+    if (!channelCode) {
+      setOrderSubmitError('채널 정보를 확인하지 못했습니다.')
+      return
+    }
+
+    if (orderItems.length === 0) {
+      setOrderSubmitError('장바구니에 담을 주문내역이 없습니다.')
+      return
+    }
+
+    const invalidItem = orderItems.find((item) => !item.productCode || item.quantity <= 0)
+    if (invalidItem) {
+      setOrderSubmitError('장바구니에 담을 상품 정보를 확인해 주세요.')
+      return
+    }
+
+    setIsCartAdding(true)
+    setOrderSubmitError(null)
+
+    void (async () => {
+      for (const item of orderItems) {
+        await addCartItem({
+          providerChannelCode: channelCode,
+          productCode: item.productCode,
+          quantity: item.quantity,
+          orderFlowType: 'DELIVERY',
+          requestMemo: memo.trim() || undefined,
+          options: buildCartOptions(item)
+        })
+      }
+    })()
+      .catch((error) => {
+        setOrderSubmitError(
+          error instanceof Error && error.message
+            ? `장바구니에 담지 못했습니다. (${error.message})`
+            : '장바구니에 담지 못했습니다.'
+        )
+      })
+      .finally(() => {
+        setIsCartAdding(false)
+      })
   }
 
   function handleSubmitOrder() {
@@ -1307,13 +1753,17 @@ export default function DeliveryOrderContent({
       return
     }
 
-    if (selectedMenu.id === EMPTY_MENU_ITEM.id) {
-      setOrderSubmitError('주문할 메뉴를 선택해 주세요.')
+    if (orderItems.length === 0) {
+      setOrderSubmitError('주문내역에 담긴 메뉴가 없습니다.')
       return
     }
 
-    const productId = Number(selectedMenu.id)
-    if (!Number.isInteger(productId) || productId < 1) {
+    const invalidOrderItem = orderItems.find((item) => (
+      !Number.isInteger(item.productId) ||
+      Number(item.productId) < 1 ||
+      item.quantity <= 0
+    ))
+    if (invalidOrderItem) {
       setOrderSubmitError('메뉴 정보가 올바르지 않습니다.')
       return
     }
@@ -1337,22 +1787,17 @@ export default function DeliveryOrderContent({
         deliveryMemo: memo.trim() || undefined,
         customerRequestMemo: memo.trim() || undefined
       },
-      items: [
-        {
-          posProductId: productId,
-          quantity,
-          options: selectedOptions
-            .map((option) => {
-              const [optionIdRaw, optionValueIdRaw] = option.id.split(':')
-              return {
-                productOptionId: Number(optionIdRaw),
-                productOptionValueId: Number(optionValueIdRaw),
-                quantity: 1
-              }
-            })
-            .filter((option) => Number.isInteger(option.productOptionId) && Number.isInteger(option.productOptionValueId))
-        }
-      ]
+      items: orderItems.map((item) => ({
+        posProductId: Number(item.productId),
+        quantity: item.quantity,
+        options: item.options
+          .map((option) => ({
+            productOptionId: Number(option.optionId),
+            productOptionValueId: Number(option.optionValueId),
+            quantity: option.quantity
+          }))
+          .filter((option) => Number.isInteger(option.productOptionId) && Number.isInteger(option.productOptionValueId))
+      }))
     }
 
     void createCustomerOrder(payload)
@@ -1566,30 +2011,77 @@ export default function DeliveryOrderContent({
         {(menuOptionItemsByMenuId[selectedMenuId] ?? []).map(item => {
           const checked =
             selectedOptionIds.includes(item.id)
+          const optionQuantity =
+            selectedOptionQuantities[item.id] ?? 0
+          const maxOptionQuantity =
+            getOptionMaxQuantity(item)
+          const hasQuantityLimitNotice =
+            Boolean(item.isQuantityEnabled) &&
+            Boolean(item.isQuantityLimitEnabled) &&
+            maxOptionQuantity !== null
 
           return (
             <label
               key={item.id}
               style={optionLabelStyle}
             >
-              <span style={optionLeftStyle}>
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  style={checkboxStyle}
-                  onChange={() => {
-                    handleToggleOption(item.id)
-                  }}
-                />
+              <span style={optionMainRowStyle}>
+                <span style={optionLeftStyle}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    style={checkboxStyle}
+                    onChange={() => {
+                      handleToggleOption(item.id)
+                    }}
+                  />
 
-                {item.label}
+                  {item.label}
+                </span>
+
+                <span style={optionRightStyle}>
+                  <span style={priceStyle}>
+                    {item.price > 0
+                      ? `+ ${formatPrice(item.price)}`
+                      : '기본가'}
+                  </span>
+
+                  {checked && item.isQuantityEnabled ? (
+                    <span style={optionQuantityControlStyle}>
+                      <button
+                        type="button"
+                        style={optionQuantityButtonStyle}
+                        onClick={(event) => {
+                          handleDecreaseOptionQuantity(item.id, event)
+                        }}
+                      >
+                        -
+                      </button>
+
+                      <span style={optionQuantityNumberStyle}>
+                        {Math.max(1, optionQuantity)}
+                      </span>
+
+                      <button
+                        type="button"
+                        style={optionQuantityButtonStyle}
+                        disabled={maxOptionQuantity !== null && optionQuantity >= maxOptionQuantity}
+                        onClick={(event) => {
+                          handleIncreaseOptionQuantity(item.id, event)
+                        }}
+                      >
+                        +
+                      </button>
+                    </span>
+                  ) : null}
+                </span>
               </span>
 
-              <span style={priceStyle}>
-                {item.price > 0
-                  ? `+ ${formatPrice(item.price)}`
-                  : '기본가'}
-              </span>
+              {hasQuantityLimitNotice ? (
+                <span style={optionQuantityLimitNoticeStyle}>
+                  최대 {maxOptionQuantity}개까지 선택할 수 있습니다.
+                </span>
+              ) : null}
             </label>
           )
         })}
@@ -1743,82 +2235,67 @@ export default function DeliveryOrderContent({
   const SummaryUI = (
     <section style={summaryCardStyle}>
       <h3 style={sectionTitleStyle}>
-        배달 주문 확인
+        주문내역
       </h3>
 
-      <div style={summaryRowStyle}>
-        <span>
-          채널 코드
-        </span>
+      {orderItems.length > 0 ? (
+        <div style={summaryListStyle}>
+          {orderItems.map((item) => (
+            <article
+              key={item.localItemId}
+              style={summaryItemCardStyle}
+            >
+              <div style={summaryRowStyle}>
+                <strong>
+                  {item.productName}
+                </strong>
 
-        <strong>
-          {channelCode || '-'}
-        </strong>
-      </div>
+                <strong>
+                  {formatPrice(item.lineTotalAmount)}
+                </strong>
+              </div>
 
-      <div style={summaryRowStyle}>
-        <span>
-          메뉴
-        </span>
+              <div style={summaryRowStyle}>
+                <span>
+                  수량
+                </span>
 
-        <strong>
-          {selectedMenu.name}
-        </strong>
-      </div>
+                <span>
+                  {item.quantity}개 · {formatPrice(item.unitPrice)}
+                </span>
+              </div>
 
-      <div style={summaryRowStyle}>
-        <span>
-          수량
-        </span>
+              <div style={summaryRowStyle}>
+                <span>
+                  옵션
+                </span>
 
-        <strong>
-          {quantity}개
-        </strong>
-      </div>
+                <span>
+                  {item.options.length > 0
+                    ? `${item.options.length}개 선택`
+                    : '선택 없음'}
+                </span>
+              </div>
 
-      <div style={summaryRowStyle}>
-        <span>
-          옵션
-        </span>
-
-        <strong>
-          {selectedOptions.length > 0
-            ? `${selectedOptions.length}개 선택`
-            : '선택 없음'}
-        </strong>
-      </div>
-
-      <div style={summaryRowStyle}>
-        <span>
-          배달비
-        </span>
-
-        <strong>
-          {formatPrice(DELIVERY_FEE)}
-        </strong>
-      </div>
-
-      <div style={summaryRowStyle}>
-        <span>
-          결제 방식
-        </span>
-
-        <strong>
-          {selectedPayment?.label || '-'}
-        </strong>
-      </div>
-
-      <div style={summaryRowStyle}>
-        <span>
-          배송지
-        </span>
-
-        <strong>
-          {address.trim()
-            ? address
-            : '미입력'}
-        </strong>
-      </div>
+              {item.options.length > 0 ? (
+                <div style={summaryOptionListStyle}>
+                  {item.options.map((option) => (
+                    <span key={option.optionItemId}>
+                      {option.isQuantityEnabled
+                        ? `- ${option.optionValueName} X ${option.quantity} · +${formatPrice(option.lineOptionAmount)}`
+                        : `- ${option.optionValueName} · +${formatPrice(option.lineOptionAmount)}`}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p style={descriptionStyle}>
+          선택된 메뉴가 없습니다.
+        </p>
+      )}
 
       <div style={totalRowStyle}>
         <span>
@@ -1830,9 +2307,6 @@ export default function DeliveryOrderContent({
         </span>
       </div>
 
-      <div style={noticeStyle}>
-        하단 배달주문등록 버튼을 누르면 배송정보와 결제방식을 입력합니다.
-      </div>
       {orderResult ? (
         <div style={noticeStyle}>
           주문 접수 완료: {orderResult.orderCode} / {orderResult.revisionCode}
@@ -1904,20 +2378,50 @@ export default function DeliveryOrderContent({
             </strong>
           </div>
 
-          <button
-            type="button"
+          <div
             style={
               isCompactLayout
                 ? {
-                    ...footerOrderButtonStyle,
+                    ...footerActionGroupStyle,
+                    alignItems: 'stretch',
+                    flexDirection: 'column',
                     width: '100%'
                   }
-                : footerOrderButtonStyle
+                : footerActionGroupStyle
             }
-            onClick={handleOpenDeliveryModal}
           >
-            배달주문등록
-          </button>
+            <button
+              type="button"
+              style={
+                isCompactLayout
+                  ? {
+                      ...footerCartButtonStyle,
+                      width: '100%'
+                  }
+                  : footerCartButtonStyle
+              }
+              disabled={isCartAdding || orderItems.length === 0}
+              onClick={handleAddCartItem}
+            >
+              {isCartAdding ? '담는 중...' : '장바구니'}
+            </button>
+
+            <button
+              type="button"
+              style={
+                isCompactLayout
+                  ? {
+                      ...footerOrderButtonStyle,
+                      width: '100%'
+                    }
+                  : footerOrderButtonStyle
+              }
+              disabled={orderItems.length === 0}
+              onClick={handleOpenDeliveryModal}
+            >
+              배달주문등록
+            </button>
+          </div>
         </div>
       </div>
     </footer>
@@ -2022,7 +2526,7 @@ export default function DeliveryOrderContent({
             <button
               type="button"
               style={modalSubmitButtonStyle}
-              disabled={isSubmittingOrder}
+              disabled={isSubmittingOrder || orderItems.length === 0}
               onClick={handleSubmitOrder}
             >
               {isSubmittingOrder ? '주문 접수중...' : '배달주문등록'}
@@ -2041,7 +2545,7 @@ export default function DeliveryOrderContent({
         embedInModal
           ? {
               ...contentStyle,
-              paddingBottom: '0'
+              paddingBottom: '10px'
             }
           : contentStyle
       }

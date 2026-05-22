@@ -9,10 +9,11 @@ import db from '../../config/database';
 @Injectable()
 export class ChannelService {
 
-  generateRandomCode(length = 12): string {
+  generateRandomCode(length = 13): string {
+    const prefixChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < length; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+    let code = prefixChars.charAt(Math.floor(Math.random() * prefixChars.length));
+    for (let i = 1; i < length; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
     return code;
   }
 

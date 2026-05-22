@@ -34,6 +34,11 @@ export type CustomerOrderOptionValueResponse = {
   priceDelta: number
   isDefault: number
   isVisible: number
+  isQuantityEnabled: number
+  isQuantityLimitEnabled: number
+  minOptionQuantity: number
+  maxOptionQuantity: number | null
+  defaultOptionQuantity: number
 }
 
 export type CustomerOrderOptionResponse = {

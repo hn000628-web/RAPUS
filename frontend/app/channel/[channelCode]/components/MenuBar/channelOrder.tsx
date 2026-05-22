@@ -6,6 +6,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { useRouter } from 'next/navigation'
 
 import { getCustomerOrderBootstrap } from '@/lib/business/pos/customerOrderApi'
@@ -139,18 +140,18 @@ const orderFormOverlayStyle: CSSProperties = {
   position: 'fixed',
   inset: 0,
   display: 'flex',
-  alignItems: 'flex-start',
+  alignItems: 'center',
   justifyContent: 'center',
-  padding: '72px 24px 24px',
-  background: 'rgba(15, 23, 42, 0.52)',
-  zIndex: 1100,
+  padding: '24px',
+  background: 'rgba(15, 23, 42, 0.55)',
+  zIndex: 9999,
   boxSizing: 'border-box',
-  overflowY: 'auto'
+  overflow: 'hidden'
 }
 
 const orderFormPanelStyle: CSSProperties = {
-  width: 'min(1180px, calc(100vw - 32px))',
-  maxHeight: 'calc(100vh - 82px)',
+  width: 'min(1180px, calc(100vw - 48px))',
+  maxHeight: 'calc(100vh - 48px)',
   borderRadius: '24px',
   border: '1px solid #dbe2ea',
   background: '#ffffff',
@@ -184,6 +185,7 @@ export default function ChannelOrder({ channelCode, autoOpenOrder = false }: Pro
   const router = useRouter()
   const autoOpenedRef = useRef(false)
 
+  const [isMounted, setIsMounted] = useState(false)
   const [isOrderTypeModalOpen, setIsOrderTypeModalOpen] = useState(false)
   const [hoveredOrderType, setHoveredOrderType] = useState<'PICKUP' | 'DELIVERY' | null>(null)
   const [orderFormModalType, setOrderFormModalType] = useState<OrderFormModalType>(null)
@@ -194,6 +196,10 @@ export default function ChannelOrder({ channelCode, autoOpenOrder = false }: Pro
   const [deliveryActiveCategoryKey, setDeliveryActiveCategoryKey] = useState('')
 
   useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  useEffect(() => {
     if (!autoOpenOrder || autoOpenedRef.current) {
       return
     }
@@ -201,6 +207,19 @@ export default function ChannelOrder({ channelCode, autoOpenOrder = false }: Pro
     autoOpenedRef.current = true
     setIsOrderTypeModalOpen(true)
   }, [autoOpenOrder])
+
+  useEffect(() => {
+    if (!orderFormModalType) {
+      return
+    }
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [orderFormModalType])
 
   async function loadOrderCategories(flowType: OrderFlowType) {
     const safeChannelCode = String(channelCode || '').trim()
@@ -450,7 +469,7 @@ export default function ChannelOrder({ channelCode, autoOpenOrder = false }: Pro
         </div>
       ) : null}
 
-      {orderFormModalType ? (
+      {isMounted && orderFormModalType ? createPortal((
         <div style={orderFormOverlayStyle} onClick={handleCloseOrderFormModal}>
           <section
             style={orderFormPanelStyle}
@@ -495,7 +514,7 @@ export default function ChannelOrder({ channelCode, autoOpenOrder = false }: Pro
             </div>
           </section>
         </div>
-      ) : null}
+      ), document.body) : null}
     </section>
   )
 }

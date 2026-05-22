@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api'
+import { normalizeCodeInput, type BusinessObjectCode12, type ChannelCode13 } from '@/lib/codeTypes'
 
 export type FavoriteStatus = 'ACTIVE' | 'DELETED'
 
@@ -6,32 +7,33 @@ export type ToggleProfileFavoriteResponse = {
   ok: true
   status: FavoriteStatus
   isFavorite: boolean
-  actorChannelCode: string
-  providerChannelCode: string
+  actorChannelCode: ChannelCode13
+  providerChannelCode: ChannelCode13
 }
 
 export type ToggleProductFavoriteResponse = {
   ok: true
   status: FavoriteStatus
   isFavorite: boolean
-  actorChannelCode: string
-  providerChannelCode: string
-  productCode: string
+  actorChannelCode: ChannelCode13
+  providerChannelCode: ChannelCode13
+  productCode: BusinessObjectCode12
+  favoriteProfileCount?: number
 }
 
 export type TogglePostRecommendationResponse = {
   ok: true
   status: FavoriteStatus
   isRecommended: boolean
-  actorChannelCode: string
-  providerChannelCode: string
-  postCode: string
+  actorChannelCode: ChannelCode13
+  providerChannelCode: ChannelCode13
+  postCode: BusinessObjectCode12
 }
 
 export type ProfileFavoriteItem = {
   id: number
   providerProfileId: number
-  providerChannelCode: string
+  providerChannelCode: ChannelCode13
   providerProfileType: 'GENERAL' | 'BUSINESS'
   displayName: string | null
   channelURL: string | null
@@ -42,9 +44,9 @@ export type ProfileFavoriteItem = {
 export type ProductFavoriteItem = {
   id: number
   providerProfileId: number
-  providerChannelCode: string
+  providerChannelCode: ChannelCode13
   productId: number | null
-  productCode: string
+  productCode: BusinessObjectCode12
   productName: string | null
   basePrice: number | null
   currency: string | null
@@ -55,9 +57,9 @@ export type ProductFavoriteItem = {
 export type PostRecommendationItem = {
   id: number
   providerProfileId: number
-  providerChannelCode: string
+  providerChannelCode: ChannelCode13
   postId: number | null
-  postCode: string
+  postCode: BusinessObjectCode12
   postType: 'GENERAL' | 'GALLERY' | 'PRODUCT' | 'EVENT' | 'REVIEW'
   title: string | null
   content: string | null
@@ -77,12 +79,13 @@ export type FavoriteStatusResponse = {
 }
 
 export async function toggleProfileFavorite(providerChannelCode: string) {
+  const normalizedProviderChannelCode = normalizeCodeInput(providerChannelCode)
   return apiFetch<ToggleProfileFavoriteResponse>(
     'favorites/profiles/toggle',
     {
       method: 'POST',
       body: {
-        providerChannelCode
+        providerChannelCode: normalizedProviderChannelCode
       }
     }
   )
@@ -94,7 +97,7 @@ export async function getMyProfileFavorites(status: FavoriteStatus = 'ACTIVE') {
 }
 
 export async function getProfileFavoriteStatus(providerChannelCode: string) {
-  const query = `favorites/profiles/status?providerChannelCode=${encodeURIComponent(providerChannelCode)}`
+  const query = `favorites/profiles/status?providerChannelCode=${encodeURIComponent(normalizeCodeInput(providerChannelCode))}`
   return apiFetch<FavoriteStatusResponse>(query)
 }
 
@@ -102,11 +105,15 @@ export async function toggleProductFavorite(params: {
   providerChannelCode: string
   productCode: string
 }) {
+  const body = {
+    providerChannelCode: normalizeCodeInput(params.providerChannelCode),
+    productCode: normalizeCodeInput(params.productCode)
+  }
   return apiFetch<ToggleProductFavoriteResponse>(
     'favorites/products/toggle',
     {
       method: 'POST',
-      body: params
+      body
     }
   )
 }
@@ -120,7 +127,7 @@ export async function getProductFavoriteStatus(params: {
   providerChannelCode: string
   productCode: string
 }) {
-  const query = `favorites/products/status?providerChannelCode=${encodeURIComponent(params.providerChannelCode)}&productCode=${encodeURIComponent(params.productCode)}`
+  const query = `favorites/products/status?providerChannelCode=${encodeURIComponent(normalizeCodeInput(params.providerChannelCode))}&productCode=${encodeURIComponent(normalizeCodeInput(params.productCode))}`
   return apiFetch<FavoriteStatusResponse>(query)
 }
 
@@ -128,11 +135,15 @@ export async function togglePostRecommendation(params: {
   providerChannelCode: string
   postCode: string
 }) {
+  const body = {
+    providerChannelCode: normalizeCodeInput(params.providerChannelCode),
+    postCode: normalizeCodeInput(params.postCode)
+  }
   return apiFetch<TogglePostRecommendationResponse>(
     'favorites/posts/recommend/toggle',
     {
       method: 'POST',
-      body: params
+      body
     }
   )
 }
@@ -146,7 +157,6 @@ export async function getPostRecommendationStatus(params: {
   providerChannelCode: string
   postCode: string
 }) {
-  const query = `favorites/posts/recommend/status?providerChannelCode=${encodeURIComponent(params.providerChannelCode)}&postCode=${encodeURIComponent(params.postCode)}`
+  const query = `favorites/posts/recommend/status?providerChannelCode=${encodeURIComponent(normalizeCodeInput(params.providerChannelCode))}&postCode=${encodeURIComponent(normalizeCodeInput(params.postCode))}`
   return apiFetch<FavoriteStatusResponse>(query)
 }
-

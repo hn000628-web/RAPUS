@@ -169,7 +169,7 @@ function createEmptyPreviewOption(
 ): PreviewOptionDraft {
   return {
     id: getNextPreviewOptionId(options),
-    enabled: false,
+    enabled: true,
     title: '',
     priceText: '',
     optionType: 'CUSTOM'

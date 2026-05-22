@@ -1944,13 +1944,13 @@ export class PosOrdersService {
 
     const nextSequence = Number(sequenceRow?.count ?? 0) + 1
 
-    if (nextSequence > 999999) {
+    if (nextSequence > 9999) {
       throw new InternalServerErrorException('결제코드 일일 발급 한도를 초과했습니다.')
     }
 
-    const paymentCode = `PM${dateToken}${String(nextSequence).padStart(6, '0')}`
+    const paymentCode = `PM${dateToken}${String(nextSequence).padStart(4, '0')}`
 
-    if (paymentCode.length !== 14) {
+    if (paymentCode.length !== 12) {
       throw new InternalServerErrorException('결제코드 생성 규칙이 올바르지 않습니다.')
     }
 

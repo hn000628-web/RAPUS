@@ -64,6 +64,11 @@ export type CustomerOrderOptionValue = {
   priceDelta: number
   isDefault: number
   isVisible: number
+  isQuantityEnabled?: number | boolean
+  isQuantityLimitEnabled?: number | boolean
+  minOptionQuantity?: number | null
+  maxOptionQuantity?: number | null
+  defaultOptionQuantity?: number | null
 }
 
 export type CustomerOrderProductOption = {

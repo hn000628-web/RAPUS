@@ -55,6 +55,9 @@ type MenuStatusView = MenuFilter | null
 type MenuCreatePreviewOption = {
   id: string
   enabled: boolean
+  isQuantityEnabled: boolean
+  isQuantityLimitEnabled: boolean
+  maxOptionQuantityText: string
   title: string
   priceText: string
   optionType: 'CUSTOM'
@@ -88,6 +91,7 @@ type MenuCreateTextField =
 type MenuCreateOptionUpdateKey =
   | 'title'
   | 'priceText'
+  | 'maxOptionQuantityText'
 
 let optionLocalSequence = 0
 
@@ -99,7 +103,10 @@ function createOptionLocalId(): string {
 function createEmptyPreviewOption(): MenuCreatePreviewOption {
   return {
     id: createOptionLocalId(),
-    enabled: false,
+    enabled: true,
+    isQuantityEnabled: false,
+    isQuantityLimitEnabled: false,
+    maxOptionQuantityText: '',
     title: '',
     priceText: '',
     optionType: 'CUSTOM'
@@ -134,6 +141,12 @@ function mapMenuItemOptionsToFormOptions(
     (group.values ?? []).map((value) => ({
       id: createOptionLocalId(),
       enabled: Boolean(value.isActive ?? true),
+      isQuantityEnabled: Boolean(value.isQuantityEnabled ?? false),
+      isQuantityLimitEnabled: Boolean(value.isQuantityLimitEnabled ?? false),
+      maxOptionQuantityText:
+        value.maxOptionQuantity === null || value.maxOptionQuantity === undefined
+          ? ''
+          : String(value.maxOptionQuantity),
       title: value.optionValueName ?? '',
       priceText:
         Number(value.priceDelta ?? 0) > 0
@@ -649,6 +662,42 @@ export default function MenuManagePanel({
     }))
   }
 
+  const handleMenuCreateOptionQuantityToggle = (optionId: string) => {
+    setMenuCreateForm((prev) => ({
+      ...prev,
+      options: prev.options.map((option) =>
+        option.id === optionId
+          ? {
+            ...option,
+            isQuantityEnabled: !option.isQuantityEnabled,
+            isQuantityLimitEnabled: option.isQuantityEnabled ? false : option.isQuantityLimitEnabled,
+            maxOptionQuantityText: option.isQuantityEnabled ? '' : option.maxOptionQuantityText
+          }
+          : option
+      )
+    }))
+  }
+
+  const handleMenuCreateOptionQuantityLimitToggle = (optionId: string) => {
+    setMenuCreateForm((prev) => ({
+      ...prev,
+      options: prev.options.map((option) =>
+        option.id === optionId
+          ? {
+            ...option,
+            isQuantityLimitEnabled: option.isQuantityEnabled
+              ? !option.isQuantityLimitEnabled
+              : false,
+            maxOptionQuantityText:
+              option.isQuantityEnabled && !option.isQuantityLimitEnabled
+                ? option.maxOptionQuantityText || '1'
+                : ''
+          }
+          : option
+      )
+    }))
+  }
+
   const updateMenuCreateOptionTextField = (
     optionId: string,
     field: MenuCreateOptionUpdateKey,
@@ -699,6 +748,17 @@ export default function MenuManagePanel({
           return null
         }
 
+        const maxOptionQuantity =
+          option.isQuantityEnabled && option.isQuantityLimitEnabled
+            ? Number(option.maxOptionQuantityText)
+            : null
+        const normalizedMaxOptionQuantity =
+          typeof maxOptionQuantity === 'number' &&
+          Number.isInteger(maxOptionQuantity) &&
+          maxOptionQuantity >= 1
+            ? maxOptionQuantity
+            : null
+
         const optionValue: PosMenuOptionValue = {
           optionValueName,
           priceDelta,
@@ -706,6 +766,11 @@ export default function MenuManagePanel({
           isActive: option.enabled,
           optionValueType: option.optionType,
           isVisible: true,
+          isQuantityEnabled: option.isQuantityEnabled,
+          isQuantityLimitEnabled: option.isQuantityEnabled && option.isQuantityLimitEnabled,
+          minOptionQuantity: 1,
+          maxOptionQuantity: normalizedMaxOptionQuantity,
+          defaultOptionQuantity: 1,
           sortOrder: index
         }
 
@@ -789,6 +854,20 @@ export default function MenuManagePanel({
 
     if (hasInvalidOptionPrice) {
       setMenuCreateErrorMessage('옵션 추가금액은 0 이상의 숫자로 입력해 주세요')
+      return
+    }
+
+    const hasInvalidOptionQuantityLimit = menuCreateForm.options.some((option) => {
+      if (!option.isQuantityEnabled || !option.isQuantityLimitEnabled) {
+        return false
+      }
+
+      const maxOptionQuantity = Number(option.maxOptionQuantityText)
+      return !Number.isInteger(maxOptionQuantity) || maxOptionQuantity < 1
+    })
+
+    if (hasInvalidOptionQuantityLimit) {
+      setMenuCreateErrorMessage('옵션 최대수량은 1 이상의 정수로 입력해 주세요')
       return
     }
 
@@ -1421,6 +1500,41 @@ export default function MenuManagePanel({
                               )
                             }
                             placeholder="가격 입력"
+                          />
+
+                          <label className={styles.optionQuantityLabel}>
+                            <input
+                              type="checkbox"
+                              checked={option.isQuantityEnabled}
+                              onChange={() => handleMenuCreateOptionQuantityToggle(option.id)}
+                            />
+                            수량선택
+                          </label>
+
+                          <label className={styles.optionQuantityLabel}>
+                            <input
+                              type="checkbox"
+                              checked={option.isQuantityEnabled && option.isQuantityLimitEnabled}
+                              disabled={!option.isQuantityEnabled}
+                              onChange={() => handleMenuCreateOptionQuantityLimitToggle(option.id)}
+                            />
+                            수량제한
+                          </label>
+
+                          <input
+                            className={styles.optionMaxQuantityInput}
+                            type="text"
+                            inputMode="numeric"
+                            value={option.maxOptionQuantityText}
+                            disabled={!option.isQuantityEnabled || !option.isQuantityLimitEnabled}
+                            onChange={(event) =>
+                              updateMenuCreateOptionTextField(
+                                option.id,
+                                'maxOptionQuantityText',
+                                event.target.value
+                              )
+                            }
+                            placeholder="최대수량"
                           />
 
                           <button

@@ -81,6 +81,11 @@ type PosMenuOptionInput = {
   title?: string
   priceText?: string
   enabled?: number | boolean
+  isQuantityEnabled?: number | boolean
+  isQuantityLimitEnabled?: number | boolean
+  minOptionQuantity?: number | string
+  maxOptionQuantity?: number | string | null
+  defaultOptionQuantity?: number | string
   optionValueType?: 'BASE' | 'CUSTOM'
   optionName?: string
   optionType?: 'SIZE' | 'TEMPERATURE' | 'ADDON' | 'CHOICE' | 'CUSTOM'
@@ -97,6 +102,11 @@ type PosMenuOptionValueInput = {
   priceDelta?: number | string
   isDefault?: number | boolean
   isActive?: number | boolean
+  isQuantityEnabled?: number | boolean
+  isQuantityLimitEnabled?: number | boolean
+  minOptionQuantity?: number | string
+  maxOptionQuantity?: number | string | null
+  defaultOptionQuantity?: number | string
   optionValueType?: 'BASE' | 'CUSTOM'
   isVisible?: number | boolean
   sortOrder?: number | string
@@ -156,6 +166,11 @@ type PosProductOptionValueRow = {
   isActive: number
   optionValueType: 'BASE' | 'CUSTOM'
   isVisible: number
+  isQuantityEnabled: number
+  isQuantityLimitEnabled: number
+  minOptionQuantity: number
+  maxOptionQuantity: number | null
+  defaultOptionQuantity: number
   sortOrder: number
 }
 
@@ -250,6 +265,11 @@ type NormalizedPosMenuOptionInput = {
     isActive: number
     optionValueType: 'BASE' | 'CUSTOM'
     isVisible: number
+    isQuantityEnabled: number
+    isQuantityLimitEnabled: number
+    minOptionQuantity: number
+    maxOptionQuantity: number | null
+    defaultOptionQuantity: number
     sortOrder: number
   }>
 }
@@ -315,6 +335,66 @@ function toNonNegativeInteger(
   }
 
   return numericValue
+}
+
+function toNullablePositiveInteger(
+  value: number | string | null | undefined,
+  fieldName: string
+): number | null {
+  if (value === undefined || value === null || value === '') {
+    return null
+  }
+
+  return toPositiveInteger(value, fieldName)
+}
+
+function normalizeOptionQuantitySettings(
+  value: {
+    isQuantityEnabled?: number | boolean
+    isQuantityLimitEnabled?: number | boolean
+    minOptionQuantity?: number | string
+    maxOptionQuantity?: number | string | null
+    defaultOptionQuantity?: number | string
+  }
+): {
+  isQuantityEnabled: number
+  isQuantityLimitEnabled: number
+  minOptionQuantity: number
+  maxOptionQuantity: number | null
+  defaultOptionQuantity: number
+} {
+  const isQuantityEnabled = toFlag(value.isQuantityEnabled, 0)
+  const isQuantityLimitEnabled = toFlag(value.isQuantityLimitEnabled, 0)
+  const minOptionQuantity = toPositiveInteger(value.minOptionQuantity ?? 1, 'minOptionQuantity')
+  const maxOptionQuantity =
+    isQuantityLimitEnabled === 1
+      ? toNullablePositiveInteger(value.maxOptionQuantity, 'maxOptionQuantity')
+      : null
+  const defaultOptionQuantity = toPositiveInteger(value.defaultOptionQuantity ?? 1, 'defaultOptionQuantity')
+
+  if (isQuantityLimitEnabled === 1 && maxOptionQuantity === null) {
+    throw new BadRequestException('maxOptionQuantity is required when quantity limit is enabled')
+  }
+
+  if (maxOptionQuantity !== null && minOptionQuantity > maxOptionQuantity) {
+    throw new BadRequestException('minOptionQuantity must be less than or equal to maxOptionQuantity')
+  }
+
+  if (defaultOptionQuantity < minOptionQuantity) {
+    throw new BadRequestException('defaultOptionQuantity must be greater than or equal to minOptionQuantity')
+  }
+
+  if (maxOptionQuantity !== null && defaultOptionQuantity > maxOptionQuantity) {
+    throw new BadRequestException('defaultOptionQuantity must be less than or equal to maxOptionQuantity')
+  }
+
+  return {
+    isQuantityEnabled,
+    isQuantityLimitEnabled,
+    minOptionQuantity,
+    maxOptionQuantity,
+    defaultOptionQuantity
+  }
 }
 
 function toFlag(
@@ -415,7 +495,7 @@ function determineProductKind(
 
 function generateProductCode(): string {
   const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  const bytes = randomBytes(7)
+  const bytes = randomBytes(12)
 
   return Array.from(bytes)
     .map((byte) => alphabet[byte % alphabet.length])
@@ -440,7 +520,7 @@ function isProductNameUniqueError(error: any): boolean {
 function assertProductCode(
   productCode: string | null
 ): string {
-  if (!productCode || !/^[A-Z0-9]{7}$/.test(productCode)) {
+  if (!productCode || !/^[A-Z0-9]{12}$/.test(productCode)) {
     throw new InternalServerErrorException('productCode is invalid')
   }
 
@@ -767,6 +847,8 @@ export class PosMenuService {
             row.optionValueType === 'BASE' || row.optionValueType === 'CUSTOM'
               ? row.optionValueType
               : 'CUSTOM'
+          const quantitySettings =
+            normalizeOptionQuantitySettings(row)
 
           return {
             optionValueName,
@@ -775,6 +857,7 @@ export class PosMenuService {
             isActive: toFlag(row.enabled, 1),
             optionValueType,
             isVisible: 1,
+            ...quantitySettings,
             sortOrder: toNonNegativeInteger(index, 'optionValueSortOrder', index)
           }
         })
@@ -785,6 +868,11 @@ export class PosMenuService {
           isActive: number
           optionValueType: 'BASE' | 'CUSTOM'
           isVisible: number
+          isQuantityEnabled: number
+          isQuantityLimitEnabled: number
+          minOptionQuantity: number
+          maxOptionQuantity: number | null
+          defaultOptionQuantity: number
           sortOrder: number
         } => row !== null)
 
@@ -829,6 +917,8 @@ export class PosMenuService {
             : toFlag(value.isDefault, 0) === 1
               ? 'BASE'
               : 'CUSTOM'
+        const quantitySettings =
+          normalizeOptionQuantitySettings(value)
 
         return {
           optionValueName,
@@ -837,6 +927,7 @@ export class PosMenuService {
           isActive: toFlag(value.isActive, 1),
           optionValueType,
           isVisible: toFlag(value.isVisible, 1),
+          ...quantitySettings,
           sortOrder: toNonNegativeInteger(value.sortOrder, 'optionValueSortOrder', valueIndex)
         }
       })
@@ -910,6 +1001,11 @@ export class PosMenuService {
         isActive,
         optionValueType,
         isVisible,
+        isQuantityEnabled,
+        isQuantityLimitEnabled,
+        minOptionQuantity,
+        maxOptionQuantity,
+        defaultOptionQuantity,
         sortOrder
       FROM pos_product_option_values
       WHERE profileId = ?
@@ -946,6 +1042,11 @@ export class PosMenuService {
         isActive: value.isActive === 1,
         optionValueType: value.optionValueType,
         isVisible: value.isVisible === 1,
+        isQuantityEnabled: value.isQuantityEnabled === 1,
+        isQuantityLimitEnabled: value.isQuantityLimitEnabled === 1,
+        minOptionQuantity: value.minOptionQuantity,
+        maxOptionQuantity: value.maxOptionQuantity,
+        defaultOptionQuantity: value.defaultOptionQuantity,
         sortOrder: value.sortOrder
       }))
     }))
@@ -1122,11 +1223,16 @@ export class PosMenuService {
           isActive,
           optionValueType,
           isVisible,
+          isQuantityEnabled,
+          isQuantityLimitEnabled,
+          minOptionQuantity,
+          maxOptionQuantity,
+          defaultOptionQuantity,
           sortOrder,
           createdAt,
           updatedAt
         )
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
       `)
 
       optionGroups.forEach((group) => {
@@ -1159,6 +1265,11 @@ export class PosMenuService {
             value.isActive,
             value.optionValueType,
             value.isVisible,
+            value.isQuantityEnabled,
+            value.isQuantityLimitEnabled,
+            value.minOptionQuantity,
+            value.maxOptionQuantity,
+            value.defaultOptionQuantity,
             value.sortOrder
           )
         })

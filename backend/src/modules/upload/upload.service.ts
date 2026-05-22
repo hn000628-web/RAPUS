@@ -25,6 +25,15 @@ from '../../config/database'
 
 export class FeedService{
 
+private createBusinessCode12(prefix = ''): string {
+const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+let code = prefix.trim().toUpperCase()
+while (code.length < 12) {
+code += chars[Math.floor(Math.random() * chars.length)]
+}
+return code.slice(0, 12)
+}
+
 // ==================================================
 // SECTION 03 : CREATE POST
 // ==================================================
@@ -137,6 +146,8 @@ INSERT INTO posts(
 
 profileId,
 
+postCode,
+
 type,
 
 postType,
@@ -169,13 +180,15 @@ updatedAt
 
 VALUES(
 
-?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 
 )
 
 `).run(
 
 profileId,
+
+this.createBusinessCode12('PU'),
 
 type,
 
