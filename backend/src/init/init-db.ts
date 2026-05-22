@@ -2966,6 +2966,12 @@ safeAddColumn(
   'TEXT'
 )
 
+safeAddColumn(
+  'posts',
+  'postCode',
+  'TEXT'
+)
+
 /* =========================================
 POSTS TABLE SQL CHECK
 ========================================= */
@@ -3313,6 +3319,12 @@ WHERE EXISTS(
 
 `)
 
+db.exec(`
+UPDATE posts
+SET postCode = 'T' || substr('000000' || id, -6, 6)
+WHERE postCode IS NULL
+`)
+
 /* =========================================
 INDEX
 ========================================= */
@@ -3443,6 +3455,17 @@ CREATE INDEX IF NOT EXISTS
 idx_posts_channel_industry_created
 ON posts(channelCode, industryId, createdAt)
 
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_channel_post_code_unique
+ON posts(channelCode, postCode)
+WHERE postCode IS NOT NULL
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_posts_post_code
+ON posts(postCode)
 `)
 
 //=======================================================
@@ -5052,6 +5075,18 @@ safeAddColumn(
 )
 
 safeAddColumn(
+  'pos_products',
+  'favoriteProfileCount',
+  'INTEGER NOT NULL DEFAULT 0 CHECK(favoriteProfileCount >= 0)'
+)
+
+safeAddColumn(
+  'pos_products',
+  'favoriteUpdatedAt',
+  'TEXT'
+)
+
+safeAddColumn(
   'pos_product_thumbnails',
   'productCode',
   'TEXT'
@@ -6390,6 +6425,197 @@ db.exec(`
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_products_channel_product_code_unique
 ON pos_products(channelCode, productCode)
 WHERE productCode IS NOT NULL
+`)
+
+//========================================================
+// SECTION : PROFILE / PRODUCT / POST RELATION TABLES
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS profile_favorites(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+actorProfileId INTEGER NOT NULL,
+actorChannelCode TEXT NOT NULL,
+providerProfileId INTEGER NOT NULL,
+providerChannelCode TEXT NOT NULL,
+providerProfileType TEXT NOT NULL CHECK(providerProfileType IN('GENERAL','BUSINESS')),
+status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','DELETED')),
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY(actorProfileId) REFERENCES profiles(id),
+FOREIGN KEY(actorChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(providerProfileId) REFERENCES profiles(id),
+FOREIGN KEY(providerChannelCode) REFERENCES profiles(channelCode),
+UNIQUE(actorChannelCode, providerChannelCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_favorites_actor_channel
+ON profile_favorites(actorChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_favorites_provider_channel
+ON profile_favorites(providerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_favorites_status
+ON profile_favorites(status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_favorites_actor_status_created
+ON profile_favorites(actorChannelCode, status, createdAt)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_favorites_provider_status
+ON profile_favorites(providerChannelCode, status)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS product_favorites(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+actorProfileId INTEGER NOT NULL,
+actorChannelCode TEXT NOT NULL,
+providerProfileId INTEGER NOT NULL,
+providerChannelCode TEXT NOT NULL,
+productId INTEGER,
+productCode TEXT NOT NULL,
+status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','DELETED')),
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY(actorProfileId) REFERENCES profiles(id),
+FOREIGN KEY(actorChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(providerProfileId) REFERENCES profiles(id),
+FOREIGN KEY(providerChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(productId) REFERENCES pos_products(id),
+UNIQUE(actorChannelCode, providerChannelCode, productCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_actor_channel
+ON product_favorites(actorChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_provider_channel
+ON product_favorites(providerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_product_code
+ON product_favorites(productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_status
+ON product_favorites(status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_actor_status_created
+ON product_favorites(actorChannelCode, status, createdAt)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_provider_product_status
+ON product_favorites(providerChannelCode, productCode, status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_products_favorite_profile_count
+ON pos_products(favoriteProfileCount)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_products_favorite_updated_at
+ON pos_products(favoriteUpdatedAt)
+`)
+
+db.exec(`
+UPDATE pos_products
+SET
+  favoriteProfileCount = (
+    SELECT COUNT(DISTINCT pf.actorChannelCode)
+    FROM product_favorites pf
+    WHERE pf.providerChannelCode = pos_products.channelCode
+      AND pf.productCode = pos_products.productCode
+      AND pf.status = 'ACTIVE'
+  ),
+  favoriteUpdatedAt = CURRENT_TIMESTAMP
+WHERE productCode IS NOT NULL
+`)
+
+db.exec(`
+UPDATE pos_products
+SET favoriteProfileCount = 0
+WHERE favoriteProfileCount IS NULL
+   OR favoriteProfileCount < 0
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS post_recommendations(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+actorProfileId INTEGER NOT NULL,
+actorChannelCode TEXT NOT NULL,
+providerProfileId INTEGER NOT NULL,
+providerChannelCode TEXT NOT NULL,
+postId INTEGER,
+postCode TEXT NOT NULL,
+postType TEXT NOT NULL CHECK(postType IN('GENERAL','GALLERY','PRODUCT','EVENT','REVIEW')),
+status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','DELETED')),
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY(actorProfileId) REFERENCES profiles(id),
+FOREIGN KEY(actorChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(providerProfileId) REFERENCES profiles(id),
+FOREIGN KEY(providerChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(postId) REFERENCES posts(id),
+UNIQUE(actorChannelCode, providerChannelCode, postCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_actor_channel
+ON post_recommendations(actorChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_provider_channel
+ON post_recommendations(providerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_post_code
+ON post_recommendations(postCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_post_type
+ON post_recommendations(postType)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_status
+ON post_recommendations(status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_actor_status_created
+ON post_recommendations(actorChannelCode, status, createdAt)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_provider_post_status
+ON post_recommendations(providerChannelCode, postCode, status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_provider_type_status
+ON post_recommendations(providerChannelCode, postType, status)
 `)
 
 db.exec(`

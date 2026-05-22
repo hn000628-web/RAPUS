@@ -3,18 +3,20 @@
 // STATUS : CREATE MODE
 // ROLE : PUBLIC BUSINESS CHANNEL DELIVERY ORDER CONTENT COMPONENT
 // CHANGE SUMMARY :
-// - 諛곕떖 二쇰Ц ?꾩슜 UI 蹂몄껜 ?좉퇋 ?앹꽦
-// - 硫붾돱 ?좏깮 / ?섎웾 ?좏깮 / ?듭뀡 ?좏깮 / 諛곗넚吏 / ?곕씫泥?/ 諛곕떖 ?붿껌?ы빆 / 二쇰Ц ?뺤씤 UI 援ъ꽦
-// - ?쒕툝由?湲곗? 2而щ읆 二쇰Ц ?낅젰 援ъ“ ?곸슜
-// - 紐⑤컮?쇱뿉?쒕뒗 1而щ읆?쇰줈 ???媛?ν븳 grid 援ъ“ ?곸슜
-// - ?꾩옱 ?④퀎??UI only 紐⑹뾽 援ъ“
-// - API ?몄텧 / DB ?묎렐 / 濡쒓렇??二쇱냼 議고쉶 / 二쇰Ц ?앹꽦 / 寃곗젣 ?곌껐 ?놁쓬
+// - 배달 주문 전용 UI 본문 구성
+// - 메뉴 선택 / 수량 선택 / 옵션 선택 / 배송지 / 연락처 / 요청사항 / 주문 확인 UI 구성
+// - 데스크톱 2열 주문 입력 레이아웃 적용
+// - 모바일 1열 전환 가능한 grid 구조 적용
+// - 현재 단계는 UI 중심 구성
+// - API 호출은 주문 조회/접수 범위만 사용 (DB 직접 접근 없음)
 
 'use client'
 
 // SECTION 01 : IMPORT
 
 import {
+  type KeyboardEvent,
+  type MouseEvent,
   type ReactNode,
   useEffect,
   useMemo,
@@ -30,6 +32,10 @@ import {
   type CreateCustomerOrderRequest,
   type CustomerOrderBootstrapResponse
 } from '@/lib/business/pos/customerOrderApi'
+import {
+  getProductFavoriteStatus,
+  toggleProductFavorite
+} from '@/lib/favoritesApi'
 import { getMe } from '@/lib/authApi'
 import { mediaUrl } from '@/lib/media'
 import {
@@ -48,6 +54,7 @@ type Props = {
 
 type OrderMenuItem = {
   id: string
+  productCode?: string | null
   categoryKey: string
   name: string
   description: string
@@ -343,6 +350,39 @@ const menuThumbPricePillStyle: CSSProperties = {
   lineHeight: 1,
   whiteSpace: 'nowrap',
   boxShadow: '0 6px 16px rgba(15, 23, 42, 0.16)'
+}
+
+const menuThumbFavoriteButtonStyle: CSSProperties = {
+  position: 'absolute',
+  left: '8px',
+  bottom: '8px',
+  width: '30px',
+  height: '30px',
+  borderRadius: '999px',
+  border: '1px solid rgba(148, 163, 184, 0.7)',
+  backgroundColor: 'rgba(255, 255, 255, 0.96)',
+  color: '#111827',
+  fontSize: '16px',
+  fontWeight: 900,
+  lineHeight: 1,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  userSelect: 'none',
+  boxShadow: '0 4px 12px rgba(15, 23, 42, 0.16)',
+  zIndex: 2
+}
+
+const menuThumbFavoriteButtonActiveStyle: CSSProperties = {
+  ...menuThumbFavoriteButtonStyle,
+  color: '#e11d48'
+}
+
+const menuThumbFavoriteButtonLoadingStyle: CSSProperties = {
+  ...menuThumbFavoriteButtonStyle,
+  opacity: 0.6,
+  cursor: 'default'
 }
 
 const menuButtonTopStyle: CSSProperties = {
@@ -846,6 +886,8 @@ export default function DeliveryOrderContent({
   const [isDeliveryModalOpen, setIsDeliveryModalOpen] =
     useState<boolean>(false)
   const [failedMenuThumbnailKeys, setFailedMenuThumbnailKeys] = useState<Set<string>>(new Set())
+  const [favoriteProductMap, setFavoriteProductMap] = useState<Record<string, boolean>>({})
+  const [favoriteProductLoadingMap, setFavoriteProductLoadingMap] = useState<Record<string, boolean>>({})
 
   // SECTION 08 : MEMO DATA
 
@@ -890,6 +932,7 @@ export default function DeliveryOrderContent({
 
         const nextMenuItems: OrderMenuItem[] = response.products.map((product) => ({
           id: String(product.id),
+          productCode: product.productCode ?? null,
           categoryKey: response.categories.find((category) => category.id === product.categoryId)?.categoryCode ?? 'UNCATEGORIZED',
           name: product.productName,
           description: product.productDescription ?? '',
@@ -1043,6 +1086,105 @@ export default function DeliveryOrderContent({
   function getMenuThumbnailKey(item: OrderMenuItem): string {
     const path = item.thumbnailFilePath?.trim() ?? ''
     return `${item.id}:${path || item.name}`
+  }
+
+  function getFavoriteItemKey(productCode: string): string {
+    return `${channelCode}:${productCode}`
+  }
+
+  function getItemProductCode(item: OrderMenuItem): string | null {
+    const raw = String(item.productCode ?? '').trim()
+    return raw.length > 0 ? raw : null
+  }
+
+  useEffect(() => {
+    if (!channelCode || menuItems.length === 0) {
+      return
+    }
+
+    let cancelled = false
+    const productCodeSet = new Set<string>()
+    menuItems.forEach((item) => {
+      const code = getItemProductCode(item)
+      if (code) {
+        productCodeSet.add(code)
+      }
+    })
+
+    if (productCodeSet.size === 0) {
+      return
+    }
+
+    const fetchStatuses = async () => {
+      const updates: Record<string, boolean> = {}
+      await Promise.all(
+        Array.from(productCodeSet).map(async (productCode) => {
+          try {
+            const response = await getProductFavoriteStatus({
+              providerChannelCode: channelCode,
+              productCode
+            })
+            updates[getFavoriteItemKey(productCode)] = Boolean(response?.isActive)
+          } catch {
+            // 조회 실패 시 기존 상태를 유지한다.
+          }
+        })
+      )
+
+      if (!cancelled && Object.keys(updates).length > 0) {
+        setFavoriteProductMap((prev) => ({
+          ...prev,
+          ...updates
+        }))
+      }
+    }
+
+    void fetchStatuses()
+
+    return () => {
+      cancelled = true
+    }
+  }, [channelCode, menuItems])
+
+  async function handleToggleProductFavorite(
+    item: OrderMenuItem,
+    event: MouseEvent<HTMLSpanElement> | KeyboardEvent<HTMLSpanElement>
+  ) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    const productCode = getItemProductCode(item)
+    if (!channelCode || !productCode) {
+      return
+    }
+
+    const favoriteKey = getFavoriteItemKey(productCode)
+    if (favoriteProductLoadingMap[favoriteKey]) {
+      return
+    }
+
+    setFavoriteProductLoadingMap((prev) => ({
+      ...prev,
+      [favoriteKey]: true
+    }))
+
+    try {
+      const response = await toggleProductFavorite({
+        providerChannelCode: channelCode,
+        productCode
+      })
+      setFavoriteProductMap((prev) => ({
+        ...prev,
+        [favoriteKey]: Boolean(response?.isFavorite)
+      }))
+    } catch {
+      // 실패 시 UI 상태를 강제 변경하지 않는다.
+    } finally {
+      setFavoriteProductLoadingMap((prev) => ({
+        ...prev,
+        [favoriteKey]: false
+      }))
+    }
   }
 
   function markMenuThumbnailFailed(item: OrderMenuItem) {
@@ -1263,6 +1405,10 @@ export default function DeliveryOrderContent({
       <div style={menuGridStyle}>
         {visibleProducts.map(item => {
           const isSelected = item.id === selectedMenuId
+          const productCode = getItemProductCode(item)
+          const favoriteKey = productCode ? getFavoriteItemKey(productCode) : null
+          const isFavorite = favoriteKey ? Boolean(favoriteProductMap[favoriteKey]) : false
+          const isFavoriteLoading = favoriteKey ? Boolean(favoriteProductLoadingMap[favoriteKey]) : false
           const thumbnailUrl = mediaUrl(item.thumbnailFilePath)
           const thumbnailKey = getMenuThumbnailKey(item)
           const shouldRenderImageCard =
@@ -1295,6 +1441,31 @@ export default function DeliveryOrderContent({
                   />
                   <span style={menuThumbTitlePillStyle}>{item.name}</span>
                   <span style={menuThumbPricePillStyle}>{formatPrice(item.price)}</span>
+                  {productCode ? (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      aria-label={isFavorite ? '상품 찜 해제' : '상품 찜 등록'}
+                      aria-pressed={isFavorite}
+                      style={
+                        isFavoriteLoading
+                          ? menuThumbFavoriteButtonLoadingStyle
+                          : isFavorite
+                            ? menuThumbFavoriteButtonActiveStyle
+                            : menuThumbFavoriteButtonStyle
+                      }
+                      onClick={(event) => {
+                        void handleToggleProductFavorite(item, event)
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          void handleToggleProductFavorite(item, event)
+                        }
+                      }}
+                    >
+                      {isFavorite ? '♥' : '♡'}
+                    </span>
+                  ) : null}
                   {isSelected ? (
                     <span
                       style={{

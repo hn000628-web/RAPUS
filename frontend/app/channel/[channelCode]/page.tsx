@@ -46,6 +46,10 @@ import {
   getBusinessMenus,
   type MenuItem
 } from '@/lib/business/menuApi'
+import {
+  getProfileFavoriteStatus,
+  toggleProfileFavorite
+} from '@/lib/favoritesApi'
 import TopMenuZone from '@/components/topbar/TopMenuZone'
 
 import ChannelInfo from './components/MenuBar/channelInfo'
@@ -490,6 +494,90 @@ export default function PublicChannelPage({
 
   const [viewerMode, setViewerMode] =
     useState<'hero' | 'avatar'>('hero')
+
+  const [isFavoriteRegistered, setIsFavoriteRegistered] =
+    useState(false)
+
+  const [isFavoriteLoading, setIsFavoriteLoading] =
+    useState(false)
+
+  const detailFavoriteFallback = useMemo(() => {
+    const source = detail as unknown as Record<string, unknown> | null
+    if (!source) {
+      return false
+    }
+
+    const directCandidate =
+      source.isSaved ??
+      source.isFavorite ??
+      source.isBookmarked ??
+      source.bookmarked ??
+      source.saved
+
+    if (typeof directCandidate === 'boolean') {
+      return directCandidate
+    }
+
+    const relationCandidate = source.relation as Record<string, unknown> | undefined
+    if (!relationCandidate) {
+      return false
+    }
+
+    const nestedCandidate =
+      relationCandidate.isSaved ??
+      relationCandidate.isFavorite ??
+      relationCandidate.isBookmarked ??
+      relationCandidate.bookmarked ??
+      relationCandidate.saved
+
+    return typeof nestedCandidate === 'boolean'
+      ? nestedCandidate
+      : false
+  }, [detail])
+
+  useEffect(() => {
+    if (!channelCode) {
+      setIsFavoriteRegistered(false)
+      return
+    }
+
+    let canceled = false
+
+    const loadFavoriteStatus = async () => {
+      try {
+        const response = await getProfileFavoriteStatus(channelCode)
+        if (!canceled) {
+          setIsFavoriteRegistered(Boolean(response?.isActive))
+        }
+      } catch {
+        if (!canceled) {
+          setIsFavoriteRegistered(detailFavoriteFallback)
+        }
+      }
+    }
+
+    loadFavoriteStatus()
+
+    return () => {
+      canceled = true
+    }
+  }, [channelCode, detailFavoriteFallback])
+
+  const handleFavoriteToggle = useCallback(async () => {
+    if (!channelCode || isFavoriteLoading) {
+      return
+    }
+
+    setIsFavoriteLoading(true)
+    try {
+      const response = await toggleProfileFavorite(channelCode)
+      setIsFavoriteRegistered(Boolean(response?.isFavorite))
+    } catch {
+      // 인증 만료/네트워크 오류는 기존 상태를 유지한다.
+    } finally {
+      setIsFavoriteLoading(false)
+    }
+  }, [channelCode, isFavoriteLoading])
 
   // SECTION 08 : MENU SCROLL FUNCTION
 
@@ -1443,9 +1531,15 @@ export default function PublicChannelPage({
             <div className={styles.actionGroup}>
               <button
                 type="button"
-                className={styles.actionButton}
+                className={`${styles.actionButton} ${styles.favoriteActionButton}`}
+                aria-label={isFavoriteRegistered ? '즐겨찾기 해제' : '즐겨찾기 등록'}
+                aria-pressed={isFavoriteRegistered}
+                onClick={handleFavoriteToggle}
+                disabled={isFavoriteLoading}
               >
-                저장
+                <span className={styles.favoriteActionIcon} aria-hidden="true">
+                  {isFavoriteRegistered ? '♥' : '♡'}
+                </span>
               </button>
 
               <button
