@@ -1,0 +1,859 @@
+즐겨찾기 = profile_favorites
+상품찜 = product_favorites
+포스트추천 = post_recommendations
+==============================
+WHO(actorChannelCode)
+→ WHO(providerChannelCode)
+→ WHAT(productCode / postCode)
+=============================
+
+actor = 누가 눌렀는가
+target/provider = 누구의 자산인가
+object = 어떤 대상인가
+============================
+providerChannelCode + productCode
+= 해당 사업자의 특정 상품
+
+providerChannelCode + postCode
+= 해당 채널의 특정 포스트
+
+actorChannelCode + providerChannelCode + 대상코드
+= 누가 어떤 제공자의 어떤 대상을 눌렀는가
+
+===============================
+profile_favorites
+= actorChannelCode + providerChannelCode
+
+product_favorites
+= actorChannelCode + providerChannelCode + productCode
+
+post_recommendations
+= actorChannelCode + providerChannelCode + postCode
+==================================
+// FILE : docs/FAVORITE_RECOMMENDATION_RELATION_SNAPSHOT.txt
+// ROOT : C:\Users\kjm\social-platform\docs\FAVORITE_RECOMMENDATION_RELATION_SNAPSHOT.txt
+// STATUS : PRODUCTION LOCK
+// ROLE : PROFILE FAVORITE / PRODUCT FAVORITE / POST RECOMMENDATION RELATION RULE
+// CHANGE SUMMARY :
+// - 즐겨찾기 / 상품찜 / 포스트추천 관계 테이블 기준 고정
+// - ID 중심이 아닌 channelCode + 대상코드 중심 식별 원칙 고정
+// - profile_favorites / product_favorites / post_recommendations 3테이블 분리 확정
+// - actorChannelCode / providerChannelCode / productCode / postCode 역할 고정
+// - 내부 ID는 JOIN 보조키, 코드 조합은 영속 식별키로 분리
+
+/* ==================================================
+SECTION 01 : CORE DECLARATION
+================================================== */
+
+추천 / 즐겨찾기 / 찜 기능은
+단일 컬럼 또는 통합 테이블로 처리하지 않는다.
+
+최종 테이블은 다음 3개로 분리한다.
+
+1. profile_favorites
+   - 일반 프로필 / 비즈니스 프로필 즐겨찾기
+
+2. product_favorites
+   - 사업자 상품 / POS 상품 찜
+
+3. post_recommendations
+   - 일반 게시물 / 상품 게시물 / 이벤트 게시물 추천
+
+절대 원칙:
+
+각 기능은 대상 도메인이 다르므로
+테이블 책임을 분리한다.
+
+혼합 테이블 금지.
+
+예:
+
+favorites(type = PROFILE / PRODUCT / POST) 구조 금지
+
+이유:
+
+- 대상 JOIN 기준이 다름
+- UNIQUE 기준이 다름
+- 조회 화면이 다름
+- 서비스 로직이 다름
+- 추천 / 찜 / 즐겨찾기 의미가 다름
+
+/* ==================================================
+SECTION 02 : IDENTITY PRINCIPLE
+================================================== */
+
+본 기능의 핵심 식별 구조는 다음과 같다.
+
+WHO(actorChannelCode)
+→ WHO(providerChannelCode)
+→ WHAT(productCode / postCode)
+
+정의:
+
+actorChannelCode
+
+= 행위를 수행한 주체
+= 즐겨찾기 / 찜 / 추천을 누른 사용자 프로필 채널코드
+
+providerChannelCode
+
+= 대상 자산을 제공하는 채널
+= 프로필 / 상품 / 포스트의 소유 채널코드
+
+productCode
+
+= providerChannelCode 내부의 상품 식별 코드
+
+postCode
+
+= providerChannelCode 내부의 포스트 식별 코드
+
+최종 의미:
+
+providerChannelCode + productCode
+= 해당 사업자의 특정 상품
+
+providerChannelCode + postCode
+= 해당 채널의 특정 포스트
+
+actorChannelCode + providerChannelCode + 대상코드
+= 누가 어떤 제공자의 어떤 대상을 눌렀는가
+
+/* ==================================================
+SECTION 03 : ID VS CODE RULE
+================================================== */
+
+id / profileId / productId / postId 는
+내부 JOIN 보조키이다.
+
+channelCode / productCode / postCode 는
+영속 식별키이다.
+
+절대 기준:
+
+ID는 바뀔 수 있다.
+channelCode는 바뀌면 안 된다.
+
+따라서 관계 테이블의 무결성 기준은
+내부 ID가 아니라 코드 조합을 우선한다.
+
+허용:
+
+- profileId
+- productId
+- postId
+
+역할:
+
+- 내부 JOIN 최적화
+- 조회 성능 보조
+- API 내부 처리 보조
+
+절대 기준:
+
+- actorChannelCode
+- providerChannelCode
+- productCode
+- postCode
+
+역할:
+
+- 관계 복구
+- 로그 추적
+- 외부 조회
+- 장기 무결성
+- 마이그레이션 안정성
+
+/* ==================================================
+SECTION 04 : PROFILE FAVORITES RULE
+================================================== */
+
+TABLE:
+
+profile_favorites
+
+ROLE:
+
+일반 프로필 / 비즈니스 프로필 즐겨찾기 관계 저장
+
+대상:
+
+- GENERAL profile
+- BUSINESS profile
+
+식별 구조:
+
+actorChannelCode + providerChannelCode
+
+의미:
+
+actorChannelCode
+
+= 즐겨찾기를 누른 프로필
+
+providerChannelCode
+
+= 즐겨찾기 대상 프로필
+
+UNIQUE 기준:
+
+UNIQUE(actorChannelCode, providerChannelCode)
+
+필수 컬럼:
+
+id
+actorProfileId
+actorChannelCode
+providerProfileId
+providerChannelCode
+providerProfileType
+status
+createdAt
+updatedAt
+
+status 값:
+
+ACTIVE
+DELETED
+
+주의:
+
+providerChannelCode 는 사업자만 의미하지 않는다.
+profile_favorites 에서는 즐겨찾기 대상 프로필 채널을 의미한다.
+
+즉:
+
+GENERAL / BUSINESS 공용 대상이다.
+
+/* ==================================================
+SECTION 05 : PRODUCT FAVORITES RULE
+================================================== */
+
+TABLE:
+
+product_favorites
+
+ROLE:
+
+상품 찜 관계 저장
+
+대상:
+
+- POS 상품
+- 상품 게시물과 연결된 상품
+- 사업자 제공 상품
+
+식별 구조:
+
+actorChannelCode + providerChannelCode + productCode
+
+의미:
+
+actorChannelCode
+
+= 상품을 찜한 프로필
+
+providerChannelCode
+
+= 상품 제공 사업자 채널
+
+productCode
+
+= providerChannelCode 내부 상품 코드
+
+UNIQUE 기준:
+
+UNIQUE(actorChannelCode, providerChannelCode, productCode)
+
+필수 컬럼:
+
+id
+actorProfileId
+actorChannelCode
+providerProfileId
+providerChannelCode
+productId
+productCode
+status
+createdAt
+updatedAt
+
+status 값:
+
+ACTIVE
+DELETED
+
+주의:
+
+productCode 단독 사용 금지.
+
+productCode 는 providerChannelCode 내부에서만 의미가 완성된다.
+
+정답:
+
+providerChannelCode + productCode
+
+금지:
+
+productId 단독 기준
+productCode 단독 기준
+productName 기준
+JSON 배열 저장
+
+/* ==================================================
+SECTION 06 : POST RECOMMENDATIONS RULE
+================================================== */
+
+TABLE:
+
+post_recommendations
+
+ROLE:
+
+포스트 추천 관계 저장
+
+대상:
+
+- 일반 게시물
+- 상품 게시물
+- 이벤트 게시물
+- 리뷰 게시물
+- 갤러리 게시물
+
+식별 구조:
+
+actorChannelCode + providerChannelCode + postCode
+
+의미:
+
+actorChannelCode
+
+= 추천을 누른 프로필
+
+providerChannelCode
+
+= 포스트 작성자 / 소유 채널
+
+postCode
+
+= providerChannelCode 내부 포스트 코드
+
+UNIQUE 기준:
+
+UNIQUE(actorChannelCode, providerChannelCode, postCode)
+
+필수 컬럼:
+
+id
+actorProfileId
+actorChannelCode
+providerProfileId
+providerChannelCode
+postId
+postCode
+postType
+status
+createdAt
+updatedAt
+
+status 값:
+
+ACTIVE
+DELETED
+
+주의:
+
+postCode 단독 사용 금지.
+
+postCode 는 providerChannelCode 내부에서만 의미가 완성된다.
+
+정답:
+
+providerChannelCode + postCode
+
+금지:
+
+postId 단독 기준
+postCode 단독 기준
+content 기준
+title 기준
+
+/* ==================================================
+SECTION 07 : POST CODE REQUIREMENT
+================================================== */
+
+post_recommendations 구조를 안정적으로 사용하려면
+posts 테이블에는 postCode 가 필요하다.
+
+postCode 역할:
+
+- providerChannelCode 내부 포스트 식별자
+- 포스트 추천 관계의 영속 대상 코드
+- 내부 postId 변경 시 관계 복구 기준
+
+필수 원칙:
+
+providerChannelCode + postCode 조합은 고유해야 한다.
+
+권장 UNIQUE:
+
+UNIQUE(channelCode, postCode)
+
+또는 posts 테이블에서 providerChannelCode 명칭을 쓰는 경우:
+
+UNIQUE(providerChannelCode, postCode)
+
+단, 현재 posts 테이블이 channelCode 를 소유 채널로 사용한다면:
+
+channelCode = providerChannelCode 의미로 해석한다.
+
+주의:
+
+postCode 생성은 Backend Service 에서만 수행한다.
+Frontend 생성 금지.
+Client 전달 금지.
+수동 입력 금지.
+
+/* ==================================================
+SECTION 08 : PRODUCT CODE REQUIREMENT
+================================================== */
+
+product_favorites 구조는
+pos_products.productCode 를 기준으로 한다.
+
+productCode 역할:
+
+- providerChannelCode 내부 상품 식별자
+- 상품 찜 관계의 영속 대상 코드
+- productId 변경 시 관계 복구 기준
+
+필수 원칙:
+
+providerChannelCode + productCode 조합은 고유해야 한다.
+
+권장 UNIQUE:
+
+UNIQUE(channelCode, productCode)
+
+또는 상품 찜 테이블 기준:
+
+UNIQUE(actorChannelCode, providerChannelCode, productCode)
+
+주의:
+
+productCode 단독 UNIQUE 금지.
+productCode 는 사업자별 코드이다.
+
+/* ==================================================
+SECTION 09 : NAMING RULE
+================================================== */
+
+다중 주체 / 관계 테이블에서는
+role + ChannelCode 네이밍을 사용한다.
+
+허용:
+
+actorChannelCode
+providerChannelCode
+targetChannelCode
+
+본 스냅샷에서는 다음을 사용한다.
+
+actorChannelCode
+
+= 행위자
+
+providerChannelCode
+
+= 대상 자산 제공자 / 대상 프로필 / 포스트 작성자 / 상품 제공자
+
+금지:
+
+channelCode 단독 사용
+providerCode
+ownerCode
+userCode
+profileChannel
+targetId 단독 사용
+
+providerCode 금지 이유:
+
+- 채널코드인지 외부 공급자 코드인지 불명확
+- 플랫폼 식별자 규칙과 충돌
+- role + ChannelCode 규칙 위반
+
+정답:
+
+providerChannelCode
+
+/* ==================================================
+SECTION 10 : DB RESPONSIBILITY RULE
+================================================== */
+
+각 테이블 책임은 다음과 같다.
+
+profile_favorites
+
+= 프로필 즐겨찾기 관계만 저장
+
+product_favorites
+
+= 상품 찜 관계만 저장
+
+post_recommendations
+
+= 포스트 추천 관계만 저장
+
+금지:
+
+- 하나의 favorites 테이블에 type 으로 통합
+- profile_favorites 에 productCode 저장
+- product_favorites 에 postCode 저장
+- post_recommendations 에 productCode 저장
+- count 캐시를 relation table 의 source of truth 로 사용
+
+집계 카운트가 필요할 경우:
+
+profile_favorite_counts
+product_favorite_counts
+post_recommendation_counts
+
+또는 각 대상 도메인의 engagement cache에서 별도 관리한다.
+
+관계 테이블은 source of truth 이다.
+카운트 테이블은 cache 이다.
+
+/* ==================================================
+SECTION 11 : SOFT DELETE RULE
+================================================== */
+
+즐겨찾기 / 찜 / 추천은 물리 삭제보다
+soft delete 를 기본으로 한다.
+
+status:
+
+ACTIVE
+DELETED
+
+등록:
+
+기존 row 없음
+→ INSERT ACTIVE
+
+기존 row DELETED
+→ UPDATE status = ACTIVE
+
+해제:
+
+UPDATE status = DELETED
+
+이유:
+
+- 사용자 행동 이력 유지
+- 추천 품질 분석 가능
+- 중복 insert 방지
+- 복구 가능
+- abuse tracking 가능
+
+물리 삭제는 운영자 정리 작업 또는 개인정보 정책에 따라 별도 처리한다.
+
+/* ==================================================
+SECTION 12 : UNIQUE RULE
+================================================== */
+
+최종 UNIQUE 기준:
+
+profile_favorites
+
+UNIQUE(actorChannelCode, providerChannelCode)
+
+product_favorites
+
+UNIQUE(actorChannelCode, providerChannelCode, productCode)
+
+post_recommendations
+
+UNIQUE(actorChannelCode, providerChannelCode, postCode)
+
+목적:
+
+- 중복 즐겨찾기 방지
+- 중복 상품찜 방지
+- 중복 포스트추천 방지
+- toggle 처리 단순화
+
+주의:
+
+status = DELETED 라도 같은 UNIQUE row 를 재사용한다.
+재등록 시 INSERT가 아니라 UPDATE 한다.
+
+/* ==================================================
+SECTION 13 : INDEX RULE
+================================================== */
+
+필수 조회 패턴:
+
+1. 내가 즐겨찾기한 프로필 목록
+2. 내가 찜한 상품 목록
+3. 내가 추천한 포스트 목록
+4. 특정 프로필을 즐겨찾기한 사용자 수
+5. 특정 상품을 찜한 사용자 수
+6. 특정 포스트를 추천한 사용자 수
+
+필수 INDEX:
+
+profile_favorites:
+
+actorChannelCode
+providerChannelCode
+status
+createdAt
+
+product_favorites:
+
+actorChannelCode
+providerChannelCode
+productCode
+status
+createdAt
+
+post_recommendations:
+
+actorChannelCode
+providerChannelCode
+postCode
+postType
+status
+createdAt
+
+복합 INDEX 권장:
+
+profile_favorites:
+(actorChannelCode, status, createdAt)
+(providerChannelCode, status)
+
+product_favorites:
+(actorChannelCode, status, createdAt)
+(providerChannelCode, productCode, status)
+
+post_recommendations:
+(actorChannelCode, status, createdAt)
+(providerChannelCode, postCode, status)
+(providerChannelCode, postType, status)
+
+/* ==================================================
+SECTION 14 : API DESIGN RULE
+================================================== */
+
+기본 API는 toggle 중심으로 설계한다.
+
+profile_favorites:
+
+POST /api/favorites/profiles/toggle
+GET  /api/favorites/profiles/me
+
+product_favorites:
+
+POST /api/favorites/products/toggle
+GET  /api/favorites/products/me
+
+post_recommendations:
+
+POST /api/recommendations/posts/toggle
+GET  /api/recommendations/posts/me
+
+주의:
+
+Frontend 는 DB 직접 접근 금지.
+Frontend 는 API만 호출한다.
+Controller 는 Service만 호출한다.
+DB 접근은 Service만 수행한다.
+
+/* ==================================================
+SECTION 15 : SERVICE RULE
+================================================== */
+
+Service 책임:
+
+1. 로그인 프로필 확인
+2. actorProfileId / actorChannelCode 확정
+3. providerChannelCode 유효성 검증
+4. productCode / postCode 유효성 검증
+5. 대상 row 존재 확인
+6. UNIQUE 기준으로 기존 row 조회
+7. ACTIVE / DELETED toggle 처리
+8. 결과 반환
+
+Service 외부에서 처리 금지:
+
+- DB query
+- toggle 판단
+- provider 검증
+- 대상 존재 검증
+
+Controller 역할:
+
+- Request 수신
+- Service 호출
+- Response 반환
+
+/* ==================================================
+SECTION 16 : FRONTEND RULE
+================================================== */
+
+Frontend 역할:
+
+- 하트 아이콘 표시
+- 추천 버튼 표시
+- API 호출
+- 상태 반영
+
+Frontend 금지:
+
+- DB 직접 접근
+- productCode 생성
+- postCode 생성
+- channelCode 임의 생성
+- providerChannelCode 임의 변경
+- 즐겨찾기 여부를 localStorage만으로 확정
+
+UI 표시:
+
+profile_favorites:
+
+♡ / ♥
+즐겨찾기 등록 / 즐겨찾기 해제
+
+product_favorites:
+
+♡ / ♥
+상품 찜 / 상품 찜 해제
+
+post_recommendations:
+
+추천 / 추천됨
+
+/* ==================================================
+SECTION 17 : FINAL TABLE SUMMARY
+================================================== */
+
+최종 테이블:
+
+1. profile_favorites
+
+식별:
+
+actorChannelCode + providerChannelCode
+
+2. product_favorites
+
+식별:
+
+actorChannelCode + providerChannelCode + productCode
+
+3. post_recommendations
+
+식별:
+
+actorChannelCode + providerChannelCode + postCode
+
+최종 원칙:
+
+ID는 바뀔 수 있다.
+channelCode는 바뀌면 안 된다.
+
+productId / postId / profileId 는 내부 JOIN 보조키이다.
+
+providerChannelCode + productCode
+providerChannelCode + postCode
+
+위 조합이 영속 관계 식별 기준이다.
+
+/* ==================================================
+SECTION 18 : FINAL DECLARATION
+================================================== */
+
+추천 / 즐겨찾기 / 찜 관계의 최종 기준은 다음과 같다.
+
+WHO(actorChannelCode)
+→ WHO(providerChannelCode)
+→ WHAT(productCode / postCode)
+
+profile_favorites
+
+= actorChannelCode + providerChannelCode
+
+product_favorites
+
+= actorChannelCode + providerChannelCode + productCode
+
+post_recommendations
+
+= actorChannelCode + providerChannelCode + postCode
+
+본 스냅샷 이후
+프로필 즐겨찾기 / 상품 찜 / 포스트 추천 기능은
+위 구조를 기준으로 설계한다.
+
+/* ==================================================
+SECTION 19 : CHANNEL SCOPED CODE RULE
+================================================== */
+
+productCode / postCode 는 전역 유니크 코드가 아니다.
+
+productCode 는 providerChannelCode 내부에서만 유니크하다.
+
+postCode 는 providerChannelCode 내부에서만 유니크하다.
+
+즉:
+
+providerChannelCode + productCode
+= 플랫폼 내 특정 상품
+
+providerChannelCode + postCode
+= 플랫폼 내 특정 포스트
+
+다른 providerChannelCode 에서 동일한 productCode / postCode 가 존재해도
+충돌로 보지 않는다.
+
+필수 UNIQUE 기준:
+
+pos_products:
+
+UNIQUE(channelCode, productCode)
+
+posts:
+
+UNIQUE(channelCode, postCode)
+
+금지:
+
+UNIQUE(productCode)
+UNIQUE(postCode)
+
+이유:
+
+- productCode / postCode 는 채널 내부 코드이다.
+- channelCode 가 소유 좌표이다.
+- 코드 단독 전역 유니크는 불필요하다.
+- 채널 단위 백업 / 이관 / 복구에 유리하다.
+- 관계 테이블의 식별 기준과 일치한다.
+
+관계 테이블 기준:
+
+product_favorites:
+
+UNIQUE(actorChannelCode, providerChannelCode, productCode)
+
+post_recommendations:
+
+UNIQUE(actorChannelCode, providerChannelCode, postCode)
+
+최종 선언:
+
+포스트 / 프로덕트는
+채널코드 + 대상코드 조합으로 식별한다.
+
+대상코드는 절대 단독 식별자로 사용하지 않는다.
+
+END OF SNAPSHOT

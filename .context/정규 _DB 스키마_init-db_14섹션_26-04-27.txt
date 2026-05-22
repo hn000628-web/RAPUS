@@ -2538,6 +2538,179 @@ ON business_hours(alwaysOpen)
 `)
 
 //=====================================================
+// SECTION 06-16 : PROFILE DELIVERY SETTINGS (1 PROFILE = 1 ROW)
+//=====================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS profile_delivery_settings(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profileId INTEGER NOT NULL,
+  channelCode TEXT NOT NULL,
+  deliveryAddress TEXT,
+  deliveryDetailAddress TEXT,
+  entrancePassword TEXT,
+  deliveryMemo TEXT,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN (0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(profileId),
+  FOREIGN KEY(profileId) REFERENCES profiles(id),
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode)
+)
+`)
+
+safeAddColumn('profile_delivery_settings', 'channelCode', 'TEXT')
+safeAddColumn('profile_delivery_settings', 'deliveryAddress', 'TEXT')
+safeAddColumn('profile_delivery_settings', 'deliveryDetailAddress', 'TEXT')
+safeAddColumn('profile_delivery_settings', 'entrancePassword', 'TEXT')
+safeAddColumn('profile_delivery_settings', 'deliveryMemo', 'TEXT')
+safeAddColumn('profile_delivery_settings', 'isActive', 'INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN (0,1))')
+safeAddColumn('profile_delivery_settings', 'createdAt', 'TEXT DEFAULT CURRENT_TIMESTAMP')
+safeAddColumn('profile_delivery_settings', 'updatedAt', 'TEXT DEFAULT CURRENT_TIMESTAMP')
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_settings_profile
+ON profile_delivery_settings(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_settings_channel
+ON profile_delivery_settings(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_settings_active
+ON profile_delivery_settings(isActive)
+`)
+
+//=====================================================
+// SECTION 06-17 : PROFILE DELIVERY ADDRESSES (1 PROFILE = N ROWS)
+//=====================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS profile_delivery_addresses(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profileId INTEGER NOT NULL,
+  channelCode TEXT NOT NULL,
+  label TEXT NOT NULL,
+  recipientName TEXT,
+  recipientPhone TEXT,
+  deliveryAddress TEXT NOT NULL,
+  deliveryDetailAddress TEXT,
+  entrancePassword TEXT,
+  deliveryMemo TEXT,
+  isDefault INTEGER NOT NULL DEFAULT 0 CHECK(isDefault IN (0,1)),
+  sortOrder INTEGER NOT NULL DEFAULT 0,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN (0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(profileId) REFERENCES profiles(id),
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  CHECK(length(trim(label)) > 0),
+  CHECK(length(trim(deliveryAddress)) > 0)
+)
+`)
+
+safeAddColumn('profile_delivery_addresses', 'channelCode', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'label', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'recipientName', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'recipientPhone', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'deliveryAddress', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'deliveryDetailAddress', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'entrancePassword', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'deliveryMemo', 'TEXT')
+safeAddColumn('profile_delivery_addresses', 'isDefault', 'INTEGER NOT NULL DEFAULT 0 CHECK(isDefault IN (0,1))')
+safeAddColumn('profile_delivery_addresses', 'sortOrder', 'INTEGER NOT NULL DEFAULT 0')
+safeAddColumn('profile_delivery_addresses', 'isActive', 'INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN (0,1))')
+safeAddColumn('profile_delivery_addresses', 'createdAt', 'TEXT DEFAULT CURRENT_TIMESTAMP')
+safeAddColumn('profile_delivery_addresses', 'updatedAt', 'TEXT DEFAULT CURRENT_TIMESTAMP')
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_addresses_profile
+ON profile_delivery_addresses(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_addresses_channel
+ON profile_delivery_addresses(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_addresses_active
+ON profile_delivery_addresses(isActive)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_delivery_addresses_sort
+ON profile_delivery_addresses(profileId, sortOrder)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_delivery_addresses_default
+ON profile_delivery_addresses(profileId)
+WHERE isDefault = 1
+  AND isActive = 1
+`)
+
+db.exec(`
+UPDATE profile_delivery_addresses
+SET
+  channelCode = COALESCE(
+    channelCode,
+    (
+      SELECT p.channelCode
+      FROM profiles p
+      WHERE p.id = profile_delivery_addresses.profileId
+      LIMIT 1
+    )
+  ),
+  label = COALESCE(NULLIF(trim(label), ''), '기본 배송지'),
+  isDefault = COALESCE(isDefault, 0),
+  sortOrder = COALESCE(sortOrder, 0),
+  isActive = COALESCE(isActive, 1),
+  updatedAt = COALESCE(updatedAt, CURRENT_TIMESTAMP)
+`)
+
+db.exec(`
+INSERT INTO profile_delivery_addresses(
+  profileId,
+  channelCode,
+  label,
+  deliveryAddress,
+  deliveryDetailAddress,
+  entrancePassword,
+  deliveryMemo,
+  isDefault,
+  sortOrder,
+  isActive,
+  createdAt,
+  updatedAt
+)
+SELECT
+  pds.profileId,
+  pds.channelCode,
+  '기본 배송지',
+  pds.deliveryAddress,
+  pds.deliveryDetailAddress,
+  pds.entrancePassword,
+  pds.deliveryMemo,
+  1,
+  0,
+  1,
+  COALESCE(pds.createdAt, CURRENT_TIMESTAMP),
+  CURRENT_TIMESTAMP
+FROM profile_delivery_settings pds
+WHERE COALESCE(pds.isActive, 1) = 1
+  AND pds.deliveryAddress IS NOT NULL
+  AND trim(pds.deliveryAddress) <> ''
+  AND NOT EXISTS (
+    SELECT 1
+    FROM profile_delivery_addresses pda
+    WHERE pda.profileId = pds.profileId
+  )
+`)
+
+//=====================================================
 // SECTION 07 : CHANNELS
 
 db.exec(`
@@ -2790,6 +2963,12 @@ safeAddColumn(
 safeAddColumn(
   'posts',
   'eventEndAt',
+  'TEXT'
+)
+
+safeAddColumn(
+  'posts',
+  'postCode',
   'TEXT'
 )
 
@@ -3140,6 +3319,12 @@ WHERE EXISTS(
 
 `)
 
+db.exec(`
+UPDATE posts
+SET postCode = 'T' || substr('000000' || id, -6, 6)
+WHERE postCode IS NULL
+`)
+
 /* =========================================
 INDEX
 ========================================= */
@@ -3270,6 +3455,17 @@ CREATE INDEX IF NOT EXISTS
 idx_posts_channel_industry_created
 ON posts(channelCode, industryId, createdAt)
 
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_channel_post_code_unique
+ON posts(channelCode, postCode)
+WHERE postCode IS NOT NULL
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_posts_post_code
+ON posts(postCode)
 `)
 
 //=======================================================
@@ -3880,6 +4076,16 @@ locationName TEXT NOT NULL,
 locationGroupName TEXT,
 capacity INTEGER,
 tableOptionName TEXT,
+floor TEXT DEFAULT '1층',
+zone TEXT DEFAULT '홀',
+floorSortOrder INTEGER DEFAULT 1,
+zoneSortOrder INTEGER DEFAULT 1,
+layoutX INTEGER DEFAULT 0,
+layoutY INTEGER DEFAULT 0,
+layoutWidth INTEGER DEFAULT 180,
+layoutHeight INTEGER DEFAULT 140,
+layoutRotate INTEGER DEFAULT 0,
+layoutShape TEXT DEFAULT 'RECT',
 tableCode TEXT
 CHECK(
   tableCode IS NULL
@@ -4869,6 +5075,18 @@ safeAddColumn(
 )
 
 safeAddColumn(
+  'pos_products',
+  'favoriteProfileCount',
+  'INTEGER NOT NULL DEFAULT 0 CHECK(favoriteProfileCount >= 0)'
+)
+
+safeAddColumn(
+  'pos_products',
+  'favoriteUpdatedAt',
+  'TEXT'
+)
+
+safeAddColumn(
   'pos_product_thumbnails',
   'productCode',
   'TEXT'
@@ -4908,6 +5126,66 @@ safeAddColumn(
   'pos_locations',
   'tableOptionName',
   'TEXT'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'floor',
+  "TEXT DEFAULT '1층'"
+)
+
+safeAddColumn(
+  'pos_locations',
+  'zone',
+  "TEXT DEFAULT '홀'"
+)
+
+safeAddColumn(
+  'pos_locations',
+  'floorSortOrder',
+  'INTEGER DEFAULT 1'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'zoneSortOrder',
+  'INTEGER DEFAULT 1'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutX',
+  'INTEGER DEFAULT 0'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutY',
+  'INTEGER DEFAULT 0'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutWidth',
+  'INTEGER DEFAULT 180'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutHeight',
+  'INTEGER DEFAULT 140'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutRotate',
+  'INTEGER DEFAULT 0'
+)
+
+safeAddColumn(
+  'pos_locations',
+  'layoutShape',
+  "TEXT DEFAULT 'RECT'"
 )
 
 safeAddColumn(
@@ -5043,6 +5321,16 @@ if (!posLocationsSupportsWaitingStatus || posLocationsHasLegacyLocationNameUniqu
       locationGroupName TEXT,
       capacity INTEGER,
       tableOptionName TEXT,
+      floor TEXT DEFAULT '1층',
+      zone TEXT DEFAULT '홀',
+      floorSortOrder INTEGER DEFAULT 1,
+      zoneSortOrder INTEGER DEFAULT 1,
+      layoutX INTEGER DEFAULT 0,
+      layoutY INTEGER DEFAULT 0,
+      layoutWidth INTEGER DEFAULT 180,
+      layoutHeight INTEGER DEFAULT 140,
+      layoutRotate INTEGER DEFAULT 0,
+      layoutShape TEXT DEFAULT 'RECT',
       tableCode TEXT CHECK(
         tableCode IS NULL
         OR tableCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9]'
@@ -5084,17 +5372,17 @@ if (!posLocationsSupportsWaitingStatus || posLocationsHasLegacyLocationNameUniqu
         locationGroupName,
         capacity,
         tableOptionName,
-        CASE
-          WHEN tableCode IS NULL THEN NULL
-          WHEN EXISTS (
-            SELECT 1
-            FROM pos_locations prev
-            WHERE prev.channelCode = pos_locations.channelCode
-              AND prev.tableCode = pos_locations.tableCode
-              AND prev.id < pos_locations.id
-          ) THEN NULL
-          ELSE tableCode
-        END AS tableCode,
+        floor,
+        zone,
+        floorSortOrder,
+        zoneSortOrder,
+        layoutX,
+        layoutY,
+        layoutWidth,
+        layoutHeight,
+        layoutRotate,
+        layoutShape,
+        tableCode,
         qrStatus,
         qrBaseUrl,
         qrRoutePath,
@@ -5127,7 +5415,27 @@ if (!posLocationsSupportsWaitingStatus || posLocationsHasLegacyLocationNameUniqu
         locationGroupName,
         capacity,
         tableOptionName,
-        tableCode,
+        COALESCE(floor, '1층'),
+        COALESCE(zone, '홀'),
+        COALESCE(floorSortOrder, 1),
+        COALESCE(zoneSortOrder, 1),
+        COALESCE(layoutX, 0),
+        COALESCE(layoutY, 0),
+        COALESCE(layoutWidth, 180),
+        COALESCE(layoutHeight, 140),
+        COALESCE(layoutRotate, 0),
+        COALESCE(layoutShape, 'RECT'),
+        CASE
+          WHEN tableCode IS NULL THEN NULL
+          WHEN EXISTS (
+            SELECT 1
+            FROM pos_locations prev
+            WHERE prev.channelCode = pos_locations.channelCode
+              AND prev.tableCode = pos_locations.tableCode
+              AND prev.id < pos_locations.id
+          ) THEN NULL
+          ELSE tableCode
+        END,
         qrStatus,
         qrBaseUrl,
         qrRoutePath,
@@ -5449,6 +5757,12 @@ safeAddColumn(
 )
 
 safeAddColumn(
+  'pos_orders',
+  'customerChannelCode',
+  'TEXT'
+)
+
+safeAddColumn(
   'pos_order_items',
   'orderCode',
   'TEXT'
@@ -5624,6 +5938,11 @@ ON pos_orders(orderDate)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_pos_orders_order_year_month_day
 ON pos_orders(orderYear, orderMonth, orderDay)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_orders_customer_channel
+ON pos_orders(customerChannelCode)
 `)
 
 db.exec(`
@@ -6108,6 +6427,344 @@ ON pos_products(channelCode, productCode)
 WHERE productCode IS NOT NULL
 `)
 
+//========================================================
+// SECTION : PROFILE / PRODUCT / POST RELATION TABLES
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS profile_favorites(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+actorProfileId INTEGER NOT NULL,
+actorChannelCode TEXT NOT NULL,
+providerProfileId INTEGER NOT NULL,
+providerChannelCode TEXT NOT NULL,
+providerProfileType TEXT NOT NULL CHECK(providerProfileType IN('GENERAL','BUSINESS')),
+status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','DELETED')),
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY(actorProfileId) REFERENCES profiles(id),
+FOREIGN KEY(actorChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(providerProfileId) REFERENCES profiles(id),
+FOREIGN KEY(providerChannelCode) REFERENCES profiles(channelCode),
+UNIQUE(actorChannelCode, providerChannelCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_favorites_actor_channel
+ON profile_favorites(actorChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_favorites_provider_channel
+ON profile_favorites(providerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_favorites_status
+ON profile_favorites(status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_favorites_actor_status_created
+ON profile_favorites(actorChannelCode, status, createdAt)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_profile_favorites_provider_status
+ON profile_favorites(providerChannelCode, status)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS product_favorites(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+actorProfileId INTEGER NOT NULL,
+actorChannelCode TEXT NOT NULL,
+providerProfileId INTEGER NOT NULL,
+providerChannelCode TEXT NOT NULL,
+productId INTEGER,
+productCode TEXT NOT NULL,
+status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','DELETED')),
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY(actorProfileId) REFERENCES profiles(id),
+FOREIGN KEY(actorChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(providerProfileId) REFERENCES profiles(id),
+FOREIGN KEY(providerChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(productId) REFERENCES pos_products(id),
+UNIQUE(actorChannelCode, providerChannelCode, productCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_actor_channel
+ON product_favorites(actorChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_provider_channel
+ON product_favorites(providerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_product_code
+ON product_favorites(productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_status
+ON product_favorites(status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_actor_status_created
+ON product_favorites(actorChannelCode, status, createdAt)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_favorites_provider_product_status
+ON product_favorites(providerChannelCode, productCode, status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_products_favorite_profile_count
+ON pos_products(favoriteProfileCount)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_products_favorite_updated_at
+ON pos_products(favoriteUpdatedAt)
+`)
+
+db.exec(`
+UPDATE pos_products
+SET
+  favoriteProfileCount = (
+    SELECT COUNT(DISTINCT pf.actorChannelCode)
+    FROM product_favorites pf
+    WHERE pf.providerChannelCode = pos_products.channelCode
+      AND pf.productCode = pos_products.productCode
+      AND pf.status = 'ACTIVE'
+  ),
+  favoriteUpdatedAt = CURRENT_TIMESTAMP
+WHERE productCode IS NOT NULL
+`)
+
+db.exec(`
+UPDATE pos_products
+SET favoriteProfileCount = 0
+WHERE favoriteProfileCount IS NULL
+   OR favoriteProfileCount < 0
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS post_recommendations(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+actorProfileId INTEGER NOT NULL,
+actorChannelCode TEXT NOT NULL,
+providerProfileId INTEGER NOT NULL,
+providerChannelCode TEXT NOT NULL,
+postId INTEGER,
+postCode TEXT NOT NULL,
+postType TEXT NOT NULL CHECK(postType IN('GENERAL','GALLERY','PRODUCT','EVENT','REVIEW')),
+status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','DELETED')),
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY(actorProfileId) REFERENCES profiles(id),
+FOREIGN KEY(actorChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(providerProfileId) REFERENCES profiles(id),
+FOREIGN KEY(providerChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(postId) REFERENCES posts(id),
+UNIQUE(actorChannelCode, providerChannelCode, postCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_actor_channel
+ON post_recommendations(actorChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_provider_channel
+ON post_recommendations(providerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_post_code
+ON post_recommendations(postCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_post_type
+ON post_recommendations(postType)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_status
+ON post_recommendations(status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_actor_status_created
+ON post_recommendations(actorChannelCode, status, createdAt)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_provider_post_status
+ON post_recommendations(providerChannelCode, postCode, status)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_post_recommendations_provider_type_status
+ON post_recommendations(providerChannelCode, postType, status)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS cart_items(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+actorProfileId INTEGER NOT NULL,
+actorChannelCode TEXT NOT NULL,
+providerProfileId INTEGER NOT NULL,
+providerChannelCode TEXT NOT NULL,
+productId INTEGER,
+productCode TEXT NOT NULL,
+productNameSnapshot TEXT NOT NULL,
+productTypeSnapshot TEXT NOT NULL DEFAULT 'PRODUCT' CHECK(productTypeSnapshot IN('PRODUCT')),
+productKindSnapshot TEXT CHECK(
+  productKindSnapshot IS NULL
+  OR productKindSnapshot IN('MAIN_PRODUCT','SUB_PRODUCT')
+),
+categoryNameSnapshot TEXT,
+unitPriceSnapshot INTEGER NOT NULL DEFAULT 0 CHECK(unitPriceSnapshot >= 0),
+currency TEXT DEFAULT 'KRW',
+quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
+optionTotalAmount INTEGER NOT NULL DEFAULT 0 CHECK(optionTotalAmount >= 0),
+lineTotalAmount INTEGER NOT NULL DEFAULT 0 CHECK(lineTotalAmount >= 0),
+orderFlowType TEXT NOT NULL CHECK(orderFlowType IN(
+  'IN_STORE',
+  'PICKUP',
+  'DELIVERY',
+  'RESERVATION',
+  'SERVICE',
+  'ROOM_SERVICE',
+  'PARCEL'
+)),
+cartStatus TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(cartStatus IN(
+  'ACTIVE',
+  'ORDERED',
+  'DELETED',
+  'EXPIRED'
+)),
+requestMemo TEXT,
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+deletedAt TEXT,
+FOREIGN KEY(actorProfileId) REFERENCES profiles(id),
+FOREIGN KEY(actorChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(providerProfileId) REFERENCES profiles(id),
+FOREIGN KEY(providerChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(productId) REFERENCES pos_products(id)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_actor_channel
+ON cart_items(actorChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_provider_channel
+ON cart_items(providerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_product_code
+ON cart_items(productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_status
+ON cart_items(cartStatus)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_created_at
+ON cart_items(createdAt)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_actor_status_created
+ON cart_items(actorChannelCode, cartStatus, createdAt)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_provider_product_status
+ON cart_items(providerChannelCode, productCode, cartStatus)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_actor_provider_status
+ON cart_items(actorChannelCode, providerChannelCode, cartStatus)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS cart_item_options(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+cartItemId INTEGER NOT NULL,
+providerChannelCode TEXT NOT NULL,
+productCode TEXT NOT NULL,
+productOptionId INTEGER,
+productOptionValueId INTEGER,
+optionNameSnapshot TEXT NOT NULL,
+optionTypeSnapshot TEXT NOT NULL CHECK(optionTypeSnapshot IN(
+  'SIZE',
+  'TEMPERATURE',
+  'ADDON',
+  'CHOICE',
+  'CUSTOM'
+)),
+optionValueNameSnapshot TEXT NOT NULL,
+priceDeltaSnapshot INTEGER NOT NULL DEFAULT 0,
+quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
+lineOptionAmount INTEGER NOT NULL DEFAULT 0,
+sortOrder INTEGER DEFAULT 0,
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+FOREIGN KEY(cartItemId) REFERENCES cart_items(id),
+FOREIGN KEY(providerChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(productOptionId) REFERENCES pos_product_options(id),
+FOREIGN KEY(productOptionValueId) REFERENCES pos_product_option_values(id)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_item_options_cart_item
+ON cart_item_options(cartItemId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_item_options_provider_channel
+ON cart_item_options(providerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_item_options_product_code
+ON cart_item_options(productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_item_options_product_option_id
+ON cart_item_options(productOptionId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_item_options_product_option_value_id
+ON cart_item_options(productOptionValueId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_item_options_created_at
+ON cart_item_options(createdAt)
+`)
+
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_pos_product_thumbnails_product_code
 ON pos_product_thumbnails(productCode)
@@ -6271,6 +6928,21 @@ ON pos_locations(tableTypeCode)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_pos_locations_channel_table_type
 ON pos_locations(channelCode, tableTypeCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_locations_channel_floor
+ON pos_locations(channelCode, floor)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_locations_channel_floor_zone
+ON pos_locations(channelCode, floor, zone)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_locations_floor_zone_sort
+ON pos_locations(channelCode, floorSortOrder, zoneSortOrder)
 `)
 
 db.exec(`
