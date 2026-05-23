@@ -882,37 +882,6 @@ export default function PublicChannelPage({
       ? heroViewerImages[safeHeroIndex]?.imageUrl || null
       : heroImageUrl
 
-  const heroThumbnailItems = useMemo(() => {
-    const maxVisibleCount = 3
-
-    if (heroViewerImages.length <= maxVisibleCount) {
-      return heroViewerImages.map((item, index) => {
-        return {
-          item,
-          index
-        }
-      })
-    }
-
-    const startIndex =
-      Math.min(
-        Math.max(safeHeroIndex - 1, 0),
-        heroViewerImages.length - maxVisibleCount
-      )
-
-    return heroViewerImages
-      .slice(startIndex, startIndex + maxVisibleCount)
-      .map((item, offset) => {
-        return {
-          item,
-          index: startIndex + offset
-        }
-      })
-  }, [
-    heroViewerImages,
-    safeHeroIndex
-  ])
-
   const avatarViewerImages = useMemo(() => {
     if (!avatarImageUrl) {
       return []
@@ -1408,52 +1377,6 @@ export default function PublicChannelPage({
               )}
             </div>
 
-            {heroImageCount > 0 && (
-              <div className={styles.heroThumbnailRow}>
-                {Array.from({
-                  length: 3
-                }).map((_, slotIndex) => {
-                  const thumbnail =
-                    heroThumbnailItems[slotIndex]
-
-                  if (!thumbnail) {
-                    return (
-                      <div
-                        key={`hero-thumbnail-empty-${slotIndex}`}
-                        className={styles.heroThumbnailPlaceholder}
-                      />
-                    )
-                  }
-
-                  const isActive =
-                    thumbnail.index === safeHeroIndex
-
-                  return (
-                    <button
-                      key={`${thumbnail.item.imageUrl}-${thumbnail.index}`}
-                      type="button"
-                      className={
-                        isActive
-                          ? `${styles.heroThumbnailButton} ${styles.heroThumbnailButtonActive}`
-                          : styles.heroThumbnailButton
-                      }
-                      aria-label={`대표 이미지 ${thumbnail.index + 1}번 보기`}
-                      aria-current={isActive ? 'true' : undefined}
-                      onClick={() => {
-                        setViewerMode('hero')
-                        setHeroViewerIndex(thumbnail.index)
-                      }}
-                    >
-                      <img
-                        src={thumbnail.item.imageUrl}
-                        alt={`${businessName} 대표 이미지 ${thumbnail.index + 1}`}
-                        className={styles.heroThumbnailImage}
-                      />
-                    </button>
-                  )
-                })}
-              </div>
-            )}
           </section>
 
           <section className={styles.infoColumn}>
