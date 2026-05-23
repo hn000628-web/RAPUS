@@ -1,0 +1,140 @@
+[PRODUCT_ID_PRODUCT_CODE_SOURCE_TYPE_RULE_SNAPSHOT]
+STATUS: OFFICIAL
+SCOPE: POS_PRODUCT / MARKET_PRODUCT / CART / ORDER / OPTION LINK
+VERSION: 2026-05-24
+
+==================================================
+1) 용어 정의
+==================================================
+
+id
+- DB 내부 PK
+- 내부 조인/참조용
+- 외부 표시용으로 사용 금지
+
+productId
+- 업무 표시용 상품 ID
+- 예: PLC-2026-0523-001
+- 관리자 화면, 주문 카드, 고객 문의, 영수증, 운영 확인용
+
+productCode
+- 시스템 연결용 상품 코드
+- 예: NCK585KBTQQL
+- 길이 12
+- 옵션/옵션값/썸네일/장바구니/주문 아이템 연결 기준
+- 생성 후 변경 금지(immutable)
+
+channelCode
+- 상품 소유 채널 코드
+
+sourceType
+- 상품 원천 구분
+- 공식 값:
+  - POS_PRODUCT
+  - MARKET_PRODUCT
+
+UI 표시명
+- POS_PRODUCT -> 플레이스
+- MARKET_PRODUCT -> 마켓
+
+==================================================
+2) 핵심 규칙
+==================================================
+
+RULE-01
+- productId와 productCode는 서로 다른 의미다.
+- productId는 표시/업무 코드, productCode는 시스템 연결 코드다.
+
+RULE-02
+- productCode는 옵션/썸네일/장바구니/주문 연결 키로 사용한다.
+
+RULE-03
+- sourceType은 내부 값 POS_PRODUCT / MARKET_PRODUCT를 유지한다.
+- UI에서만 플레이스/마켓으로 변환한다.
+
+RULE-04
+- Frontend는 productCode를 생성하지 않는다.
+- Frontend는 sourceType을 임의 추론하지 않는다.
+- Backend Service가 최종 검증한다.
+
+==================================================
+3) 장바구니 중복 방지 공식
+==================================================
+
+중복 판단 키:
+actorChannelCode
++ providerChannelCode
++ sourceType
++ productCode
++ optionSignature
++ cartStatus = ACTIVE
+
+동일 키가 존재하면:
+- 신규 cart_items row 추가 금지
+- 수량 자동 증가 금지
+- 기존 row 유지
+- 응답 메시지:
+  이미 장바구니에 저장되었습니다.
+
+다른 옵션 조합이면:
+- 별도 장바구니 항목 허용
+
+==================================================
+4) optionSignature 규칙
+==================================================
+
+1. productOptionId:productOptionValueId 조합을 정렬해 문자열 생성
+2. option id가 없으면 optionNameSnapshot:optionValueNameSnapshot fallback
+3. 옵션 없음은 NO_OPTIONS 사용
+4. 같은 옵션 조합은 항상 같은 signature여야 한다.
+
+==================================================
+5) 권장 저장 필드 (cart_items)
+==================================================
+
+- actorChannelCode
+- providerChannelCode
+- productId
+- productCode
+- sourceType
+- productNameSnapshot
+- unitPriceSnapshot
+- quantity
+- optionTotalAmount
+- lineTotalAmount
+- orderFlowType
+- cartStatus
+- optionSignature
+- cartItemCode
+- cartSessionCode
+- createdAt
+- updatedAt
+
+==================================================
+6) 계층 규칙
+==================================================
+
+Frontend -> API -> Controller -> Service -> DB
+
+- Controller: 요청/응답만 담당
+- Service: 비즈니스 규칙/검증/중복 차단 담당
+- DB 접근은 Service 계층에서만 수행
+
+==================================================
+7) 금지 규칙
+==================================================
+
+- productCode를 프론트에서 생성 금지
+- sourceType 내부 값을 UI 라벨로 치환 저장 금지
+- productId만으로 중복 판단 금지
+- 상품명만으로 중복 판단 금지
+- Controller DB 직접 접근 금지
+
+==================================================
+8) 전환/정합 시 권장 원칙
+==================================================
+
+- 기존 운영 데이터 호환 우선
+- 대규모 컬럼 rename/drop 즉시 진행 금지
+- 필요 시 단계적 마이그레이션으로 분리
+- API 계약은 하위 호환 방식으로 확장

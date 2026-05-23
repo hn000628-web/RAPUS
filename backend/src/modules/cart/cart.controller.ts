@@ -22,9 +22,13 @@ type AuthRequest = {
 
 type AddCartItemBody = {
   providerChannelCode: string
+  productDbId?: number
+  productId?: string
   productCode: string
+  sourceType?: 'POS_PRODUCT' | 'MARKET_PRODUCT'
   quantity: number
   orderFlowType: 'IN_STORE' | 'PICKUP' | 'DELIVERY' | 'RESERVATION' | 'SERVICE' | 'ROOM_SERVICE' | 'PARCEL'
+  fulfillmentType?: 'IN_STORE' | 'PICKUP' | 'DELIVERY' | 'RESERVATION' | 'SERVICE' | 'ROOM_SERVICE' | 'PARCEL'
   requestMemo?: string
   options?: Array<{
     productOptionId?: number
@@ -109,4 +113,3 @@ export class CartController {
     return this.cartService.getCartCount(req.user)
   }
 }
-

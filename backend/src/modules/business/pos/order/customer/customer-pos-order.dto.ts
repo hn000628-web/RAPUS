@@ -18,6 +18,11 @@ export class CreateCustomerOrderItemOptionDto {
 
 export class CreateCustomerOrderItemDto {
   readonly posProductId!: number
+  readonly productCode?: string
+  readonly productId?: string
+  readonly sourceType?: 'POS_PRODUCT' | 'MARKET_PRODUCT'
+  readonly cartCode?: string
+  readonly cartItemCode?: string
   readonly quantity!: number
   readonly requestMemo?: string
   readonly options?: CreateCustomerOrderItemOptionDto[]

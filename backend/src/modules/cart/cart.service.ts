@@ -15,6 +15,7 @@ type JwtUser = {
 type CartStatus = 'ACTIVE' | 'ORDERED' | 'DELETED' | 'EXPIRED'
 type OrderFlowType = 'IN_STORE' | 'PICKUP' | 'DELIVERY' | 'RESERVATION' | 'SERVICE' | 'ROOM_SERVICE' | 'PARCEL'
 type OptionType = 'SIZE' | 'TEMPERATURE' | 'ADDON' | 'CHOICE' | 'CUSTOM'
+type ProductSourceType = 'POS_PRODUCT' | 'MARKET_PRODUCT'
 
 type ActorContext = {
   actorProfileId: number
@@ -28,9 +29,11 @@ type ProviderProfileRow = {
 
 type ProductRow = {
   id: number
+  productId: string | null
   profileId: number
   channelCode: string
   productCode: string
+  sourceType: ProductSourceType
   productName: string
   productType: string | null
   productKind: string | null
@@ -64,9 +67,13 @@ type AddCartItemOptionInput = {
 
 type AddCartItemInput = {
   providerChannelCode: string
+  productDbId?: number
+  productId?: string
   productCode: string
+  sourceType?: ProductSourceType
   quantity: number
   orderFlowType: OrderFlowType
+  fulfillmentType?: OrderFlowType
   requestMemo?: string
   options?: AddCartItemOptionInput[]
 }
@@ -77,6 +84,18 @@ type CartItemOwnerRow = {
   cartStatus: CartStatus
   unitPriceSnapshot: number
   optionTotalAmount: number
+}
+
+type ResolvedCartOption = {
+  productOptionId: number | null
+  productOptionValueId: number | null
+  optionNameSnapshot: string
+  optionTypeSnapshot: OptionType
+  optionValueNameSnapshot: string
+  priceDeltaSnapshot: number
+  quantity: number
+  lineOptionAmount: number
+  sortOrder: number
 }
 
 @Injectable()
@@ -137,6 +156,24 @@ export class CartService {
     throw new BadRequestException('failed to create cartItemCode')
   }
 
+  private createUniqueCartCode(): string {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const cartCode = this.createBusinessCode12('CT')
+      const exists = db.prepare(`
+        SELECT id
+        FROM cart_items
+        WHERE cartCode = ?
+        LIMIT 1
+      `).get(cartCode) as { id?: number } | undefined
+
+      if (!exists?.id) {
+        return cartCode
+      }
+    }
+
+    throw new BadRequestException('failed to create cartCode')
+  }
+
   private normalizeCartStatus(value?: string): CartStatus {
     const normalized = String(value ?? 'ACTIVE').trim().toUpperCase()
     if (!['ACTIVE', 'ORDERED', 'DELETED', 'EXPIRED'].includes(normalized)) {
@@ -151,6 +188,42 @@ export class CartService {
       throw new BadRequestException('orderFlowType is invalid')
     }
     return normalized as OrderFlowType
+  }
+
+  private buildFulfillmentSignature(
+    fulfillmentType: OrderFlowType,
+    providerChannelCode: string
+  ): string {
+    if (fulfillmentType === 'DELIVERY') {
+      return 'DELIVERY:DEFAULT'
+    }
+    if (fulfillmentType === 'PICKUP') {
+      return `PICKUP:${providerChannelCode}`
+    }
+    if (fulfillmentType === 'IN_STORE') {
+      return `IN_STORE:${providerChannelCode}`
+    }
+    if (fulfillmentType === 'PARCEL') {
+      return 'PARCEL:DEFAULT'
+    }
+    if (fulfillmentType === 'RESERVATION') {
+      return 'RESERVATION:DEFAULT'
+    }
+    if (fulfillmentType === 'ROOM_SERVICE') {
+      return 'ROOM_SERVICE:DEFAULT'
+    }
+    if (fulfillmentType === 'SERVICE') {
+      return 'SERVICE:DEFAULT'
+    }
+    return 'DEFAULT_FULFILLMENT'
+  }
+
+  private normalizeSourceType(value: unknown): ProductSourceType {
+    const normalized = String(value ?? 'POS_PRODUCT').trim().toUpperCase()
+    if (normalized !== 'POS_PRODUCT' && normalized !== 'MARKET_PRODUCT') {
+      throw new BadRequestException('sourceType is invalid')
+    }
+    return normalized as ProductSourceType
   }
 
   private normalizePositiveQuantity(value: unknown): number {
@@ -224,9 +297,11 @@ export class CartService {
         `
           SELECT
             p.id,
+            p.productId,
             p.profileId,
             p.channelCode,
             p.productCode,
+            p.sourceType,
             p.productName,
             p.productType,
             p.productKind,
@@ -252,6 +327,32 @@ export class CartService {
     }
 
     return product
+  }
+
+  private buildOptionSignature(options: ResolvedCartOption[]): string {
+    if (options.length < 1) {
+      return 'NO_OPTIONS'
+    }
+
+    const tokens = options
+      .map((option) => {
+        if (
+          Number.isInteger(option.productOptionId) &&
+          Number(option.productOptionId) > 0 &&
+          Number.isInteger(option.productOptionValueId) &&
+          Number(option.productOptionValueId) > 0
+        ) {
+          return `${Number(option.productOptionId)}:${Number(option.productOptionValueId)}`
+        }
+
+        const optionName = String(option.optionNameSnapshot ?? '').trim()
+        const optionValueName = String(option.optionValueNameSnapshot ?? '').trim()
+        return `name:${optionName}|value:${optionValueName}`
+      })
+      .filter((token) => token.length > 0)
+      .sort()
+
+    return tokens.length > 0 ? tokens.join(',') : 'NO_OPTIONS'
   }
 
   private getProductOption(providerChannelCode: string, productCode: string, productOptionId: number): ProductOptionRow {
@@ -343,19 +444,199 @@ export class CartService {
   addCartItem(user: JwtUser | undefined, input: AddCartItemInput) {
     const actor = this.getActorContext(user)
     const providerChannelCode = this.normalizeChannelCode13(input.providerChannelCode, 'providerChannelCode')
+    const productDbId = input.productDbId === undefined ? null : this.normalizePositiveQuantity(input.productDbId)
+    const productId = input.productId === undefined ? null : String(input.productId).trim()
     const productCode = this.normalizeBusinessCode12(input.productCode, 'productCode')
+    const sourceType = this.normalizeSourceType(input.sourceType)
     const quantity = this.normalizePositiveQuantity(input.quantity)
     const orderFlowType = this.normalizeOrderFlowType(input.orderFlowType)
+    const fulfillmentType = input.fulfillmentType
+      ? this.normalizeOrderFlowType(input.fulfillmentType)
+      : orderFlowType
+    const fulfillmentSignature = this.buildFulfillmentSignature(
+      fulfillmentType,
+      providerChannelCode
+    )
     const requestMemo = input.requestMemo === undefined ? null : String(input.requestMemo ?? '').trim() || null
     const provider = this.getProviderProfile(providerChannelCode)
     const product = this.getTargetProduct(providerChannelCode, productCode)
 
+    if (productDbId !== null && product.id !== productDbId) {
+      throw new BadRequestException('productDbId does not match productCode')
+    }
+
+    if (productId !== null && product.productId && product.productId !== productId) {
+      throw new BadRequestException('productId does not match productCode')
+    }
+
+    if (product.sourceType !== sourceType) {
+      throw new BadRequestException('sourceType does not match product')
+    }
+
     const optionInputs = Array.isArray(input.options) ? input.options : []
+    const resolvedOptions: ResolvedCartOption[] = []
+    let optionTotalAmount = 0
+
+    optionInputs.forEach((optionInput, index) => {
+      const optionQuantity = this.normalizePositiveQuantity(optionInput.quantity ?? 1)
+      const normalizedOptionName = String(optionInput.optionNameSnapshot ?? '').trim()
+      const normalizedOptionValueName = String(optionInput.optionValueNameSnapshot ?? '').trim()
+
+      const productOptionId = optionInput.productOptionId ? Number(optionInput.productOptionId) : null
+      const productOptionValueId = optionInput.productOptionValueId ? Number(optionInput.productOptionValueId) : null
+
+      if ((productOptionId ?? 0) <= 0 && (productOptionValueId ?? 0) <= 0 && !normalizedOptionName && !normalizedOptionValueName) {
+        throw new BadRequestException(`options[${index}] is invalid`)
+      }
+
+      let optionNameSnapshot = normalizedOptionName
+      let optionTypeSnapshot = optionInput.optionTypeSnapshot ?? 'CUSTOM'
+      let optionValueNameSnapshot = normalizedOptionValueName
+      let priceDeltaSnapshot = this.normalizeNonNegativeInteger(optionInput.priceDeltaSnapshot, 0)
+      let resolvedOptionId: number | null = productOptionId && productOptionId > 0 ? productOptionId : null
+      let resolvedOptionValueId: number | null = productOptionValueId && productOptionValueId > 0 ? productOptionValueId : null
+
+      if (resolvedOptionId) {
+        const option = this.getProductOption(providerChannelCode, productCode, resolvedOptionId)
+        optionNameSnapshot = option.optionName
+        optionTypeSnapshot = option.optionType
+      }
+
+      if (resolvedOptionValueId) {
+        const optionValue = this.getProductOptionValue(providerChannelCode, productCode, resolvedOptionValueId)
+        optionValueNameSnapshot = optionValue.optionValueName
+        priceDeltaSnapshot = this.normalizeNonNegativeInteger(optionValue.priceDelta, 0)
+        if (resolvedOptionId && optionValue.optionId !== resolvedOptionId) {
+          throw new BadRequestException(`options[${index}] option mismatch`)
+        }
+        resolvedOptionId = optionValue.optionId
+        if (resolvedOptionId) {
+          const option = this.getProductOption(providerChannelCode, productCode, resolvedOptionId)
+          optionNameSnapshot = option.optionName
+          optionTypeSnapshot = option.optionType
+        }
+      }
+
+      if (!optionNameSnapshot) {
+        throw new BadRequestException(`options[${index}] optionNameSnapshot is required`)
+      }
+
+      if (!['SIZE', 'TEMPERATURE', 'ADDON', 'CHOICE', 'CUSTOM'].includes(optionTypeSnapshot)) {
+        throw new BadRequestException(`options[${index}] optionTypeSnapshot is invalid`)
+      }
+
+      if (!optionValueNameSnapshot) {
+        throw new BadRequestException(`options[${index}] optionValueNameSnapshot is required`)
+      }
+
+      const normalizedPriceDeltaSnapshot = this.normalizeNonNegativeInteger(priceDeltaSnapshot, 0)
+      const lineOptionAmount = normalizedPriceDeltaSnapshot * optionQuantity
+      optionTotalAmount += lineOptionAmount
+
+      resolvedOptions.push({
+        productOptionId: resolvedOptionId,
+        productOptionValueId: resolvedOptionValueId,
+        optionNameSnapshot,
+        optionTypeSnapshot,
+        optionValueNameSnapshot,
+        priceDeltaSnapshot: normalizedPriceDeltaSnapshot,
+        quantity: optionQuantity,
+        lineOptionAmount,
+        sortOrder: index
+      })
+    })
+
+    const optionSignature = this.buildOptionSignature(resolvedOptions)
+    const duplicate = db
+      .prepare(
+        `
+          SELECT
+            id,
+            cartCode,
+            cartSessionCode,
+            cartItemCode,
+            fulfillmentType,
+            fulfillmentSignature,
+            lineTotalAmount
+          FROM cart_items
+          WHERE actorChannelCode = ?
+            AND providerChannelCode = ?
+            AND sourceType = ?
+            AND productCode = ?
+            AND optionSignature = ?
+            AND fulfillmentSignature = ?
+            AND cartStatus = 'ACTIVE'
+          LIMIT 1
+        `
+      )
+      .get(
+        actor.actorChannelCode,
+        provider.channelCode,
+        sourceType,
+        product.productCode,
+        optionSignature,
+        fulfillmentSignature
+      ) as {
+        id?: number
+        cartCode?: string | null
+        cartSessionCode?: string | null
+        cartItemCode?: string | null
+        fulfillmentType?: string | null
+        fulfillmentSignature?: string | null
+        lineTotalAmount?: number
+      } | undefined
+
+    if (duplicate?.id) {
+      return {
+        ok: true as const,
+        status: 'DUPLICATE' as const,
+        message: '이미 장바구니에 저장되었습니다.',
+        item: {
+          id: duplicate.id,
+          actorChannelCode: actor.actorChannelCode,
+          providerChannelCode: provider.channelCode,
+          cartCode: duplicate.cartCode ?? duplicate.cartSessionCode ?? null,
+          cartSessionCode: duplicate.cartSessionCode ?? null,
+          cartItemCode: duplicate.cartItemCode ?? '',
+          productDbId: product.id,
+          productId: product.productId,
+          productCode: product.productCode,
+          sourceType,
+          quantity: 0,
+          fulfillmentType: (duplicate.fulfillmentType ?? fulfillmentType) as OrderFlowType,
+          fulfillmentSignature: duplicate.fulfillmentSignature ?? fulfillmentSignature,
+          cartStatus: 'ACTIVE' as CartStatus,
+          lineTotalAmount: this.normalizeNonNegativeInteger(duplicate.lineTotalAmount, 0)
+        }
+      }
+    }
 
     let cartItemId = 0
-    const cartSessionCode = this.createBusinessCode12('CS')
+    const activeCart = db
+      .prepare(
+        `
+          SELECT
+            cartCode,
+            cartSessionCode
+          FROM cart_items
+          WHERE actorChannelCode = ?
+            AND providerChannelCode = ?
+            AND cartStatus = 'ACTIVE'
+          ORDER BY id DESC
+          LIMIT 1
+        `
+      )
+      .get(actor.actorChannelCode, provider.channelCode) as {
+        cartCode?: string | null
+        cartSessionCode?: string | null
+      } | undefined
+    const cartCode = activeCart?.cartCode?.trim()
+      ? String(activeCart.cartCode).trim()
+      : activeCart?.cartSessionCode?.trim()
+        ? String(activeCart.cartSessionCode).trim()
+        : this.createUniqueCartCode()
+    const cartSessionCode = cartCode
     const cartItemCode = this.createUniqueCartItemCode()
-    let optionTotalAmount = 0
     let lineTotalAmount = 0
 
     const tx = db.transaction(() => {
@@ -368,9 +649,14 @@ export class CartService {
               providerProfileId,
               providerChannelCode,
               productId,
+              sourceType,
+              cartCode,
               cartSessionCode,
               cartItemCode,
               productCode,
+              optionSignature,
+              fulfillmentType,
+              fulfillmentSignature,
               productNameSnapshot,
               productTypeSnapshot,
               productKindSnapshot,
@@ -386,7 +672,7 @@ export class CartService {
               createdAt,
               updatedAt
             )
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'ACTIVE',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'ACTIVE',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
           `
         )
         .run(
@@ -395,9 +681,14 @@ export class CartService {
           provider.id,
           provider.channelCode,
           product.id,
+          sourceType,
+          cartCode,
           cartSessionCode,
           cartItemCode,
           product.productCode,
+          optionSignature,
+          fulfillmentType,
+          fulfillmentSignature,
           product.productName,
           'PRODUCT',
           product.productKind,
@@ -417,65 +708,12 @@ export class CartService {
         throw new BadRequestException('failed to create cart item')
       }
 
-      optionInputs.forEach((optionInput, index) => {
-        const optionQuantity = this.normalizePositiveQuantity(optionInput.quantity ?? 1)
-        const normalizedOptionName = String(optionInput.optionNameSnapshot ?? '').trim()
-        const normalizedOptionValueName = String(optionInput.optionValueNameSnapshot ?? '').trim()
-
-        const productOptionId = optionInput.productOptionId ? Number(optionInput.productOptionId) : null
-        const productOptionValueId = optionInput.productOptionValueId ? Number(optionInput.productOptionValueId) : null
-
-        if ((productOptionId ?? 0) <= 0 && (productOptionValueId ?? 0) <= 0 && !normalizedOptionName && !normalizedOptionValueName) {
-          throw new BadRequestException(`options[${index}] is invalid`)
-        }
-
-        let optionNameSnapshot = normalizedOptionName
-        let optionTypeSnapshot = optionInput.optionTypeSnapshot ?? 'CUSTOM'
-        let optionValueNameSnapshot = normalizedOptionValueName
-        let priceDeltaSnapshot = this.normalizeNonNegativeInteger(optionInput.priceDeltaSnapshot, 0)
-        let resolvedOptionId: number | null = productOptionId && productOptionId > 0 ? productOptionId : null
-        let resolvedOptionValueId: number | null = productOptionValueId && productOptionValueId > 0 ? productOptionValueId : null
-
-        if (resolvedOptionId) {
-          const option = this.getProductOption(providerChannelCode, productCode, resolvedOptionId)
-          optionNameSnapshot = option.optionName
-          optionTypeSnapshot = option.optionType
-        }
-
-        if (resolvedOptionValueId) {
-          const optionValue = this.getProductOptionValue(providerChannelCode, productCode, resolvedOptionValueId)
-          optionValueNameSnapshot = optionValue.optionValueName
-          priceDeltaSnapshot = this.normalizeNonNegativeInteger(optionValue.priceDelta, 0)
-          if (resolvedOptionId && optionValue.optionId !== resolvedOptionId) {
-            throw new BadRequestException(`options[${index}] option mismatch`)
-          }
-          resolvedOptionId = optionValue.optionId
-          if (resolvedOptionId) {
-            const option = this.getProductOption(providerChannelCode, productCode, resolvedOptionId)
-            optionNameSnapshot = option.optionName
-            optionTypeSnapshot = option.optionType
-          }
-        }
-
-        if (!optionNameSnapshot) {
-          throw new BadRequestException(`options[${index}] optionNameSnapshot is required`)
-        }
-
-        if (!['SIZE', 'TEMPERATURE', 'ADDON', 'CHOICE', 'CUSTOM'].includes(optionTypeSnapshot)) {
-          throw new BadRequestException(`options[${index}] optionTypeSnapshot is invalid`)
-        }
-
-        if (!optionValueNameSnapshot) {
-          throw new BadRequestException(`options[${index}] optionValueNameSnapshot is required`)
-        }
-
-        const lineOptionAmount = this.normalizeNonNegativeInteger(priceDeltaSnapshot, 0) * optionQuantity
-        optionTotalAmount += lineOptionAmount
-
+      resolvedOptions.forEach((option) => {
         db.prepare(
           `
             INSERT INTO cart_item_options(
               cartItemId,
+              cartCode,
               cartItemCode,
               providerChannelCode,
               productCode,
@@ -490,22 +728,23 @@ export class CartService {
               sortOrder,
               createdAt
             )
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
           `
         ).run(
           cartItemId,
+          cartCode,
           cartItemCode,
           provider.channelCode,
           product.productCode,
-          resolvedOptionId,
-          resolvedOptionValueId,
-          optionNameSnapshot,
-          optionTypeSnapshot,
-          optionValueNameSnapshot,
-          this.normalizeNonNegativeInteger(priceDeltaSnapshot, 0),
-          optionQuantity,
-          lineOptionAmount,
-          index
+          option.productOptionId,
+          option.productOptionValueId,
+          option.optionNameSnapshot,
+          option.optionTypeSnapshot,
+          option.optionValueNameSnapshot,
+          option.priceDeltaSnapshot,
+          option.quantity,
+          option.lineOptionAmount,
+          option.sortOrder
         )
       })
 
@@ -527,14 +766,22 @@ export class CartService {
 
     return {
       ok: true as const,
+      status: 'CREATED' as const,
+      message: '장바구니에 저장되었습니다.',
       item: {
         id: cartItemId,
         actorChannelCode: actor.actorChannelCode,
         providerChannelCode: provider.channelCode,
+        cartCode,
         cartSessionCode,
         cartItemCode,
+        productDbId: product.id,
+        productId: product.productId,
         productCode: product.productCode,
+        sourceType,
         quantity,
+        fulfillmentType,
+        fulfillmentSignature,
         cartStatus: 'ACTIVE' as CartStatus,
         lineTotalAmount
       }
@@ -549,39 +796,55 @@ export class CartService {
       .prepare(
         `
           SELECT
-            id,
-            cartSessionCode,
-            cartItemCode,
-            providerChannelCode,
-            productCode,
-            productNameSnapshot,
-            unitPriceSnapshot,
-            quantity,
-            optionTotalAmount,
-            lineTotalAmount,
-            orderFlowType,
-            cartStatus,
-            requestMemo,
-            createdAt
+            ci.id,
+            ci.cartCode,
+            ci.cartSessionCode,
+            ci.cartItemCode,
+            ci.providerChannelCode,
+            ci.productId AS productDbId,
+            p.productId AS productId,
+            ci.productCode,
+            ci.sourceType,
+            ci.productNameSnapshot,
+            ci.unitPriceSnapshot,
+            ci.quantity,
+            ci.optionTotalAmount,
+            ci.lineTotalAmount,
+            ci.orderFlowType,
+            ci.fulfillmentType,
+            ci.fulfillmentSignature,
+            ci.cartStatus,
+            ci.orderCode,
+            ci.requestMemo,
+            ci.createdAt
           FROM cart_items
-          WHERE actorChannelCode = ?
-            AND cartStatus = ?
-          ORDER BY createdAt DESC, id DESC
+          LEFT JOIN pos_products p
+            ON p.id = ci.productId
+          WHERE ci.actorChannelCode = ?
+            AND ci.cartStatus = ?
+          ORDER BY ci.createdAt DESC, ci.id DESC
         `
       )
       .all(actor.actorChannelCode, cartStatus) as Array<{
         id: number
         cartSessionCode: string | null
+        cartCode: string | null
         cartItemCode: string
         providerChannelCode: string
+        productDbId: number | null
+        productId: string | null
         productCode: string
+        sourceType: ProductSourceType
         productNameSnapshot: string
         unitPriceSnapshot: number
         quantity: number
         optionTotalAmount: number
         lineTotalAmount: number
         orderFlowType: string
+        fulfillmentType: string | null
+        fulfillmentSignature: string | null
         cartStatus: CartStatus
+        orderCode: string | null
         requestMemo: string | null
         createdAt: string
       }>
@@ -647,17 +910,24 @@ export class CartService {
       ok: true as const,
       items: rows.map((item) => ({
         id: item.id,
+        cartCode: item.cartCode,
         cartSessionCode: item.cartSessionCode,
         cartItemCode: item.cartItemCode,
         providerChannelCode: item.providerChannelCode,
+        productDbId: item.productDbId,
+        productId: item.productId,
         productCode: item.productCode,
+        sourceType: item.sourceType,
         productNameSnapshot: item.productNameSnapshot,
         unitPriceSnapshot: this.normalizeNonNegativeInteger(item.unitPriceSnapshot, 0),
         quantity: this.normalizePositiveQuantity(item.quantity),
         optionTotalAmount: this.normalizeNonNegativeInteger(item.optionTotalAmount, 0),
         lineTotalAmount: this.normalizeNonNegativeInteger(item.lineTotalAmount, 0),
         orderFlowType: item.orderFlowType,
+        fulfillmentType: item.fulfillmentType,
+        fulfillmentSignature: item.fulfillmentSignature,
         cartStatus: item.cartStatus,
+        orderCode: item.orderCode,
         requestMemo: item.requestMemo,
         createdAt: item.createdAt,
         options: optionsByCartItemId.get(item.id) ?? []

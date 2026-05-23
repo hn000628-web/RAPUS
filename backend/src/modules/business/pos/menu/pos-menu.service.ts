@@ -116,7 +116,14 @@ type PosProductRow = {
   id: number
   profileId: number
   channelCode: string
+  productId: string | null
   productCode: string | null
+  sourceType: 'POS_PRODUCT' | 'MARKET_PRODUCT'
+  primaryScanCodeType: string | null
+  primaryScanCodeValue: string | null
+  primaryQrCodeValue: string | null
+  primaryScanCodeSource: string | null
+  externalBarcodeFormat: string | null
   productType: string
   productKind: 'MAIN_PRODUCT' | 'SUB_PRODUCT'
   categoryId: number | null
@@ -558,7 +565,17 @@ function mapProductRow(
     id: row.id,
     profileId: row.profileId,
     channelCode: row.channelCode,
+    productId: row.productId,
     productCode: row.productCode,
+    sourceType: row.sourceType,
+    primaryScanCodeType: row.primaryScanCodeType,
+    primaryScanCodeValue: row.primaryScanCodeValue,
+    primaryQrCodeValue: row.primaryQrCodeValue,
+    primaryScanCodeSource: row.primaryScanCodeSource,
+    externalBarcodeFormat: row.externalBarcodeFormat,
+    primaryBarcodeValue: row.primaryScanCodeValue,
+    primaryBarcodeType: row.primaryScanCodeType,
+    itemNumber: null,
     productType: row.productType,
     productKind: row.productKind,
     categoryId: row.categoryId,
@@ -757,7 +774,96 @@ export class PosMenuService {
         p.id,
         p.profileId,
         p.channelCode,
+        p.productId,
         p.productCode,
+        p.sourceType,
+        (
+          SELECT s.scanCodeType
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS primaryScanCodeType,
+        (
+          SELECT s.scanCodeValue
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS primaryScanCodeValue,
+        (
+          SELECT s.scanCodeValue
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.scanCodeType = 'RAPUS_QR'
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY s.id DESC
+          LIMIT 1
+        ) AS primaryQrCodeValue,
+        (
+          SELECT s.scanCodeSource
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS primaryScanCodeSource,
+        (
+          SELECT s.externalBarcodeFormat
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS externalBarcodeFormat,
         p.productType,
         p.productKind,
         p.categoryId,
@@ -1688,7 +1794,96 @@ export class PosMenuService {
         p.id,
         p.profileId,
         p.channelCode,
+        p.productId,
         p.productCode,
+        p.sourceType,
+        (
+          SELECT s.scanCodeType
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS primaryScanCodeType,
+        (
+          SELECT s.scanCodeValue
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS primaryScanCodeValue,
+        (
+          SELECT s.scanCodeValue
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.scanCodeType = 'RAPUS_QR'
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY s.id DESC
+          LIMIT 1
+        ) AS primaryQrCodeValue,
+        (
+          SELECT s.scanCodeSource
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS primaryScanCodeSource,
+        (
+          SELECT s.externalBarcodeFormat
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS externalBarcodeFormat,
         p.productType,
         p.productKind,
         p.categoryId,

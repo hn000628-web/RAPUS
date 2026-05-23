@@ -38,11 +38,13 @@ import {
 } from '@/lib/favoritesApi'
 import {
   addCartItem,
+  getMyCartItems,
   type AddCartItemOptionInput,
   type CartOptionType
 } from '@/lib/cartApi'
 import { getMe } from '@/lib/authApi'
 import { mediaUrl } from '@/lib/media'
+import BaseModal from '@/components/ui/modal/BaseModal'
 import {
   listMyDeliveryAddresses,
   type DeliveryAddressItem,
@@ -59,7 +61,10 @@ type Props = {
 
 type OrderMenuItem = {
   id: string
+  productDbId?: number | null
+  productId?: string | null
   productCode?: string | null
+  sourceType?: 'POS_PRODUCT' | 'MARKET_PRODUCT'
   categoryKey: string
   name: string
   description: string
@@ -110,8 +115,10 @@ type DeliveryDraftOrderOption = {
 
 type DeliveryDraftOrderItem = {
   localItemId: string
+  productDbId: number | null
   productCode: string
-  productId?: number | null
+  productId?: string | null
+  sourceType: 'POS_PRODUCT' | 'MARKET_PRODUCT'
   productName: string
   unitPrice: number
   quantity: number
@@ -119,6 +126,8 @@ type DeliveryDraftOrderItem = {
   lineTotalAmount: number
   options: DeliveryDraftOrderOption[]
 }
+
+type CartNoticeModalType = 'success' | 'warning'
 
 // SECTION 03 : CONSTANT
 
@@ -1082,6 +1091,9 @@ export default function DeliveryOrderContent({
   const [favoriteProductMap, setFavoriteProductMap] = useState<Record<string, boolean>>({})
   const [favoriteProductLoadingMap, setFavoriteProductLoadingMap] = useState<Record<string, boolean>>({})
   const [orderItems, setOrderItems] = useState<DeliveryDraftOrderItem[]>([])
+  const [isCartNoticeModalOpen, setIsCartNoticeModalOpen] = useState<boolean>(false)
+  const [cartNoticeModalType, setCartNoticeModalType] = useState<CartNoticeModalType>('success')
+  const [cartNoticeModalMessage, setCartNoticeModalMessage] = useState<string>('')
 
   // SECTION 08 : MEMO DATA
 
@@ -1126,7 +1138,10 @@ export default function DeliveryOrderContent({
 
         const nextMenuItems: OrderMenuItem[] = response.products.map((product) => ({
           id: String(product.id),
+          productDbId: Number(product.productDbId ?? product.id),
+          productId: typeof product.productId === 'string' ? product.productId : null,
           productCode: product.productCode ?? null,
+          sourceType: product.sourceType === 'MARKET_PRODUCT' ? 'MARKET_PRODUCT' : 'POS_PRODUCT',
           categoryKey: response.categories.find((category) => category.id === product.categoryId)?.categoryCode ?? 'UNCATEGORIZED',
           name: product.productName,
           description: product.productDescription ?? '',
@@ -1275,10 +1290,17 @@ export default function DeliveryOrderContent({
 
     return {
       localItemId: productCode,
+      productDbId:
+        Number.isInteger(Number(selectedMenu.productDbId))
+          ? Number(selectedMenu.productDbId)
+          : Number.isInteger(Number(selectedMenu.id))
+            ? Number(selectedMenu.id)
+            : null,
       productCode,
-      productId: Number.isInteger(Number(selectedMenu.id))
-        ? Number(selectedMenu.id)
+      productId: typeof selectedMenu.productId === 'string' && selectedMenu.productId.trim().length > 0
+        ? selectedMenu.productId.trim()
         : null,
+      sourceType: selectedMenu.sourceType === 'MARKET_PRODUCT' ? 'MARKET_PRODUCT' : 'POS_PRODUCT',
       productName: selectedMenu.name,
       unitPrice: selectedMenu.price,
       quantity,
@@ -1695,6 +1717,76 @@ export default function DeliveryOrderContent({
       ))
   }
 
+  function normalizeOptionSignatureTokens(
+    options: Array<{
+      productOptionId?: unknown
+      productOptionValueId?: unknown
+      optionNameSnapshot?: unknown
+      optionValueNameSnapshot?: unknown
+    }>
+  ): string[] {
+    return options
+      .map((option) => {
+        const optionId = Number(option.productOptionId)
+        const optionValueId = Number(option.productOptionValueId)
+        if (Number.isInteger(optionId) && optionId > 0 && Number.isInteger(optionValueId) && optionValueId > 0) {
+          return `${optionId}:${optionValueId}`
+        }
+
+        const optionName = String(option.optionNameSnapshot ?? '').trim()
+        const optionValueName = String(option.optionValueNameSnapshot ?? '').trim()
+        return `name:${optionName}|value:${optionValueName}`
+      })
+      .filter((token) => token.length > 0)
+      .sort()
+  }
+
+  function buildDraftOrderItemSignature(item: DeliveryDraftOrderItem): string {
+    const productIdentifier =
+      Number.isInteger(item.productDbId) && Number(item.productDbId) > 0
+        ? `productDbId:${Number(item.productDbId)}`
+        : item.productCode
+          ? `menuId:${item.productCode}`
+          : `id:${item.localItemId}`
+
+    const optionTokens = normalizeOptionSignatureTokens(
+      item.options.map((option) => ({
+        productOptionId: option.optionId ?? undefined,
+        productOptionValueId: option.optionValueId ?? undefined,
+        optionNameSnapshot: option.optionName,
+        optionValueNameSnapshot: option.optionValueName
+      }))
+    )
+
+    return `sourceType:${item.sourceType}|${productIdentifier}|options:${optionTokens.join(',')}`
+  }
+
+  function buildServerCartItemSignature(item: {
+    productCode: string
+    sourceType?: string
+    options?: Array<{
+      productOptionId?: unknown
+      productOptionValueId?: unknown
+      optionNameSnapshot?: unknown
+      optionValueNameSnapshot?: unknown
+    }>
+  }): string {
+    const productCode = String(item.productCode || '').trim()
+    const productIdentifier = productCode ? `menuId:${productCode}` : 'id:unknown'
+    const optionTokens = normalizeOptionSignatureTokens(item.options ?? [])
+    const sourceType = String(item.sourceType ?? 'POS_PRODUCT').trim().toUpperCase()
+    return `sourceType:${sourceType}|${productIdentifier}|options:${optionTokens.join(',')}`
+  }
+
+  function openCartNoticeModal(
+    modalType: CartNoticeModalType,
+    message: string
+  ) {
+    setCartNoticeModalType(modalType)
+    setCartNoticeModalMessage(message)
+    setIsCartNoticeModalOpen(true)
+  }
+
   function handleAddCartItem() {
     if (isCartAdding) {
       return
@@ -1720,15 +1812,71 @@ export default function DeliveryOrderContent({
     setOrderSubmitError(null)
 
     void (async () => {
+      const activeCartResponse = await getMyCartItems('ACTIVE')
+      const activeCartSignatureSet = new Set<string>(
+        activeCartResponse.items
+          .filter((cartItem) => cartItem.orderFlowType === 'DELIVERY')
+          .map((cartItem) => (
+            buildServerCartItemSignature({
+              productCode: cartItem.productCode,
+              sourceType: (cartItem as { sourceType?: string }).sourceType,
+              options: cartItem.options as Array<{
+                productOptionId?: unknown
+                productOptionValueId?: unknown
+                optionNameSnapshot?: unknown
+                optionValueNameSnapshot?: unknown
+              }>
+            })
+          ))
+      )
+
+      const hasDuplicate = orderItems.some((item) => {
+        const signature = buildDraftOrderItemSignature(item)
+        return activeCartSignatureSet.has(signature)
+      })
+
+      if (hasDuplicate) {
+        openCartNoticeModal('warning', '이미 장바구니에 저장되었습니다.')
+        return
+      }
+
+      let hasCreated = false
+      let hasDuplicateFromServer = false
+
       for (const item of orderItems) {
-        await addCartItem({
+        const response = await addCartItem({
           providerChannelCode: channelCode,
+          productDbId: Number.isInteger(item.productDbId) ? Number(item.productDbId) : undefined,
+          productId: item.productId ?? undefined,
           productCode: item.productCode,
+          sourceType: item.sourceType,
           quantity: item.quantity,
           orderFlowType: 'DELIVERY',
+          fulfillmentType: 'DELIVERY',
           requestMemo: memo.trim() || undefined,
           options: buildCartOptions(item)
         })
+
+        if (response.status === 'DUPLICATE') {
+          hasDuplicateFromServer = true
+          continue
+        }
+
+        hasCreated = true
+      }
+
+      if (hasCreated && !hasDuplicateFromServer) {
+        openCartNoticeModal('success', '장바구니에 저장되었습니다.')
+        return
+      }
+
+      if (!hasCreated && hasDuplicateFromServer) {
+        openCartNoticeModal('warning', '이미 장바구니에 저장되었습니다.')
+        return
+      }
+
+      if (hasCreated && hasDuplicateFromServer) {
+        openCartNoticeModal('warning', '이미 장바구니에 저장되었습니다.')
       }
     })()
       .catch((error) => {
@@ -1759,8 +1907,8 @@ export default function DeliveryOrderContent({
     }
 
     const invalidOrderItem = orderItems.find((item) => (
-      !Number.isInteger(item.productId) ||
-      Number(item.productId) < 1 ||
+      !Number.isInteger(item.productDbId) ||
+      Number(item.productDbId) < 1 ||
       item.quantity <= 0
     ))
     if (invalidOrderItem) {
@@ -1788,7 +1936,10 @@ export default function DeliveryOrderContent({
         customerRequestMemo: memo.trim() || undefined
       },
       items: orderItems.map((item) => ({
-        posProductId: Number(item.productId),
+        posProductId: Number(item.productDbId),
+        productCode: item.productCode,
+        productId: item.productId ?? undefined,
+        sourceType: item.sourceType,
         quantity: item.quantity,
         options: item.options
           .map((option) => ({
@@ -2572,6 +2723,16 @@ export default function DeliveryOrderContent({
       {FooterBarUI}
 
       {DeliveryModalUI}
+
+      <BaseModal
+        open={isCartNoticeModalOpen}
+        type={cartNoticeModalType}
+        title="장바구니"
+        description={cartNoticeModalMessage}
+        onClose={() => {
+          setIsCartNoticeModalOpen(false)
+        }}
+      />
     </section>
   )
 }

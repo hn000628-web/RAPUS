@@ -3857,10 +3857,12 @@ CREATE TABLE IF NOT EXISTS pos_products(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 profileId INTEGER NOT NULL,
 channelCode TEXT NOT NULL,
+productId TEXT,
 productCode TEXT CHECK(
   productCode IS NULL
   OR length(productCode) = 12
 ),
+sourceType TEXT NOT NULL DEFAULT 'POS_PRODUCT' CHECK(sourceType IN('POS_PRODUCT','MARKET_PRODUCT')),
 productType TEXT NOT NULL DEFAULT 'PRODUCT' CHECK(productType IN('PRODUCT')),
 productKind TEXT NOT NULL CHECK(productKind IN('MAIN_PRODUCT','SUB_PRODUCT')),
 categoryId INTEGER,
@@ -3909,6 +3911,87 @@ ON pos_products(isActive);
 
 CREATE INDEX IF NOT EXISTS idx_pos_products_sort
 ON pos_products(sortOrder);
+
+CREATE TABLE IF NOT EXISTS pos_product_scan_codes(
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+profileId INTEGER NOT NULL,
+channelCode TEXT NOT NULL,
+productDbId INTEGER NOT NULL,
+productId TEXT,
+productCode TEXT NOT NULL CHECK(length(productCode)=12),
+sourceType TEXT NOT NULL DEFAULT 'POS_PRODUCT'
+CHECK(sourceType IN('POS_PRODUCT','MARKET_PRODUCT')),
+scanCodeType TEXT NOT NULL DEFAULT 'RAPUS_QR'
+CHECK(scanCodeType IN(
+  'RAPUS_QR',
+  'RAPUS_BARCODE',
+  'EXTERNAL_BARCODE',
+  'INTERNAL',
+  'CUSTOM'
+)),
+scanCodeValue TEXT NOT NULL,
+scanCodeSource TEXT DEFAULT 'RAPUS'
+CHECK(scanCodeSource IN(
+  'RAPUS',
+  'MANUFACTURER',
+  'DISTRIBUTOR',
+  'MERCHANT',
+  'CUSTOM'
+)),
+externalBarcodeFormat TEXT
+CHECK(
+  externalBarcodeFormat IS NULL
+  OR externalBarcodeFormat IN(
+    'EAN13',
+    'EAN8',
+    'UPC_A',
+    'UPC_E',
+    'CODE128',
+    'GTIN14',
+    'CUSTOM'
+  )
+),
+isPrimary INTEGER NOT NULL DEFAULT 0
+CHECK(isPrimary IN(0,1)),
+isActive INTEGER NOT NULL DEFAULT 1
+CHECK(isActive IN(0,1)),
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+updatedAt TEXT,
+deletedAt TEXT,
+FOREIGN KEY(profileId) REFERENCES profiles(id),
+FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(productDbId) REFERENCES pos_products(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_channel
+ON pos_product_scan_codes(channelCode);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_product_code
+ON pos_product_scan_codes(productCode);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_product_db
+ON pos_product_scan_codes(productDbId);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_type
+ON pos_product_scan_codes(scanCodeType);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_value
+ON pos_product_scan_codes(scanCodeValue);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_source
+ON pos_product_scan_codes(scanCodeSource);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_external_format
+ON pos_product_scan_codes(externalBarcodeFormat);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_product_scan_codes_channel_value_unique
+ON pos_product_scan_codes(channelCode, scanCodeValue)
+WHERE deletedAt IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_product_scan_codes_primary_unique
+ON pos_product_scan_codes(channelCode, productCode)
+WHERE isPrimary = 1
+  AND deletedAt IS NULL;
 
 CREATE TABLE IF NOT EXISTS pos_product_options(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -4255,6 +4338,14 @@ revisionCode TEXT NOT NULL CHECK(length(revisionCode) = 12),
 revisionNo INTEGER NOT NULL DEFAULT 1 CHECK(revisionNo >= 1),
 providerChannelCode TEXT NOT NULL,
 posProductId INTEGER,
+productCode TEXT CHECK(productCode IS NULL OR length(productCode)=12),
+productId TEXT,
+sourceType TEXT,
+cartCode TEXT CHECK(cartCode IS NULL OR length(cartCode)=12),
+cartItemCode TEXT CHECK(cartItemCode IS NULL OR length(cartItemCode)=12),
+optionSignature TEXT,
+fulfillmentType TEXT,
+fulfillmentSignature TEXT,
 productTypeSnapshot TEXT NOT NULL CHECK(productTypeSnapshot IN('PRODUCT')),
 productKindSnapshot TEXT NOT NULL CHECK(productKindSnapshot IN('MAIN_PRODUCT','SUB_PRODUCT')),
 categoryNameSnapshot TEXT,
@@ -5017,6 +5108,66 @@ safeAddColumn(
   'pos_products',
   'productCode',
   'TEXT CHECK(productCode IS NULL OR length(productCode)=12)'
+)
+
+safeAddColumn(
+  'pos_products',
+  'productId',
+  'TEXT'
+)
+
+safeAddColumn(
+  'pos_products',
+  'sourceType',
+  "TEXT NOT NULL DEFAULT 'POS_PRODUCT' CHECK(sourceType IN('POS_PRODUCT','MARKET_PRODUCT'))"
+)
+
+safeAddColumn(
+  'pos_order_items',
+  'productCode',
+  'TEXT CHECK(productCode IS NULL OR length(productCode)=12)'
+)
+
+safeAddColumn(
+  'pos_order_items',
+  'productId',
+  'TEXT'
+)
+
+safeAddColumn(
+  'pos_order_items',
+  'sourceType',
+  'TEXT'
+)
+
+safeAddColumn(
+  'pos_order_items',
+  'cartCode',
+  'TEXT CHECK(cartCode IS NULL OR length(cartCode)=12)'
+)
+
+safeAddColumn(
+  'pos_order_items',
+  'cartItemCode',
+  'TEXT CHECK(cartItemCode IS NULL OR length(cartItemCode)=12)'
+)
+
+safeAddColumn(
+  'pos_order_items',
+  'optionSignature',
+  'TEXT'
+)
+
+safeAddColumn(
+  'pos_order_items',
+  'fulfillmentType',
+  'TEXT'
+)
+
+safeAddColumn(
+  'pos_order_items',
+  'fulfillmentSignature',
+  'TEXT'
 )
 
 safeAddColumn(
@@ -6608,10 +6759,382 @@ WHERE requiresAdultVerification IS NULL
 `)
 
 db.exec(`
+INSERT OR IGNORE INTO pos_products(
+  profileId,
+  channelCode,
+  productId,
+  productCode,
+  sourceType,
+  productType,
+  productKind,
+  categoryId,
+  productName,
+  productDescription,
+  basePrice,
+  currency,
+  isActive,
+  isSoldOut,
+  isRepresentative,
+  showOnTableOrder,
+  allowNormalOrder,
+  allowReservationOrder,
+  allowDineIn,
+  allowTakeout,
+  allowDelivery,
+  menuStatus,
+  sortOrder,
+  createdAt,
+  updatedAt
+)
+SELECT
+  p.id,
+  p.channelCode,
+  'PLC-' || strftime('%Y-%m-%d', 'now') || '-901',
+  'TSB8X7C6V5A1',
+  'POS_PRODUCT',
+  'PRODUCT',
+  'MAIN_PRODUCT',
+  NULL,
+  '테스트 버거',
+  'RAPUS_QR 검증용 테스트 상품',
+  9000,
+  'KRW',
+  1,
+  0,
+  0,
+  1,
+  1,
+  0,
+  1,
+  1,
+  1,
+  'ON_SALE',
+  901,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM profiles p
+WHERE p.profileType='BUSINESS'
+  AND p.channelCode='B8X7C6V5B4N3M'
+`)
+
+db.exec(`
+INSERT OR IGNORE INTO pos_products(
+  profileId,
+  channelCode,
+  productId,
+  productCode,
+  sourceType,
+  productType,
+  productKind,
+  categoryId,
+  productName,
+  productDescription,
+  basePrice,
+  currency,
+  isActive,
+  isSoldOut,
+  isRepresentative,
+  showOnTableOrder,
+  allowNormalOrder,
+  allowReservationOrder,
+  allowDineIn,
+  allowTakeout,
+  allowDelivery,
+  menuStatus,
+  sortOrder,
+  createdAt,
+  updatedAt
+)
+SELECT
+  p.id,
+  p.channelCode,
+  'PLC-' || strftime('%Y-%m-%d', 'now') || '-902',
+  'TSC0L4A2B7Z9',
+  'POS_PRODUCT',
+  'PRODUCT',
+  'MAIN_PRODUCT',
+  NULL,
+  '테스트 콜라',
+  'RAPUS_QR 검증용 테스트 상품',
+  2000,
+  'KRW',
+  1,
+  0,
+  0,
+  1,
+  1,
+  0,
+  1,
+  1,
+  1,
+  'ON_SALE',
+  902,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM profiles p
+WHERE p.profileType='BUSINESS'
+  AND p.channelCode='B8X7C6V5B4N3M'
+`)
+
+db.exec(`
+INSERT OR IGNORE INTO pos_products(
+  profileId,
+  channelCode,
+  productId,
+  productCode,
+  sourceType,
+  productType,
+  productKind,
+  categoryId,
+  productName,
+  productDescription,
+  basePrice,
+  currency,
+  isActive,
+  isSoldOut,
+  isRepresentative,
+  showOnTableOrder,
+  allowNormalOrder,
+  allowReservationOrder,
+  allowDineIn,
+  allowTakeout,
+  allowDelivery,
+  menuStatus,
+  sortOrder,
+  createdAt,
+  updatedAt
+)
+SELECT
+  p.id,
+  p.channelCode,
+  'PLC-' || strftime('%Y-%m-%d', 'now') || '-903',
+  'TSB1C3D5E7F9',
+  'POS_PRODUCT',
+  'PRODUCT',
+  'MAIN_PRODUCT',
+  NULL,
+  '테스트 라면',
+  'RAPUS_QR 검증용 테스트 상품',
+  4500,
+  'KRW',
+  1,
+  0,
+  0,
+  1,
+  1,
+  0,
+  1,
+  1,
+  1,
+  'ON_SALE',
+  903,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM profiles p
+WHERE p.profileType='BUSINESS'
+  AND p.channelCode='B1B2C3D4E5F6G'
+`)
+
+db.exec(`
+INSERT OR IGNORE INTO pos_products(
+  profileId,
+  channelCode,
+  productId,
+  productCode,
+  sourceType,
+  productType,
+  productKind,
+  categoryId,
+  productName,
+  productDescription,
+  basePrice,
+  currency,
+  isActive,
+  isSoldOut,
+  isRepresentative,
+  showOnTableOrder,
+  allowNormalOrder,
+  allowReservationOrder,
+  allowDineIn,
+  allowTakeout,
+  allowDelivery,
+  menuStatus,
+  sortOrder,
+  createdAt,
+  updatedAt
+)
+SELECT
+  p.id,
+  p.channelCode,
+  'PLC-' || strftime('%Y-%m-%d', 'now') || '-904',
+  'TSJU1C3E5K7M',
+  'POS_PRODUCT',
+  'PRODUCT',
+  'MAIN_PRODUCT',
+  NULL,
+  '테스트 주스',
+  'RAPUS_QR 검증용 테스트 상품',
+  3000,
+  'KRW',
+  1,
+  0,
+  0,
+  1,
+  1,
+  0,
+  1,
+  1,
+  1,
+  'ON_SALE',
+  904,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM profiles p
+WHERE p.profileType='BUSINESS'
+  AND p.channelCode='B1B2C3D4E5F6G'
+`)
+
+db.exec(`
 UPDATE pos_products
 SET productCode = 'PR' || substr('0000000000' || id, -10, 10)
 WHERE productCode IS NULL
 `)
+
+db.exec(`
+UPDATE pos_products
+SET sourceType = 'POS_PRODUCT'
+WHERE sourceType IS NULL
+   OR TRIM(sourceType) = ''
+`)
+
+db.exec(`
+UPDATE pos_products
+SET productId =
+  CASE
+    WHEN COALESCE(sourceType, 'POS_PRODUCT') = 'MARKET_PRODUCT'
+      THEN 'MKT-' || strftime('%Y-%m-%d', 'now') || '-' || substr('000' || id, -3, 3)
+    ELSE
+      'PLC-' || strftime('%Y-%m-%d', 'now') || '-' || substr('000' || id, -3, 3)
+  END
+WHERE productId IS NULL
+   OR TRIM(productId) = ''
+`)
+
+db.exec(`
+INSERT INTO pos_product_scan_codes(
+  profileId,
+  channelCode,
+  productDbId,
+  productId,
+  productCode,
+  sourceType,
+  scanCodeType,
+  scanCodeValue,
+  scanCodeSource,
+  externalBarcodeFormat,
+  isPrimary,
+  isActive,
+  createdAt,
+  updatedAt
+)
+SELECT
+  p.profileId,
+  p.channelCode,
+  p.id,
+  p.productId,
+  p.productCode,
+  COALESCE(p.sourceType, 'POS_PRODUCT'),
+  'RAPUS_QR',
+  'RAPUS:PRODUCT:' || p.channelCode || ':' || p.productCode,
+  'RAPUS',
+  NULL,
+  1,
+  1,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM pos_products p
+WHERE p.productCode IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM pos_product_scan_codes s
+    WHERE s.channelCode = p.channelCode
+      AND s.productCode = p.productCode
+      AND s.isPrimary = 1
+      AND s.deletedAt IS NULL
+  )
+`)
+
+const hasPosProductBarcodesTable =
+  db.prepare(`
+    SELECT 1
+    FROM sqlite_master
+    WHERE type = 'table'
+      AND name = 'pos_product_barcodes'
+    LIMIT 1
+  `).get() as { 1?: number } | undefined
+
+if (hasPosProductBarcodesTable) {
+  db.exec(`
+    INSERT INTO pos_product_scan_codes(
+      profileId,
+      channelCode,
+      productDbId,
+      productId,
+      productCode,
+      sourceType,
+      scanCodeType,
+      scanCodeValue,
+      scanCodeSource,
+      externalBarcodeFormat,
+      isPrimary,
+      isActive,
+      createdAt,
+      updatedAt,
+      deletedAt
+    )
+    SELECT
+      b.profileId,
+      b.channelCode,
+      b.productDbId,
+      b.productId,
+      b.productCode,
+      COALESCE(p.sourceType, 'POS_PRODUCT'),
+      CASE
+        WHEN b.barcodeType = 'INTERNAL' THEN 'INTERNAL'
+        WHEN b.barcodeType IN ('EAN13','EAN8','UPC_A','UPC_E','CODE128','GTIN14') THEN 'EXTERNAL_BARCODE'
+        WHEN b.barcodeType = 'QR' THEN 'CUSTOM'
+        ELSE 'CUSTOM'
+      END,
+      b.barcodeValue,
+      CASE
+        WHEN b.barcodeType = 'INTERNAL' THEN 'MERCHANT'
+        WHEN b.barcodeType IN ('EAN13','EAN8','UPC_A','UPC_E','CODE128','GTIN14') THEN 'MANUFACTURER'
+        ELSE 'CUSTOM'
+      END,
+      CASE
+        WHEN b.barcodeType IN ('EAN13','EAN8','UPC_A','UPC_E','CODE128','GTIN14') THEN b.barcodeType
+        ELSE NULL
+      END,
+      COALESCE(b.isPrimary, 0),
+      COALESCE(b.isActive, 1),
+      COALESCE(b.createdAt, CURRENT_TIMESTAMP),
+      b.updatedAt,
+      b.deletedAt
+    FROM pos_product_barcodes b
+    LEFT JOIN pos_products p
+      ON p.id = b.productDbId
+    WHERE b.barcodeValue IS NOT NULL
+      AND TRIM(b.barcodeValue) <> ''
+      AND b.productCode IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM pos_product_scan_codes s
+        WHERE s.channelCode = b.channelCode
+          AND s.scanCodeValue = b.barcodeValue
+          AND COALESCE(s.deletedAt, '') = COALESCE(b.deletedAt, '')
+      )
+  `)
+}
 
 db.exec(`
 UPDATE pos_product_thumbnails
@@ -6660,6 +7183,18 @@ db.exec(`
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_products_channel_product_code_unique
 ON pos_products(channelCode, productCode)
 WHERE productCode IS NOT NULL
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_products_channel_product_id_unique
+ON pos_products(channelCode, productId)
+WHERE productId IS NOT NULL
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_products_channel_product_id
+ON pos_products(channelCode, productId)
+WHERE productId IS NOT NULL
 `)
 
 //========================================================
@@ -6792,6 +7327,19 @@ WHERE favoriteProfileCount IS NULL
 `)
 
 db.exec(`
+UPDATE pos_products
+SET productId =
+  CASE
+    WHEN COALESCE(sourceType, 'POS_PRODUCT') = 'MARKET_PRODUCT'
+      THEN 'MKT-' || strftime('%Y-%m-%d', COALESCE(createdAt, CURRENT_TIMESTAMP)) || '-' || substr('000' || id, -3, 3)
+    ELSE
+      'PLC-' || strftime('%Y-%m-%d', COALESCE(createdAt, CURRENT_TIMESTAMP)) || '-' || substr('000' || id, -3, 3)
+  END
+WHERE productId IS NULL
+   OR TRIM(productId) = ''
+`)
+
+db.exec(`
 CREATE TABLE IF NOT EXISTS post_recommendations(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 actorProfileId INTEGER NOT NULL,
@@ -6861,9 +7409,15 @@ actorChannelCode TEXT NOT NULL,
 providerProfileId INTEGER NOT NULL,
 providerChannelCode TEXT NOT NULL,
 productId INTEGER,
+sourceType TEXT NOT NULL DEFAULT 'POS_PRODUCT' CHECK(sourceType IN('POS_PRODUCT','MARKET_PRODUCT')),
+cartCode TEXT CHECK(cartCode IS NULL OR length(cartCode)=12),
 cartSessionCode TEXT CHECK(cartSessionCode IS NULL OR length(cartSessionCode)=12),
 cartItemCode TEXT NOT NULL CHECK(length(cartItemCode)=12),
 productCode TEXT NOT NULL CHECK(length(productCode)=12),
+optionSignature TEXT NOT NULL DEFAULT 'NO_OPTIONS',
+fulfillmentType TEXT,
+fulfillmentSignature TEXT NOT NULL DEFAULT 'DEFAULT_FULFILLMENT',
+orderCode TEXT CHECK(orderCode IS NULL OR length(orderCode)=12),
 productNameSnapshot TEXT NOT NULL,
 productTypeSnapshot TEXT NOT NULL DEFAULT 'PRODUCT' CHECK(productTypeSnapshot IN('PRODUCT')),
 productKindSnapshot TEXT CHECK(
@@ -6915,6 +7469,42 @@ safeAddColumn(
   'TEXT CHECK(cartItemCode IS NULL OR length(cartItemCode)=12)'
 )
 
+safeAddColumn(
+  'cart_items',
+  'sourceType',
+  "TEXT NOT NULL DEFAULT 'POS_PRODUCT' CHECK(sourceType IN('POS_PRODUCT','MARKET_PRODUCT'))"
+)
+
+safeAddColumn(
+  'cart_items',
+  'optionSignature',
+  "TEXT NOT NULL DEFAULT 'NO_OPTIONS'"
+)
+
+safeAddColumn(
+  'cart_items',
+  'cartCode',
+  'TEXT CHECK(cartCode IS NULL OR length(cartCode)=12)'
+)
+
+safeAddColumn(
+  'cart_items',
+  'fulfillmentType',
+  'TEXT'
+)
+
+safeAddColumn(
+  'cart_items',
+  'fulfillmentSignature',
+  "TEXT NOT NULL DEFAULT 'DEFAULT_FULFILLMENT'"
+)
+
+safeAddColumn(
+  'cart_items',
+  'orderCode',
+  'TEXT CHECK(orderCode IS NULL OR length(orderCode)=12)'
+)
+
 db.exec(`
 UPDATE cart_items
 SET cartSessionCode = 'CS' || substr('0000000000' || id, -10, 10)
@@ -6923,8 +7513,50 @@ WHERE cartSessionCode IS NULL
 
 db.exec(`
 UPDATE cart_items
+SET cartCode = cartSessionCode
+WHERE (cartCode IS NULL OR TRIM(cartCode) = '')
+  AND cartSessionCode IS NOT NULL
+`)
+
+db.exec(`
+UPDATE cart_items
+SET cartCode = 'CT' || substr('0000000000' || id, -10, 10)
+WHERE cartCode IS NULL
+   OR TRIM(cartCode) = ''
+`)
+
+db.exec(`
+UPDATE cart_items
 SET cartItemCode = 'CI' || substr('0000000000' || id, -10, 10)
 WHERE cartItemCode IS NULL
+`)
+
+db.exec(`
+UPDATE cart_items
+SET sourceType = 'POS_PRODUCT'
+WHERE sourceType IS NULL
+   OR TRIM(sourceType) = ''
+`)
+
+db.exec(`
+UPDATE cart_items
+SET fulfillmentType = orderFlowType
+WHERE fulfillmentType IS NULL
+   OR TRIM(fulfillmentType) = ''
+`)
+
+db.exec(`
+UPDATE cart_items
+SET optionSignature = 'NO_OPTIONS'
+WHERE optionSignature IS NULL
+   OR TRIM(optionSignature) = ''
+`)
+
+db.exec(`
+UPDATE cart_items
+SET fulfillmentSignature = 'DEFAULT_FULFILLMENT'
+WHERE fulfillmentSignature IS NULL
+   OR TRIM(fulfillmentSignature) = ''
 `)
 
 db.exec(`
@@ -6945,6 +7577,11 @@ ON cart_items(productCode)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_cart_items_cart_session_code
 ON cart_items(cartSessionCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_cart_code
+ON cart_items(cartCode)
 `)
 
 db.exec(`
@@ -6978,10 +7615,36 @@ ON cart_items(actorChannelCode, providerChannelCode, cartStatus)
 `)
 
 db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_duplicate_guard
+ON cart_items(
+  actorChannelCode,
+  providerChannelCode,
+  sourceType,
+  productCode,
+  optionSignature,
+  cartStatus
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_duplicate_guard_v2
+ON cart_items(
+  actorChannelCode,
+  providerChannelCode,
+  sourceType,
+  productCode,
+  optionSignature,
+  fulfillmentSignature,
+  cartStatus
+)
+`)
+
+db.exec(`
 CREATE TABLE IF NOT EXISTS cart_item_options(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 cartItemId INTEGER NOT NULL,
 cartItemCode TEXT CHECK(cartItemCode IS NULL OR length(cartItemCode)=12),
+cartCode TEXT CHECK(cartCode IS NULL OR length(cartCode)=12),
 providerChannelCode TEXT NOT NULL,
 productCode TEXT NOT NULL CHECK(length(productCode)=12),
 productOptionId INTEGER,
@@ -7013,6 +7676,12 @@ safeAddColumn(
   'TEXT CHECK(cartItemCode IS NULL OR length(cartItemCode)=12)'
 )
 
+safeAddColumn(
+  'cart_item_options',
+  'cartCode',
+  'TEXT CHECK(cartCode IS NULL OR length(cartCode)=12)'
+)
+
 db.exec(`
 UPDATE cart_item_options
 SET cartItemCode = (
@@ -7021,6 +7690,17 @@ SET cartItemCode = (
   WHERE ci.id = cart_item_options.cartItemId
 )
 WHERE cartItemCode IS NULL
+`)
+
+db.exec(`
+UPDATE cart_item_options
+SET cartCode = (
+  SELECT ci.cartCode
+  FROM cart_items ci
+  WHERE ci.id = cart_item_options.cartItemId
+)
+WHERE cartCode IS NULL
+   OR TRIM(cartCode) = ''
 `)
 
 db.exec(`

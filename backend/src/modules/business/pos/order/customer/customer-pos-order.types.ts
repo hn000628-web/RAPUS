@@ -54,7 +54,18 @@ export type CustomerOrderOptionResponse = {
 
 export type CustomerOrderProductResponse = {
   id: number
+  productDbId?: number
+  productId?: string | null
   productCode: string | null
+  sourceType?: 'POS_PRODUCT' | 'MARKET_PRODUCT'
+  primaryScanCodeType?: string | null
+  primaryScanCodeValue?: string | null
+  primaryQrCodeValue?: string | null
+  primaryScanCodeSource?: string | null
+  externalBarcodeFormat?: string | null
+  primaryBarcodeValue?: string | null
+  primaryBarcodeType?: string | null
+  itemNumber?: string | null
   productName: string
   productDescription: string | null
   basePrice: number
@@ -97,6 +108,14 @@ export type CustomerOrderBootstrapResponse = {
 export type CustomerOrderItemResponse = {
   id: number
   posProductId: number
+  productCode?: string | null
+  productId?: string | null
+  sourceType?: 'POS_PRODUCT' | 'MARKET_PRODUCT' | null
+  cartCode?: string | null
+  cartItemCode?: string | null
+  optionSignature?: string | null
+  fulfillmentType?: string | null
+  fulfillmentSignature?: string | null
   productNameSnapshot: string
   unitPriceSnapshot: number
   quantity: number
@@ -171,6 +190,12 @@ export type ValidatedOrderOption = {
 
 export type ValidatedOrderProduct = {
   posProductId: number
+  productCode: string | null
+  productId: string | null
+  sourceType: 'POS_PRODUCT' | 'MARKET_PRODUCT'
+  cartCode: string | null
+  cartItemCode: string | null
+  optionSignature: string
   productKindSnapshot: 'MAIN_PRODUCT' | 'SUB_PRODUCT'
   categoryNameSnapshot: string | null
   productNameSnapshot: string

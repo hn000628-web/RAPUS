@@ -17,24 +17,42 @@ export type AddCartItemOptionInput = {
 
 export type AddCartItemRequest = {
   providerChannelCode: ChannelCode13
+  productDbId?: number
+  productId?: string
   productCode: BusinessObjectCode12
+  sourceType?: 'POS_PRODUCT' | 'MARKET_PRODUCT'
   quantity: number
   orderFlowType: OrderFlowType
+  fulfillmentType?: OrderFlowType
   requestMemo?: string
   options?: AddCartItemOptionInput[]
 }
 
 export type AddCartItemResponse = {
   ok: true
+  status?: 'CREATED' | 'DUPLICATE'
+  message?: string
   item: {
     id: number
     actorChannelCode: string
     providerChannelCode: ChannelCode13
+    cartCode?: BusinessObjectCode12 | null
     cartSessionCode: BusinessObjectCode12 | null
     cartItemCode: BusinessObjectCode12
+    productDbId?: number
+    productId?: string | null
     productCode: BusinessObjectCode12
+    barcodeValue?: string | null
+    itemNumber?: string | null
+    primaryScanCodeValue?: string | null
+    primaryScanCodeType?: string | null
+    primaryQrCodeValue?: string | null
+    sourceType?: 'POS_PRODUCT' | 'MARKET_PRODUCT'
     quantity: number
+    fulfillmentType?: OrderFlowType
+    fulfillmentSignature?: string
     cartStatus: CartStatus
+    orderCode?: string | null
     lineTotalAmount: number
   }
 }
@@ -52,16 +70,28 @@ export type CartItemOption = {
 export type CartItem = {
   id: number
   providerChannelCode: ChannelCode13
+  cartCode?: BusinessObjectCode12 | null
   cartSessionCode: BusinessObjectCode12 | null
   cartItemCode: BusinessObjectCode12
+  productDbId?: number | null
+  productId?: string | null
   productCode: BusinessObjectCode12
+  barcodeValue?: string | null
+  itemNumber?: string | null
+  primaryScanCodeValue?: string | null
+  primaryScanCodeType?: string | null
+  primaryQrCodeValue?: string | null
+  sourceType?: 'POS_PRODUCT' | 'MARKET_PRODUCT'
   productNameSnapshot: string
   unitPriceSnapshot: number
   quantity: number
   optionTotalAmount: number
   lineTotalAmount: number
   orderFlowType: OrderFlowType
+  fulfillmentType?: OrderFlowType | null
+  fulfillmentSignature?: string | null
   cartStatus: CartStatus
+  orderCode?: string | null
   requestMemo: string | null
   createdAt: string
   options: CartItemOption[]

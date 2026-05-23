@@ -41,7 +41,14 @@ type PosLocationRow = {
 
 type PosProductRow = {
   id: number
+  productId: string | null
   productCode: string | null
+  sourceType: 'POS_PRODUCT' | 'MARKET_PRODUCT'
+  primaryScanCodeType: string | null
+  primaryScanCodeValue: string | null
+  primaryQrCodeValue: string | null
+  primaryScanCodeSource: string | null
+  externalBarcodeFormat: string | null
   productName: string
   productDescription: string | null
   basePrice: number
@@ -151,7 +158,96 @@ export class CustomerPosOrderService {
     const products = db.prepare(`
       SELECT
         p.id,
+        p.productId,
         p.productCode,
+        p.sourceType,
+        (
+          SELECT s.scanCodeType
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS primaryScanCodeType,
+        (
+          SELECT s.scanCodeValue
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS primaryScanCodeValue,
+        (
+          SELECT s.scanCodeValue
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.scanCodeType = 'RAPUS_QR'
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY s.id DESC
+          LIMIT 1
+        ) AS primaryQrCodeValue,
+        (
+          SELECT s.scanCodeSource
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS primaryScanCodeSource,
+        (
+          SELECT s.externalBarcodeFormat
+          FROM pos_product_scan_codes s
+          WHERE s.channelCode = p.channelCode
+            AND s.productCode = p.productCode
+            AND s.isPrimary = 1
+            AND s.isActive = 1
+            AND s.deletedAt IS NULL
+          ORDER BY
+            CASE s.scanCodeType
+              WHEN 'RAPUS_QR' THEN 1
+              WHEN 'RAPUS_BARCODE' THEN 2
+              WHEN 'EXTERNAL_BARCODE' THEN 3
+              WHEN 'INTERNAL' THEN 4
+              ELSE 5
+            END ASC,
+            s.id DESC
+          LIMIT 1
+        ) AS externalBarcodeFormat,
         p.productName,
         p.productDescription,
         p.basePrice,
@@ -278,6 +374,11 @@ export class CustomerPosOrderService {
       categories,
       products: filteredProducts.map((product) => ({
         ...product,
+        productDbId: product.id,
+        primaryBarcodeValue: product.primaryScanCodeValue,
+        primaryBarcodeType: product.primaryScanCodeType,
+        externalBarcodeFormat: product.externalBarcodeFormat,
+        itemNumber: null,
         thumbnail: product.thumbnailFilePath
           ? {
               filePath: product.thumbnailFilePath,
@@ -426,6 +527,7 @@ export class CustomerPosOrderService {
           const orderId = Number(orderResult.lastInsertRowid)
 
           const insertedItems: unknown[] = []
+          const orderedCartItemCodes: string[] = []
           const cookingPayload: Array<{
             orderItemId: number
             productNameSnapshot: string
@@ -446,6 +548,14 @@ export class CustomerPosOrderService {
                     revisionNo,
                     providerChannelCode,
                     posProductId,
+                    productCode,
+                    productId,
+                    sourceType,
+                    cartCode,
+                    cartItemCode,
+                    optionSignature,
+                    fulfillmentType,
+                    fulfillmentSignature,
                     productTypeSnapshot,
                     productKindSnapshot,
                     categoryNameSnapshot,
@@ -456,13 +566,21 @@ export class CustomerPosOrderService {
                     requestMemoSnapshot,
                     sortOrder
                   )
-                  VALUES(?, ?, ?, 1, ?, ?, 'PRODUCT', ?, ?, ?, ?, ?, ?, ?, ?)
+                  VALUES(?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PRODUCT', ?, ?, ?, ?, ?, ?, ?, ?)
                 `).run(
                   orderId,
                   orderCode,
                   revisionCode,
                   provider.channelCode,
                   item.posProductId,
+                  item.productCode,
+                  item.productId,
+                  item.sourceType,
+                  item.cartCode,
+                  item.cartItemCode,
+                  item.optionSignature,
+                  this.toFulfillmentType(dto.orderSource, dto.orderFlowType),
+                  this.buildFulfillmentSignature(dto.orderFlowType, provider.channelCode),
                   item.productKindSnapshot,
                   item.categoryNameSnapshot,
                   item.productNameSnapshot,
@@ -480,6 +598,14 @@ export class CustomerPosOrderService {
                     revisionNo,
                     providerChannelCode,
                     posProductId,
+                    productCode,
+                    productId,
+                    sourceType,
+                    cartCode,
+                    cartItemCode,
+                    optionSignature,
+                    fulfillmentType,
+                    fulfillmentSignature,
                     productTypeSnapshot,
                     productKindSnapshot,
                     categoryNameSnapshot,
@@ -489,13 +615,21 @@ export class CustomerPosOrderService {
                     lineTotalAmount,
                     sortOrder
                   )
-                  VALUES(?, ?, ?, 1, ?, ?, 'PRODUCT', ?, ?, ?, ?, ?, ?, ?)
+                  VALUES(?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PRODUCT', ?, ?, ?, ?, ?, ?, ?)
                 `).run(
                   orderId,
                   orderCode,
                   revisionCode,
                   provider.channelCode,
                   item.posProductId,
+                  item.productCode,
+                  item.productId,
+                  item.sourceType,
+                  item.cartCode,
+                  item.cartItemCode,
+                  item.optionSignature,
+                  this.toFulfillmentType(dto.orderSource, dto.orderFlowType),
+                  this.buildFulfillmentSignature(dto.orderFlowType, provider.channelCode),
                   item.productKindSnapshot,
                   item.categoryNameSnapshot,
                   item.productNameSnapshot,
@@ -547,6 +681,10 @@ export class CustomerPosOrderService {
               ...item,
               options: insertedOptions,
             })
+
+            if (item.cartItemCode) {
+              orderedCartItemCodes.push(item.cartItemCode)
+            }
 
             cookingPayload.push({
               orderItemId,
@@ -602,6 +740,24 @@ export class CustomerPosOrderService {
               dto.fulfillment?.customerRequestMemo ?? dto.memo
             ),
           )
+
+          if (orderedCartItemCodes.length > 0) {
+            const placeholders = orderedCartItemCodes.map(() => '?').join(', ')
+            db.prepare(`
+              UPDATE cart_items
+              SET
+                cartStatus = 'ORDERED',
+                orderCode = ?,
+                updatedAt = CURRENT_TIMESTAMP
+              WHERE providerChannelCode = ?
+                AND cartItemCode IN (${placeholders})
+                AND cartStatus = 'ACTIVE'
+            `).run(
+              orderCode,
+              provider.channelCode,
+              ...orderedCartItemCodes
+            )
+          }
 
           this.insertStatusEvent({
             orderId,
@@ -749,6 +905,14 @@ export class CustomerPosOrderService {
           SELECT
             id,
             posProductId,
+            productCode,
+            productId,
+            sourceType,
+            cartCode,
+            cartItemCode,
+            optionSignature,
+            fulfillmentType,
+            fulfillmentSignature,
             productNameSnapshot,
             unitPriceSnapshot,
             quantity,
@@ -768,12 +932,20 @@ export class CustomerPosOrderService {
         }>
       : db.prepare(`
           SELECT
-            id,
-            posProductId,
-            productNameSnapshot,
-            unitPriceSnapshot,
-            quantity,
-            lineTotalAmount,
+          id,
+          posProductId,
+          productCode,
+          productId,
+          sourceType,
+          cartCode,
+          cartItemCode,
+          optionSignature,
+          fulfillmentType,
+          fulfillmentSignature,
+          productNameSnapshot,
+          unitPriceSnapshot,
+          quantity,
+          lineTotalAmount,
             NULL AS requestMemoSnapshot
           FROM pos_order_items
           WHERE orderId = ?
@@ -1216,9 +1388,16 @@ export class CustomerPosOrderService {
         0
       )
       const productAmount = product.basePrice * quantity
+      const optionSignature = this.buildOptionSignature(validatedOptions)
 
       validatedItems.push({
         posProductId: product.id,
+        productCode: product.productCode,
+        productId: product.productId,
+        sourceType: product.sourceType === 'MARKET_PRODUCT' ? 'MARKET_PRODUCT' : 'POS_PRODUCT',
+        cartCode: this.normalizeNullableString(item.cartCode),
+        cartItemCode: this.normalizeNullableString(item.cartItemCode),
+        optionSignature,
         productKindSnapshot: product.productKind,
         categoryNameSnapshot: product.categoryName,
         productNameSnapshot: product.productName,
@@ -1477,6 +1656,44 @@ export class CustomerPosOrderService {
       output += ORDER_CODE_CHARSET[randomIndex]
     }
     return output
+  }
+
+  private buildOptionSignature(
+    options: ValidatedOrderProduct['options']
+  ): string {
+    if (options.length < 1) {
+      return 'NO_OPTIONS'
+    }
+
+    const tokens = options
+      .map((option) => `${option.productOptionId}:${option.productOptionValueId}`)
+      .sort()
+
+    return tokens.length > 0
+      ? tokens.join(',')
+      : 'NO_OPTIONS'
+  }
+
+  private buildFulfillmentSignature(
+    orderFlowType: CustomerOrderFlowType,
+    providerChannelCode: string
+  ): string {
+    if (orderFlowType === 'DELIVERY') {
+      return 'DELIVERY:DEFAULT'
+    }
+    if (orderFlowType === 'PICKUP') {
+      return `PICKUP:${providerChannelCode}`
+    }
+    if (orderFlowType === 'IN_STORE') {
+      return `IN_STORE:${providerChannelCode}`
+    }
+    if (orderFlowType === 'RESERVATION') {
+      return 'RESERVATION:DEFAULT'
+    }
+    if (orderFlowType === 'ROOM_SERVICE') {
+      return 'ROOM_SERVICE:DEFAULT'
+    }
+    return 'DEFAULT_FULFILLMENT'
   }
 
   private getOrderDateToken(): {

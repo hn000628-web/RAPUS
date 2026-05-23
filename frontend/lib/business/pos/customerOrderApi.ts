@@ -84,7 +84,18 @@ export type CustomerOrderProductOption = {
 
 export type CustomerOrderProduct = {
   id: number
+  productDbId?: number
+  productId?: string | null
   productCode: string | null
+  sourceType?: 'POS_PRODUCT' | 'MARKET_PRODUCT'
+  primaryScanCodeType?: string | null
+  primaryScanCodeValue?: string | null
+  primaryQrCodeValue?: string | null
+  primaryScanCodeSource?: string | null
+  externalBarcodeFormat?: string | null
+  primaryBarcodeValue?: string | null
+  primaryBarcodeType?: string | null
+  itemNumber?: string | null
   productName: string
   productDescription: string | null
   basePrice: number
@@ -117,6 +128,11 @@ export type CreateCustomerOrderOptionInput = {
 
 export type CreateCustomerOrderItemInput = {
   posProductId: number
+  productCode?: string
+  productId?: string
+  sourceType?: 'POS_PRODUCT' | 'MARKET_PRODUCT'
+  cartCode?: string
+  cartItemCode?: string
   quantity: number
   requestMemo?: string
   options?: CreateCustomerOrderOptionInput[]
@@ -184,6 +200,14 @@ export type CustomerOrderItemResponse = {
   revisionCode: string
   revisionNo: number
   posProductId: number | null
+  productCode?: string | null
+  productId?: string | null
+  sourceType?: 'POS_PRODUCT' | 'MARKET_PRODUCT' | null
+  cartCode?: string | null
+  cartItemCode?: string | null
+  optionSignature?: string | null
+  fulfillmentType?: string | null
+  fulfillmentSignature?: string | null
   productNameSnapshot: string
   categoryNameSnapshot: string | null
   unitPriceSnapshot: number

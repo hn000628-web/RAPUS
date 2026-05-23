@@ -1,0 +1,64 @@
+PRODUCT_CODE_SCAN_CODE_RULE_SNAPSHOT
+
+1) 핵심 개념
+- productCode는 RAPUS 플랫폼 표준 상품코드이며 12자리 영문+숫자 형식이다.
+- productCode는 QR 상품코드를 겸용한다.
+- scanCodeValue는 productCode를 찾기 위한 스캔 입력값이다.
+- scanCodeValue는 productCode를 대체하지 않는다.
+- external barcode는 선택값이며 필수값이 아니다.
+- itemNumber는 공통 필수값이 아니다.
+
+2) 공식 역할 정의
+- productCode:
+  - 상품 식별 기준
+  - 옵션 연결 기준
+  - 썸네일 연결 기준
+  - 장바구니 저장 기준
+  - 주문 item 추적 기준
+  - scanCodeValue 매핑 기준
+- scanCodeType:
+  - RAPUS_QR
+  - RAPUS_BARCODE
+  - EXTERNAL_BARCODE
+  - INTERNAL
+  - CUSTOM
+- scanCodeSource:
+  - RAPUS
+  - MANUFACTURER
+  - DISTRIBUTOR
+  - MERCHANT
+  - CUSTOM
+- externalBarcodeFormat:
+  - EAN13
+  - EAN8
+  - UPC_A
+  - UPC_E
+  - CODE128
+  - GTIN14
+  - CUSTOM
+
+3) RAPUS_QR 기본 규칙
+- 기본 scanCodeType은 RAPUS_QR이다.
+- 기본 scanCodeValue 형식은 아래와 같다.
+  RAPUS:PRODUCT:{channelCode}:{productCode}
+
+4) 저장/추적 원칙
+- 상품 원본 키는 productCode이며 productCode 중심으로 추적한다.
+- scanCodeValue는 입력값이며 조회 인입용 키로 사용한다.
+- cart/order 중복 기준은 productCode 기준을 유지한다.
+- sourceType 저장값은 POS_PRODUCT 또는 MARKET_PRODUCT만 허용한다.
+
+5) 금지사항
+- productCode와 scanCodeValue를 혼용/치환하지 않는다.
+- itemNumber를 핵심 필수 구조로 사용하지 않는다.
+- sourceType에 PLACE, MARKET 같은 표시명을 저장하지 않는다.
+
+6) 권장 응답 필드
+- productDbId
+- productCode
+- sourceType
+- primaryScanCodeType
+- primaryScanCodeValue
+- primaryQrCodeValue
+- externalBarcodeFormat (optional)
+
