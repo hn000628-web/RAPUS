@@ -11,6 +11,8 @@ S001-3_SNAPSHOT__평점시스템 규칙
 운영환경_pos_admin_ui&CSS_기본규칙
 추천_즐겨찾기_찜_규칙
 RAPUS_코드규칙
+PRODUCT_ID_PRODUCT_CODE_SOURCE_TYPE_RULE_SNAPSHOT
+상품코드 규칙_productCode
 
 ☆[Always]☆
 ※작업 완료 후 반드시 [000_작업지시_절대규칙.txt] 기준으로 완료보고서를 제출한다.※

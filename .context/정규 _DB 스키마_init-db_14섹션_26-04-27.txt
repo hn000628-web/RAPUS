@@ -2969,7 +2969,7 @@ safeAddColumn(
 safeAddColumn(
   'posts',
   'postCode',
-  'TEXT'
+  'TEXT CHECK(postCode IS NULL OR length(postCode)=12)'
 )
 
 /* =========================================
@@ -3321,7 +3321,7 @@ WHERE EXISTS(
 
 db.exec(`
 UPDATE posts
-SET postCode = 'T' || substr('000000' || id, -6, 6)
+SET postCode = 'PT' || substr('0000000000' || id, -10, 10)
 WHERE postCode IS NULL
 `)
 
@@ -3859,7 +3859,7 @@ profileId INTEGER NOT NULL,
 channelCode TEXT NOT NULL,
 productCode TEXT CHECK(
   productCode IS NULL
-  OR productCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9]'
+  OR length(productCode) = 12
 ),
 productType TEXT NOT NULL DEFAULT 'PRODUCT' CHECK(productType IN('PRODUCT')),
 productKind TEXT NOT NULL CHECK(productKind IN('MAIN_PRODUCT','SUB_PRODUCT')),
@@ -3917,7 +3917,7 @@ channelCode TEXT NOT NULL,
 productId INTEGER NOT NULL,
 productCode TEXT CHECK(
   productCode IS NULL
-  OR productCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9]'
+  OR length(productCode) = 12
 ),
 optionName TEXT NOT NULL,
 optionType TEXT NOT NULL CHECK(optionType IN('SIZE','TEMPERATURE','ADDON','CHOICE','CUSTOM')),
@@ -3961,7 +3961,7 @@ channelCode TEXT NOT NULL,
 optionId INTEGER NOT NULL,
 productCode TEXT CHECK(
   productCode IS NULL
-  OR productCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9]'
+  OR length(productCode) = 12
 ),
 optionValueName TEXT NOT NULL,
 priceDelta INTEGER DEFAULT 0,
@@ -3969,6 +3969,11 @@ isDefault INTEGER DEFAULT 0 CHECK(isDefault IN(0,1)),
 isActive INTEGER DEFAULT 1 CHECK(isActive IN(0,1)),
 optionValueType TEXT DEFAULT 'CUSTOM' CHECK(optionValueType IN('BASE','CUSTOM')),
 isVisible INTEGER DEFAULT 1 CHECK(isVisible IN(0,1)),
+isQuantityEnabled INTEGER NOT NULL DEFAULT 0 CHECK(isQuantityEnabled IN(0,1)),
+isQuantityLimitEnabled INTEGER NOT NULL DEFAULT 0 CHECK(isQuantityLimitEnabled IN(0,1)),
+minOptionQuantity INTEGER NOT NULL DEFAULT 1 CHECK(minOptionQuantity >= 1),
+maxOptionQuantity INTEGER CHECK(maxOptionQuantity IS NULL OR maxOptionQuantity >= 1),
+defaultOptionQuantity INTEGER NOT NULL DEFAULT 1 CHECK(defaultOptionQuantity >= 1),
 sortOrder INTEGER DEFAULT 0,
 createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
 updatedAt TEXT,
@@ -4089,7 +4094,7 @@ layoutShape TEXT DEFAULT 'RECT',
 tableCode TEXT
 CHECK(
   tableCode IS NULL
-  OR tableCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9]'
+  OR length(tableCode) = 12
 ),
 qrStatus TEXT DEFAULT 'DISCONNECTED' CHECK(qrStatus IN('CONNECTED','DISCONNECTED')),
 qrBaseUrl TEXT,
@@ -4572,7 +4577,7 @@ providerChannelCode TEXT NOT NULL,
 orderId INTEGER NOT NULL,
 orderCode TEXT NOT NULL CHECK(length(orderCode)=12),
 revisionCode TEXT NOT NULL CHECK(length(revisionCode)=12),
-paymentCode TEXT NOT NULL UNIQUE CHECK(length(paymentCode)=14),
+paymentCode TEXT NOT NULL UNIQUE CHECK(length(paymentCode)=12),
 paymentMethod TEXT NOT NULL CHECK(paymentMethod IN('CASH','CARD','QR','NFC','MIXED')),
 paymentStatus TEXT NOT NULL DEFAULT 'READY' CHECK(paymentStatus IN('READY','PAID','FAILED','CANCELLED','REFUNDED')),
 paymentAmount INTEGER NOT NULL DEFAULT 0 CHECK(paymentAmount >= 0),
@@ -4661,7 +4666,7 @@ channelCode TEXT NOT NULL,
 productId INTEGER NOT NULL,
 productCode TEXT CHECK(
   productCode IS NULL
-  OR productCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9]'
+  OR length(productCode) = 12
 ),
 imageAssetId INTEGER NOT NULL,
 sortOrder INTEGER DEFAULT 1,
@@ -5011,7 +5016,7 @@ safeAddColumn(
 safeAddColumn(
   'pos_products',
   'productCode',
-  'TEXT'
+  'TEXT CHECK(productCode IS NULL OR length(productCode)=12)'
 )
 
 safeAddColumn(
@@ -5089,19 +5094,19 @@ safeAddColumn(
 safeAddColumn(
   'pos_product_thumbnails',
   'productCode',
-  'TEXT'
+  'TEXT CHECK(productCode IS NULL OR length(productCode)=12)'
 )
 
 safeAddColumn(
   'pos_product_options',
   'productCode',
-  'TEXT'
+  'TEXT CHECK(productCode IS NULL OR length(productCode)=12)'
 )
 
 safeAddColumn(
   'pos_product_option_values',
   'productCode',
-  'TEXT'
+  'TEXT CHECK(productCode IS NULL OR length(productCode)=12)'
 )
 
 safeAddColumn(
@@ -5115,6 +5120,236 @@ safeAddColumn(
   'isVisible',
   'INTEGER DEFAULT 1 CHECK(isVisible IN(0,1))'
 )
+
+safeAddColumn(
+  'pos_product_option_values',
+  'isQuantityEnabled',
+  'INTEGER NOT NULL DEFAULT 0 CHECK(isQuantityEnabled IN(0,1))'
+)
+
+safeAddColumn(
+  'pos_product_option_values',
+  'isQuantityLimitEnabled',
+  'INTEGER NOT NULL DEFAULT 0 CHECK(isQuantityLimitEnabled IN(0,1))'
+)
+
+safeAddColumn(
+  'pos_product_option_values',
+  'minOptionQuantity',
+  'INTEGER NOT NULL DEFAULT 1 CHECK(minOptionQuantity >= 1)'
+)
+
+safeAddColumn(
+  'pos_product_option_values',
+  'maxOptionQuantity',
+  'INTEGER CHECK(maxOptionQuantity IS NULL OR maxOptionQuantity >= 1)'
+)
+
+safeAddColumn(
+  'pos_product_option_values',
+  'defaultOptionQuantity',
+  'INTEGER NOT NULL DEFAULT 1 CHECK(defaultOptionQuantity >= 1)'
+)
+
+function rebuildLegacyProductCodeTable(
+  tableName: string,
+  productCodeExpression: string
+) {
+  const tableSqlRow = db.prepare(`
+    SELECT sql
+    FROM sqlite_master
+    WHERE type = 'table'
+      AND name = ?
+    LIMIT 1
+  `).get(tableName) as { sql?: string } | undefined
+
+  const legacyCheck =
+    "productCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9][A-Z0-9]'"
+
+  if (!tableSqlRow?.sql?.includes(legacyCheck)) {
+    return
+  }
+
+  const tempTableName =
+    `${tableName}_code_rule_rebuild`
+
+  const columns =
+    db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>
+
+  const columnNames =
+    columns.map((column) => column.name)
+
+  const selectColumns =
+    columnNames.map((columnName) =>
+      columnName === 'productCode'
+        ? `${productCodeExpression} AS productCode`
+        : columnName
+    )
+
+  const createTempSql =
+    tableSqlRow.sql
+      .replace(new RegExp(`CREATE TABLE ${tableName}`, 'i'), `CREATE TABLE ${tempTableName}`)
+      .split(legacyCheck)
+      .join('length(productCode) = 12')
+
+  db.exec(`PRAGMA foreign_keys = OFF`)
+  db.exec(`DROP TABLE IF EXISTS ${tempTableName}`)
+  db.exec(createTempSql)
+  db.exec(`
+    INSERT INTO ${tempTableName} (${columnNames.join(', ')})
+    SELECT ${selectColumns.join(', ')}
+    FROM ${tableName}
+  `)
+  db.exec(`DROP TABLE ${tableName}`)
+  db.exec(`ALTER TABLE ${tempTableName} RENAME TO ${tableName}`)
+  db.exec(`PRAGMA foreign_keys = ON`)
+}
+
+rebuildLegacyProductCodeTable(
+  'pos_products',
+  "CASE WHEN productCode IS NOT NULL AND length(productCode) = 12 THEN productCode ELSE 'PR' || substr('0000000000' || id, -10, 10) END"
+)
+
+rebuildLegacyProductCodeTable(
+  'pos_product_thumbnails',
+  "COALESCE((SELECT p.productCode FROM pos_products p WHERE p.id = pos_product_thumbnails.productId), CASE WHEN productCode IS NOT NULL AND length(productCode) = 12 THEN productCode ELSE NULL END)"
+)
+
+rebuildLegacyProductCodeTable(
+  'pos_product_options',
+  "COALESCE((SELECT p.productCode FROM pos_products p WHERE p.id = pos_product_options.productId), CASE WHEN productCode IS NOT NULL AND length(productCode) = 12 THEN productCode ELSE NULL END)"
+)
+
+rebuildLegacyProductCodeTable(
+  'pos_product_option_values',
+  "COALESCE((SELECT o.productCode FROM pos_product_options o WHERE o.id = pos_product_option_values.optionId), CASE WHEN productCode IS NOT NULL AND length(productCode) = 12 THEN productCode ELSE NULL END)"
+)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_products_channel
+ON pos_products(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_products_profile
+ON pos_products(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_products_category
+ON pos_products(categoryId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_products_type
+ON pos_products(productType)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_products_kind
+ON pos_products(productKind)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_products_active
+ON pos_products(isActive)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_products_sort
+ON pos_products(sortOrder)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_options_channel
+ON pos_product_options(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_options_profile
+ON pos_product_options(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_options_product
+ON pos_product_options(productId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_options_type
+ON pos_product_options(optionType)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_options_active
+ON pos_product_options(isActive)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_options_sort
+ON pos_product_options(sortOrder)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_option_values_channel
+ON pos_product_option_values(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_option_values_profile
+ON pos_product_option_values(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_option_values_option
+ON pos_product_option_values(optionId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_option_values_active
+ON pos_product_option_values(isActive)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_option_values_sort
+ON pos_product_option_values(sortOrder)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_thumbnails_profile
+ON pos_product_thumbnails(profileId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_thumbnails_channel
+ON pos_product_thumbnails(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_thumbnails_product
+ON pos_product_thumbnails(productId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_thumbnails_asset
+ON pos_product_thumbnails(imageAssetId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_thumbnails_active
+ON pos_product_thumbnails(isActive)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_thumbnails_sort
+ON pos_product_thumbnails(productId, sortOrder)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_product_thumbnails_active_unique
+ON pos_product_thumbnails(productId)
+WHERE isActive = 1
+`)
 
 safeAddColumn(
   'pos_locations',
@@ -5191,7 +5426,7 @@ safeAddColumn(
 safeAddColumn(
   'pos_locations',
   'tableCode',
-  "TEXT CHECK(tableCode IS NULL OR tableCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9]')"
+  'TEXT CHECK(tableCode IS NULL OR length(tableCode)=12)'
 )
 
 safeAddColumn(
@@ -5304,7 +5539,7 @@ const posLocationsSupportsWaitingStatus =
 const posLocationsHasLegacyLocationNameUnique =
   posLocationsTableSqlRow?.sql?.includes(`UNIQUE(profileId, channelCode, locationName)`) ?? false
 const posLocationsSupportsStrictTableCodePattern =
-  posLocationsTableSqlRow?.sql?.includes(`tableCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9]'`) ?? false
+  posLocationsTableSqlRow?.sql?.includes(`length(tableCode) = 12`) ?? false
 
 if (!posLocationsSupportsWaitingStatus || posLocationsHasLegacyLocationNameUnique || !posLocationsSupportsStrictTableCodePattern) {
   db.exec(`PRAGMA foreign_keys = OFF`)
@@ -5333,7 +5568,7 @@ if (!posLocationsSupportsWaitingStatus || posLocationsHasLegacyLocationNameUniqu
       layoutShape TEXT DEFAULT 'RECT',
       tableCode TEXT CHECK(
         tableCode IS NULL
-        OR tableCode GLOB '[A-Z0-9][A-Z0-9][A-Z0-9]'
+        OR length(tableCode) = 12
       ),
       qrStatus TEXT DEFAULT 'DISCONNECTED' CHECK(qrStatus IN('CONNECTED','DISCONNECTED')),
       qrBaseUrl TEXT,
@@ -5813,7 +6048,7 @@ safeAddColumn(
 safeAddColumn(
   'pos_payments',
   'paymentCode',
-  'TEXT'
+  'TEXT CHECK(paymentCode IS NULL OR length(paymentCode)=12)'
 )
 
 safeAddColumn(
@@ -6374,7 +6609,7 @@ WHERE requiresAdultVerification IS NULL
 
 db.exec(`
 UPDATE pos_products
-SET productCode = 'P' || substr('000000' || id, -6, 6)
+SET productCode = 'PR' || substr('0000000000' || id, -10, 10)
 WHERE productCode IS NULL
 `)
 
@@ -6482,7 +6717,7 @@ actorChannelCode TEXT NOT NULL,
 providerProfileId INTEGER NOT NULL,
 providerChannelCode TEXT NOT NULL,
 productId INTEGER,
-productCode TEXT NOT NULL,
+productCode TEXT NOT NULL CHECK(length(productCode)=12),
 status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','DELETED')),
 createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
 updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -6564,7 +6799,7 @@ actorChannelCode TEXT NOT NULL,
 providerProfileId INTEGER NOT NULL,
 providerChannelCode TEXT NOT NULL,
 postId INTEGER,
-postCode TEXT NOT NULL,
+postCode TEXT NOT NULL CHECK(length(postCode)=12),
 postType TEXT NOT NULL CHECK(postType IN('GENERAL','GALLERY','PRODUCT','EVENT','REVIEW')),
 status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN('ACTIVE','DELETED')),
 createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -6626,7 +6861,9 @@ actorChannelCode TEXT NOT NULL,
 providerProfileId INTEGER NOT NULL,
 providerChannelCode TEXT NOT NULL,
 productId INTEGER,
-productCode TEXT NOT NULL,
+cartSessionCode TEXT CHECK(cartSessionCode IS NULL OR length(cartSessionCode)=12),
+cartItemCode TEXT NOT NULL CHECK(length(cartItemCode)=12),
+productCode TEXT NOT NULL CHECK(length(productCode)=12),
 productNameSnapshot TEXT NOT NULL,
 productTypeSnapshot TEXT NOT NULL DEFAULT 'PRODUCT' CHECK(productTypeSnapshot IN('PRODUCT')),
 productKindSnapshot TEXT CHECK(
@@ -6666,6 +6903,30 @@ FOREIGN KEY(productId) REFERENCES pos_products(id)
 )
 `)
 
+safeAddColumn(
+  'cart_items',
+  'cartSessionCode',
+  'TEXT CHECK(cartSessionCode IS NULL OR length(cartSessionCode)=12)'
+)
+
+safeAddColumn(
+  'cart_items',
+  'cartItemCode',
+  'TEXT CHECK(cartItemCode IS NULL OR length(cartItemCode)=12)'
+)
+
+db.exec(`
+UPDATE cart_items
+SET cartSessionCode = 'CS' || substr('0000000000' || id, -10, 10)
+WHERE cartSessionCode IS NULL
+`)
+
+db.exec(`
+UPDATE cart_items
+SET cartItemCode = 'CI' || substr('0000000000' || id, -10, 10)
+WHERE cartItemCode IS NULL
+`)
+
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_cart_items_actor_channel
 ON cart_items(actorChannelCode)
@@ -6679,6 +6940,16 @@ ON cart_items(providerChannelCode)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_cart_items_product_code
 ON cart_items(productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_cart_session_code
+ON cart_items(cartSessionCode)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cart_items_cart_item_code_unique
+ON cart_items(cartItemCode)
 `)
 
 db.exec(`
@@ -6710,8 +6981,9 @@ db.exec(`
 CREATE TABLE IF NOT EXISTS cart_item_options(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 cartItemId INTEGER NOT NULL,
+cartItemCode TEXT CHECK(cartItemCode IS NULL OR length(cartItemCode)=12),
 providerChannelCode TEXT NOT NULL,
-productCode TEXT NOT NULL,
+productCode TEXT NOT NULL CHECK(length(productCode)=12),
 productOptionId INTEGER,
 productOptionValueId INTEGER,
 optionNameSnapshot TEXT NOT NULL,
@@ -6735,9 +7007,30 @@ FOREIGN KEY(productOptionValueId) REFERENCES pos_product_option_values(id)
 )
 `)
 
+safeAddColumn(
+  'cart_item_options',
+  'cartItemCode',
+  'TEXT CHECK(cartItemCode IS NULL OR length(cartItemCode)=12)'
+)
+
+db.exec(`
+UPDATE cart_item_options
+SET cartItemCode = (
+  SELECT ci.cartItemCode
+  FROM cart_items ci
+  WHERE ci.id = cart_item_options.cartItemId
+)
+WHERE cartItemCode IS NULL
+`)
+
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_cart_item_options_cart_item
 ON cart_item_options(cartItemId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_item_options_cart_item_code
+ON cart_item_options(cartItemCode)
 `)
 
 db.exec(`
@@ -6893,6 +7186,34 @@ ON pos_product_option_values(optionValueType)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_pos_product_option_values_visible
 ON pos_product_option_values(isVisible)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_option_values_quantity_enabled
+ON pos_product_option_values(isQuantityEnabled)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_option_values_quantity_limit_enabled
+ON pos_product_option_values(isQuantityLimitEnabled)
+`)
+
+db.exec(`
+UPDATE pos_product_option_values
+SET
+  isQuantityEnabled = COALESCE(isQuantityEnabled, 0),
+  isQuantityLimitEnabled = COALESCE(isQuantityLimitEnabled, 0),
+  minOptionQuantity = COALESCE(minOptionQuantity, 1),
+  defaultOptionQuantity = COALESCE(defaultOptionQuantity, 1),
+  maxOptionQuantity = CASE
+    WHEN COALESCE(isQuantityLimitEnabled, 0) = 1 THEN maxOptionQuantity
+    ELSE NULL
+  END
+WHERE isQuantityEnabled IS NULL
+   OR isQuantityLimitEnabled IS NULL
+   OR minOptionQuantity IS NULL
+   OR defaultOptionQuantity IS NULL
+   OR COALESCE(isQuantityLimitEnabled, 0) = 0
 `)
 
 db.exec(`

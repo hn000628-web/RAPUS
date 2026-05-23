@@ -1,0 +1,934 @@
+// FILE : docs/PRODUCT_CODE_SCAN_CODE_RULE_SNAPSHOT.txt
+// ROOT : C:\Users\kjm\social-platform\docs\PRODUCT_CODE_SCAN_CODE_RULE_SNAPSHOT.txt
+// STATUS : PRODUCTION LOCK
+// ROLE : RAPUS PRODUCT CODE / SCAN CODE / BARCODE / QR ABSOLUTE RULE SNAPSHOT
+// CHANGE SUMMARY :
+// - productCode를 RAPUS 공식 상품 식별자로 고정
+// - productCode = QR 상품코드 겸용 기준 확정
+// - 외부 바코드 / RAPUS QR / RAPUS 바코드는 scanCodeValue로 통합
+// - itemNumber는 플랫폼 공통 필수값에서 제외
+// - merchantItemCode는 사업자 내부 관리번호 선택값으로 분리
+// - 같은 12자리 코드라도 컬럼명/도메인별 역할이 다름을 공식화
+// - 상품 / 스캔 / 장바구니 / 주문 / 택배 코드 역할 분리
+// - 택배 / 배송 추적 시스템은 본 스냅샷 범위에서 제외
+// - scanCodeType / scanCodeSource 기준 보강
+// - 외부 바코드 세부 표준은 optional metadata로 처리
+
+/* ==================================================
+SECTION 00 : PURPOSE
+================================================== */
+
+본 스냅샷의 목적은 RAPUS 플랫폼의 상품 코드 체계를 단순화하고,
+상품 식별 / QR / 바코드 / 장바구니 / 주문 / 택배 추적 코드를
+혼용하지 않도록 공식 기준을 고정하는 것이다.
+
+핵심 결론:
+
+productCode 하나를 RAPUS 상품 식별의 중심으로 사용한다.
+
+productCode는 12자리 영문+숫자 조합이며,
+RAPUS 내부 상품 번호이자 QR 상품코드의 핵심값이다.
+
+외부 제조사 바코드, 유통 바코드, RAPUS QR, RAPUS 내부 바코드는
+모두 scanCodeValue로 저장하고 productCode에 연결한다.
+
+itemNumber는 RAPUS 공통 필수값이 아니다.
+
+택배 / 배송 추적 코드는 상품 코드 체계와 분리한다.
+
+
+/* ==================================================
+SECTION 01 : CORE PRINCIPLE
+================================================== */
+
+RAPUS 상품 식별의 절대 기준:
+
+productCode
+
+정의:
+
+productCode
+= RAPUS 플랫폼 표준 상품코드
+= 시스템 내부 고유 상품 코드
+= 영문 + 숫자 조합 12자리
+= QR 상품코드 겸용
+= 상품 식별 기준
+= 옵션 연결 기준
+= 썸네일 연결 기준
+= 장바구니 저장 기준
+= 주문 item 추적 기준
+= 스캔 코드 매핑 기준
+
+절대 원칙:
+
+상품 연결 기준은 항상 productCode다.
+
+외부 코드는 productCode를 찾기 위한 입력값이다.
+
+외부 코드는 상품 원본 키가 아니다.
+
+RAPUS QR도 productCode를 감싸는 스캔 표현 방식이다.
+
+장바구니 / 주문 / 옵션 / 썸네일 / 상품 조회는 productCode 중심으로 유지한다.
+
+
+/* ==================================================
+SECTION 02 : PRODUCT CODE FORMAT RULE
+================================================== */
+
+productCode 형식:
+
+- 길이: 12자리
+- 문자셋: A-Z + 0-9
+- 소문자 금지
+- 특수문자 금지
+- 공백 금지
+
+예:
+
+NCK585KBTQQL
+A7K9Q2M4X1BC
+
+DB 기준:
+
+productCode TEXT NOT NULL
+CHECK(length(productCode) = 12)
+
+Service 기준:
+
+정규식 검증:
+
+^[A-Z0-9]{12}$
+
+productCode는 생성 후 변경 금지한다.
+
+productCode는 프론트에서 생성하지 않는다.
+
+productCode는 사용자가 직접 입력하지 않는다.
+
+productCode 생성은 Backend / Service 책임이다.
+
+
+/* ==================================================
+SECTION 03 : PRODUCT CODE ROLE
+================================================== */
+
+productCode의 역할:
+
+1. 상품 본체 식별
+2. 옵션 연결
+3. 옵션값 연결
+4. 썸네일 연결
+5. 장바구니 항목 연결
+6. 주문 항목 연결
+7. QR 상품코드 생성 기준
+8. RAPUS 전용 바코드 생성 기준
+9. 외부 바코드 매핑 기준
+10. 운영 추적 기준
+11. 상품 스캔 코드 매핑 기준
+
+대표 연결 구조:
+
+pos_products.productCode
+→ pos_product_options.productCode
+→ pos_product_option_values.productCode
+→ pos_product_thumbnails.productCode
+→ cart_items.productCode
+→ cart_item_options.productCode
+→ pos_order_items.productCode
+→ pos_product_scan_codes.productCode
+
+즉:
+
+productCode는 상품 도메인의 중심 연결 키다.
+
+productCode는 바코드 / QR / 외부코드보다 상위 기준이다.
+
+
+/* ==================================================
+SECTION 04 : SCAN CODE CONCEPT
+================================================== */
+
+scanCodeValue는 스캔 입력값이다.
+
+scanCodeValue는 productCode를 찾기 위한 값이다.
+
+scanCodeValue 종류:
+
+1. RAPUS_QR
+2. RAPUS_BARCODE
+3. EXTERNAL_BARCODE
+4. INTERNAL
+5. CUSTOM
+
+정의:
+
+scanCodeValue
+= 제조사 바코드
+= 유통 바코드
+= RAPUS QR
+= RAPUS 내부 바코드
+= 기타 스캔 입력값
+
+중요:
+
+scanCodeValue는 productCode를 대체하지 않는다.
+scanCodeValue는 productCode에 연결된다.
+
+스캔 흐름:
+
+scanCodeValue
+→ productCode
+→ pos_products
+→ 옵션 / 썸네일 / 장바구니 / 주문
+
+
+/* ==================================================
+SECTION 05 : PRODUCT CODE AND QR RULE
+================================================== */
+
+RAPUS QR은 productCode 기반으로 생성한다.
+
+productCode는 QR 상품코드의 핵심값이다.
+
+QR 값 예시:
+
+RAPUS:PRODUCT:{channelCode}:{productCode}
+
+예:
+
+RAPUS:PRODUCT:B8X7C6V5B4N3M:NCK585KBTQQL
+
+URL형 QR 예시:
+
+/channel/B8X7C6V5B4N3M/product/NCK585KBTQQL
+
+원칙:
+
+QR은 productCode를 감싸는 스캔 표현 방식이다.
+QR 자체가 상품 원본 키가 아니다.
+
+실제 연결:
+
+RAPUS QR 스캔
+→ scanCodeValue 조회
+→ productCode 확인
+→ pos_products 조회
+
+RAPUS QR은 기본 primary scan code로 사용할 수 있다.
+
+
+/* ==================================================
+SECTION 06 : EXTERNAL BARCODE RULE
+================================================== */
+
+외부 바코드는 선택값이다.
+
+외부 바코드 예:
+
+- EAN13
+- EAN8
+- UPC_A
+- UPC_E
+- CODE128
+- GTIN14
+- 제조사 바코드
+- 유통사 바코드
+- 물류 바코드
+
+정의:
+
+external barcode
+= 제조사 / 유통 / 물류에서 이미 사용하는 바코드
+= RAPUS 상품 원본 키가 아님
+= productCode에 연결되는 외부 입력값
+
+외부 바코드 연결:
+
+8801234567890
+→ scanCodeValue
+→ productCode
+→ pos_products
+
+주의:
+
+외부 바코드는 숫자 13자리 등 제한된 표준을 가질 수 있다.
+RAPUS 내부 상품 식별은 외부 바코드에 의존하지 않는다.
+
+RAPUS 내부 기준은 productCode다.
+
+외부 바코드는 없어도 상품 등록이 가능하다.
+
+외부 바코드는 공산품 / 유통상품 / 제조상품에만 선택적으로 사용한다.
+
+
+/* ==================================================
+SECTION 07 : SCAN CODE TYPE RULE
+================================================== */
+
+scanCodeType은 스캔 코드의 사용 목적을 구분한다.
+
+기본 허용값:
+
+RAPUS_QR
+RAPUS_BARCODE
+EXTERNAL_BARCODE
+INTERNAL
+CUSTOM
+
+정의:
+
+RAPUS_QR
+= RAPUS 플랫폼 공식 QR 코드
+
+RAPUS_BARCODE
+= RAPUS 플랫폼 내부 바코드
+
+EXTERNAL_BARCODE
+= 제조사 / 유통사 / 외부 표준 바코드
+
+INTERNAL
+= 내부 임시 스캔 코드
+
+CUSTOM
+= 사업자 또는 특수 운영 목적 코드
+
+주의:
+
+EAN13 / UPC_A / CODE128 등 세부 바코드 표준은
+scanCodeType을 과도하게 늘리지 않고 externalBarcodeFormat으로 선택 관리할 수 있다.
+
+권장:
+
+scanCodeType = EXTERNAL_BARCODE
+externalBarcodeFormat = EAN13 / UPC_A / CODE128 / GTIN14
+
+즉:
+
+scanCodeType은 큰 분류
+externalBarcodeFormat은 외부 바코드 세부 표준
+
+
+/* ==================================================
+SECTION 08 : SCAN CODE SOURCE RULE
+================================================== */
+
+scanCodeSource는 스캔 코드의 출처를 구분한다.
+
+허용값:
+
+RAPUS
+MANUFACTURER
+DISTRIBUTOR
+MERCHANT
+CUSTOM
+
+정의:
+
+RAPUS
+= RAPUS가 생성한 QR / 바코드
+
+MANUFACTURER
+= 제조사 바코드
+
+DISTRIBUTOR
+= 유통사 / 도매사 바코드
+
+MERCHANT
+= 사업자가 자체 등록한 코드
+
+CUSTOM
+= 기타 특수 코드
+
+원칙:
+
+RAPUS_QR / RAPUS_BARCODE는 scanCodeSource = RAPUS
+
+EXTERNAL_BARCODE는 scanCodeSource가 MANUFACTURER / DISTRIBUTOR / MERCHANT 중 하나일 수 있다.
+
+
+/* ==================================================
+SECTION 09 : SCAN CODE TABLE STANDARD
+================================================== */
+
+정규 테이블명:
+
+pos_product_scan_codes
+
+역할:
+
+상품별 QR / RAPUS 바코드 / 외부 바코드 / 내부 스캔코드 통합 관리
+
+권장 구조:
+
+CREATE TABLE IF NOT EXISTS pos_product_scan_codes(
+
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+  profileId INTEGER NOT NULL,
+  channelCode TEXT NOT NULL,
+
+  productDbId INTEGER NOT NULL,
+  productCode TEXT NOT NULL CHECK(length(productCode) = 12),
+
+  sourceType TEXT NOT NULL DEFAULT 'POS_PRODUCT'
+  CHECK(sourceType IN('POS_PRODUCT','MARKET_PRODUCT')),
+
+  scanCodeType TEXT NOT NULL DEFAULT 'RAPUS_QR'
+  CHECK(scanCodeType IN(
+    'RAPUS_QR',
+    'RAPUS_BARCODE',
+    'EXTERNAL_BARCODE',
+    'INTERNAL',
+    'CUSTOM'
+  )),
+
+  scanCodeValue TEXT NOT NULL,
+
+  scanCodeSource TEXT DEFAULT 'RAPUS'
+  CHECK(scanCodeSource IN(
+    'RAPUS',
+    'MANUFACTURER',
+    'DISTRIBUTOR',
+    'MERCHANT',
+    'CUSTOM'
+  )),
+
+  externalBarcodeFormat TEXT
+  CHECK(
+    externalBarcodeFormat IS NULL
+    OR externalBarcodeFormat IN(
+      'EAN13',
+      'EAN8',
+      'UPC_A',
+      'UPC_E',
+      'CODE128',
+      'GTIN14',
+      'CUSTOM'
+    )
+  ),
+
+  isPrimary INTEGER NOT NULL DEFAULT 0
+  CHECK(isPrimary IN(0,1)),
+
+  isActive INTEGER NOT NULL DEFAULT 1
+  CHECK(isActive IN(0,1)),
+
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  deletedAt TEXT,
+
+  FOREIGN KEY(profileId) REFERENCES profiles(id),
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(productDbId) REFERENCES pos_products(id)
+
+);
+
+주의:
+
+itemNumber는 정규 필수 컬럼으로 넣지 않는다.
+
+merchantItemCode가 필요하면 pos_products 또는 별도 merchant mapping table에서 선택값으로 처리한다.
+
+
+/* ==================================================
+SECTION 10 : SCAN CODE INDEX RULE
+================================================== */
+
+필수 인덱스:
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_channel
+ON pos_product_scan_codes(channelCode);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_product_code
+ON pos_product_scan_codes(productCode);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_product_db
+ON pos_product_scan_codes(productDbId);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_type
+ON pos_product_scan_codes(scanCodeType);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_value
+ON pos_product_scan_codes(scanCodeValue);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_source
+ON pos_product_scan_codes(scanCodeSource);
+
+CREATE INDEX IF NOT EXISTS idx_pos_product_scan_codes_external_format
+ON pos_product_scan_codes(externalBarcodeFormat);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_product_scan_codes_channel_value_unique
+ON pos_product_scan_codes(channelCode, scanCodeValue)
+WHERE deletedAt IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_product_scan_codes_primary_unique
+ON pos_product_scan_codes(channelCode, productCode)
+WHERE isPrimary = 1
+  AND deletedAt IS NULL;
+
+원칙:
+
+같은 채널에서 같은 scanCodeValue는 중복될 수 없다.
+같은 채널의 같은 productCode에는 대표 scan code가 1개만 존재한다.
+
+단, 상품 1개에는 여러 scan code를 연결할 수 있다.
+
+예:
+
+RAPUS_QR
+EXTERNAL_BARCODE
+MERCHANT CUSTOM CODE
+
+
+/* ==================================================
+SECTION 11 : DEFAULT RAPUS QR BACKFILL RULE
+================================================== */
+
+기존 pos_products row마다 대표 RAPUS_QR 1개를 생성한다.
+
+조건:
+
+- pos_products.productCode IS NOT NULL
+- 해당 channelCode + productCode에 active primary scan code가 없을 때
+
+생성값:
+
+profileId
+= pos_products.profileId
+
+channelCode
+= pos_products.channelCode
+
+productDbId
+= pos_products.id
+
+productCode
+= pos_products.productCode
+
+sourceType
+= pos_products.sourceType
+
+scanCodeType
+= RAPUS_QR
+
+scanCodeValue
+= RAPUS:PRODUCT:{channelCode}:{productCode}
+
+scanCodeSource
+= RAPUS
+
+externalBarcodeFormat
+= NULL
+
+isPrimary
+= 1
+
+isActive
+= 1
+
+예:
+
+productCode:
+NCK585KBTQQL
+
+channelCode:
+B8X7C6V5B4N3M
+
+scanCodeValue:
+RAPUS:PRODUCT:B8X7C6V5B4N3M:NCK585KBTQQL
+
+주의:
+
+기본 백필은 외부 바코드가 아니다.
+기본 백필은 RAPUS_QR이다.
+
+
+/* ==================================================
+SECTION 12 : EXTERNAL BARCODE INSERT RULE
+================================================== */
+
+외부 제조사 / 유통사 바코드는 별도 scan code row로 추가한다.
+
+예:
+
+scanCodeType
+= EXTERNAL_BARCODE
+
+scanCodeSource
+= MANUFACTURER
+
+externalBarcodeFormat
+= EAN13
+
+scanCodeValue
+= 8801234567890
+
+productCode
+= NCK585KBTQQL
+
+연결:
+
+8801234567890
+→ scanCodeValue
+→ productCode
+→ pos_products
+
+주의:
+
+외부 바코드 값이 있다고 해서 productCode를 대체하지 않는다.
+
+외부 바코드는 scanCodeValue로 저장한다.
+
+외부 바코드는 상품 1개에 여러 개 존재할 수 있다.
+
+예:
+
+낱개 바코드
+박스 바코드
+묶음 바코드
+유통사 바코드
+
+
+/* ==================================================
+SECTION 13 : ITEM NUMBER RULE
+================================================== */
+
+itemNumber는 RAPUS 공통 필수값이 아니다.
+
+ITEM-2026-000001
+ACC-2026-000014
+CLO-2026-000038
+MKT-2026-000221
+
+위와 같은 값은 사업자별 내부 관리번호 성격이다.
+
+따라서 RAPUS 공통 스키마에서 itemNumber를 핵심 필드로 사용하지 않는다.
+
+필요 시 별도 선택 컬럼으로만 둔다.
+
+권장 명칭:
+
+merchantItemCode
+
+정의:
+
+merchantItemCode
+= 사업자 내부 관리번호
+= 선택값
+= RAPUS 시스템 연결 기준 아님
+
+주의:
+
+itemNumber를 productCode 대체값으로 사용 금지.
+itemNumber를 장바구니/주문 연결 기준으로 사용 금지.
+merchantItemCode를 productCode 대체값으로 사용 금지.
+
+
+/* ==================================================
+SECTION 14 : CODE FORMAT REUSE RULE
+================================================== */
+
+12자리 코드 포맷은 여러 도메인에서 재사용할 수 있다.
+
+단, 코드의 의미는 컬럼명이 결정한다.
+
+같은 12자리 코드라도 컬럼이 다르면 역할이 다르다.
+
+예:
+
+channelCode
+= 채널 코드
+
+productCode
+= 상품 코드
+
+cartCode
+= 장바구니 묶음 코드
+
+cartItemCode
+= 장바구니 항목 코드
+
+orderCode
+= 주문 코드
+
+revisionCode
+= 주문 수정/버전 코드
+
+paymentCode
+= 결제 코드
+
+tableCode
+= 테이블/좌석/객실 코드
+
+postCode
+= 게시물 코드
+
+절대 원칙:
+
+productCode ≠ orderCode
+productCode ≠ cartCode
+productCode ≠ cartItemCode
+productCode ≠ channelCode
+
+서로 대체하거나 혼용하지 않는다.
+
+
+/* ==================================================
+SECTION 15 : CART CODE RULE
+================================================== */
+
+cartCode
+= 장바구니 묶음 코드
+
+cartItemCode
+= 장바구니 항목 코드
+
+productCode
+= 상품 코드
+
+orderCode
+= 주문 코드
+
+장바구니 단계는 아직 주문이 아니므로 orderCode를 중심으로 하지 않는다.
+
+장바구니 단계의 상품 기준은 productCode다.
+
+중복 방지 기준:
+
+actorChannelCode
++ providerChannelCode
++ sourceType
++ productCode
++ optionSignature
++ fulfillmentSignature
++ cartStatus = ACTIVE
+
+단, fulfillmentSignature가 아직 없는 단계에서는:
+
+actorChannelCode
++ providerChannelCode
++ sourceType
++ productCode
++ optionSignature
++ cartStatus = ACTIVE
+
+cartCode와 cartItemCode는 추적용 코드이지,
+상품 식별 기준이 아니다.
+
+cartCode는 중복 방지 기준이 아니다.
+
+cartItemCode는 중복 방지 기준이 아니다.
+
+
+/* ==================================================
+SECTION 16 : ORDER CODE RULE
+================================================== */
+
+orderCode
+= 주문 확정 후 생성되는 주문 번호
+
+POS 직접 주문은 orderCode 중심으로 처리한다.
+
+장바구니 기반 주문은 다음 흐름을 따른다:
+
+cart_items.productCode
+→ pos_order_items.productCode
+
+cart_items.cartItemCode
+→ pos_order_items.cartItemCode
+
+pos_orders.orderCode
+→ pos_order_items.orderCode
+
+주문 item에는 productCode를 유지해야 한다.
+
+이유:
+
+주문 후에도 어떤 상품이 주문되었는지 productCode 기준으로 역추적 가능해야 한다.
+
+
+/* ==================================================
+SECTION 17 : SHIPMENT / DELIVERY EXCLUSION RULE
+================================================== */
+
+택배 / 배송 추적 시스템은 본 스냅샷 범위에서 제외한다.
+
+shipmentTrackingCode
+= 택배 운송장 번호
+= 배송 상태 추적용
+
+productCode와 shipmentTrackingCode는 다르다.
+
+구분:
+
+productCode
+= 어떤 상품인지 식별
+
+shipmentTrackingCode
+= 어떤 택배 운송장인지 추적
+
+택배 시스템은 추후 shipment 도메인에서 별도 설계한다.
+
+본 스냅샷은 상품 코드 / QR / 바코드 / 장바구니 / 주문 연결 기준만 다룬다.
+
+
+/* ==================================================
+SECTION 18 : SOURCE TYPE RULE
+================================================== */
+
+sourceType은 상품 원천 구분이다.
+
+허용값:
+
+POS_PRODUCT
+MARKET_PRODUCT
+
+UI 표시명:
+
+POS_PRODUCT
+→ 플레이스
+
+MARKET_PRODUCT
+→ 마켓
+
+주의:
+
+POS_PRODUCT를 PLACE로 변경하지 않는다.
+MARKET_PRODUCT를 MARKET으로 변경하지 않는다.
+
+UI 라벨만 플레이스/마켓으로 표시한다.
+DB/API 내부값은 POS_PRODUCT / MARKET_PRODUCT를 유지한다.
+
+
+/* ==================================================
+SECTION 19 : API RESPONSE RULE
+================================================== */
+
+상품 조회 API는 productCode를 반드시 포함한다.
+
+권장 응답:
+
+{
+  productDbId: 1,
+  productCode: 'NCK585KBTQQL',
+  sourceType: 'POS_PRODUCT',
+  primaryScanCodeType: 'RAPUS_QR',
+  primaryScanCodeValue: 'RAPUS:PRODUCT:B8X7C6V5B4N3M:NCK585KBTQQL'
+}
+
+주의:
+
+productCode는 필수.
+primaryScanCodeValue는 선택 가능하지만 RAPUS_QR 백필 후 제공 권장.
+itemNumber는 핵심 응답으로 사용하지 않는다.
+barcodeValue 대신 scanCodeValue를 사용한다.
+externalBarcodeFormat은 외부 바코드일 때만 사용한다.
+
+
+/* ==================================================
+SECTION 20 : FRONTEND RULE
+================================================== */
+
+Frontend는 productCode를 생성하지 않는다.
+
+Frontend는 scanCodeValue를 생성하지 않는다.
+
+Frontend는 API 응답의 productCode / scanCodeValue를 그대로 사용한다.
+
+장바구니 저장 payload는 productCode를 기준으로 한다.
+
+프론트 UI에서 보여줄 필요가 있는 경우:
+
+- productCode 표시 가능
+- scanCodeValue 표시 가능
+- 외부 바코드 표시 가능
+
+단, UI가 필요로 하지 않으면 숨겨도 된다.
+
+
+/* ==================================================
+SECTION 21 : BACKEND / SERVICE RULE
+================================================== */
+
+productCode 생성은 Backend 책임이다.
+
+scanCodeValue 생성은 Backend 또는 Service 책임이다.
+
+RAPUS_QR 생성은 Backend 책임이다.
+
+Controller는 DB에 직접 접근하지 않는다.
+
+표준 흐름:
+
+Frontend
+→ API Controller
+→ Service
+→ DB
+
+DB 접근은 Service Layer만 허용한다.
+
+
+/* ==================================================
+SECTION 22 : PROHIBITED STRUCTURE
+================================================== */
+
+금지:
+
+1. productCode를 scanCodeValue로 대체
+2. scanCodeValue를 productCode로 대체
+3. external barcode를 상품 원본 키로 사용
+4. itemNumber를 상품 연결 기준으로 사용
+5. itemNumber를 장바구니/주문 연결 기준으로 사용
+6. merchantItemCode를 상품 연결 기준으로 사용
+7. productCode와 orderCode 혼용
+8. productCode와 cartCode 혼용
+9. productCode와 channelCode 혼용
+10. Frontend에서 productCode 생성
+11. Frontend에서 scanCodeValue 생성
+12. POS_PRODUCT를 PLACE로 저장
+13. MARKET_PRODUCT를 MARKET으로 저장
+14. 택배 운송장 번호를 productCode와 혼용
+15. pos_products에 barcodeValue 단일 컬럼만 추가
+16. cart_items 중복 기준을 scanCodeValue 중심으로 변경
+
+
+/* ==================================================
+SECTION 23 : FINAL DECLARATION
+================================================== */
+
+RAPUS 상품 코드 최종 기준:
+
+productCode
+= RAPUS 플랫폼 표준 상품코드
+= 12자리 영문+숫자 조합
+= QR 상품코드 겸용
+= 상품 식별 / 옵션 / 썸네일 / 장바구니 / 주문 추적 기준
+
+scanCodeValue
+= productCode를 찾기 위한 스캔 입력값
+= RAPUS_QR / RAPUS_BARCODE / EXTERNAL_BARCODE / INTERNAL / CUSTOM
+
+external barcode
+= 선택값
+= productCode에 매핑되는 외부 코드
+
+merchantItemCode
+= 선택값
+= 사업자 내부 관리번호
+= RAPUS 시스템 연결 기준 아님
+
+itemNumber
+= 공통 필수값 아님
+= 사용하지 않음
+
+코드 의미 판단 기준:
+
+컬럼명
++ 테이블명
++ 도메인
+
+같은 12자리 포맷이라도
+productCode / orderCode / cartCode / channelCode는 서로 다른 코드다.
+
+END OF SNAPSHOT
