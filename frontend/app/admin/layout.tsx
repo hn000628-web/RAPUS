@@ -4,7 +4,7 @@
 SECTION 01 : IMPORT
 ================================================== */
 
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import React from 'react'
 
 
@@ -24,6 +24,7 @@ type NavItemProps={
 label:string
 onClick:()=>void
 danger?:boolean
+active?:boolean
 }
 
 
@@ -43,6 +44,7 @@ export default function AdminLayout(
 ){
 
 const router=useRouter()
+const pathname=usePathname()
 
 return(
 
@@ -63,6 +65,11 @@ style={{
 height:TOPBAR_HEIGHT,
 background:'#1c1e21',
 color:'#fff',
+position:'fixed',
+top:0,
+left:0,
+right:0,
+zIndex:1000,
 display:'flex',
 alignItems:'center',
 padding:'0 20px',
@@ -78,7 +85,12 @@ BASEBOOK · ADMIN
 SECTION : BODY
 ========================================= */}
 
-<div style={{display:'flex'}}>
+<div
+style={{
+display:'flex',
+marginTop:TOPBAR_HEIGHT
+}}
+>
 
 
 {/* =========================================
@@ -101,18 +113,27 @@ minHeight:`calc(100vh - ${TOPBAR_HEIGHT}px)`
 <SectionTitle label="ADMIN"/>
 
 <NavItem
+label="관리자 홈"
+onClick={()=>router.push('/admin')}
+active={pathname==='/admin'}
+/>
+
+<NavItem
 label="Users"
 onClick={()=>router.push('/admin/users')}
+active={pathname.startsWith('/admin/users')}
 />
 
 <NavItem
 label="Feeds"
 onClick={()=>router.push('/admin/feeds')}
+active={pathname.startsWith('/admin/feeds')}
 />
 
 <NavItem
 label="Ads"
 onClick={()=>router.push('/admin/ads')}
+active={pathname.startsWith('/admin/ads')}
 />
 
 <Divider/>
@@ -125,17 +146,20 @@ onClick={()=>router.push('/admin/ads')}
 <NavItem
 label="Orphan Media"
 onClick={()=>router.push('/admin/orphan-media')}
+active={pathname.startsWith('/admin/orphan-media')}
 />
 
 <NavItem
 label="DB Cleanup"
 onClick={()=>router.push('/admin/db-cleaner')}
+active={pathname.startsWith('/admin/db-cleaner')}
 />
 
 <NavItem
 label="Full Cleanup"
 danger
 onClick={()=>router.push('/admin/storage')}
+active={pathname.startsWith('/admin/storage')}
 />
 
 <Divider/>
@@ -148,21 +172,25 @@ onClick={()=>router.push('/admin/storage')}
 <NavItem
 label="Regions"
 onClick={()=>router.push('/admin/regions')}
+active={pathname.startsWith('/admin/regions')}
 />
 
 <NavItem
 label="Categories"
 onClick={()=>router.push('/admin/categories')}
+active={pathname.startsWith('/admin/categories')}
 />
 
 <NavItem
 label="Industries"
 onClick={()=>router.push('/admin/industries')}
+active={pathname.startsWith('/admin/industries')}
 />
 
 <NavItem
 label="Industry Subtypes"
 onClick={()=>router.push('/admin/industry-subtypes')}
+active={pathname.startsWith('/admin/industry-subtypes')}
 />
 
 <Divider/>
@@ -175,6 +203,7 @@ onClick={()=>router.push('/admin/industry-subtypes')}
 <NavItem
 label="Dev Login"
 onClick={()=>router.push('/admin/dev')}
+active={pathname.startsWith('/admin/dev')}
 />
 
 <Divider/>
@@ -183,6 +212,7 @@ onClick={()=>router.push('/admin/dev')}
 <NavItem
 label="Logout"
 danger
+active={false}
 onClick={()=>router.push('/login')}
 />
 
@@ -196,7 +226,7 @@ SECTION : MAIN CONTENT
 <main
 style={{
 flex:1,
-padding:32
+padding:'0 32px 32px'
 }}
 >
 
@@ -252,6 +282,8 @@ function NavItem(
 label,
 onClick,
 danger
+,
+active
 }:NavItemProps
 ){
 return(
@@ -263,14 +295,20 @@ marginBottom:4,
 borderRadius:6,
 cursor:'pointer',
 fontSize:14,
-color:danger?'#e53935':'#050505',
+color:danger?'#e53935':active?'#0b57d0':'#050505',
+fontWeight:active?600:400,
+background:active?'#eaf2ff':'transparent',
 transition:'background 0.2s'
 }}
 onMouseEnter={(e)=>{
+if(!active){
 e.currentTarget.style.background='#f2f3f5'
+}
 }}
 onMouseLeave={(e)=>{
+if(!active){
 e.currentTarget.style.background='transparent'
+}
 }}
 >
 {label}

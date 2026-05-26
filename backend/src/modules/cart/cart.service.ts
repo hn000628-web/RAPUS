@@ -20,6 +20,7 @@ type ProductSourceType = 'POS_PRODUCT' | 'MARKET_PRODUCT'
 type ActorContext = {
   actorProfileId: number
   actorChannelCode: string
+  customerChannelCode: string
 }
 
 type ProviderProfileRow = {
@@ -80,7 +81,7 @@ type AddCartItemInput = {
 
 type CartItemOwnerRow = {
   id: number
-  actorChannelCode: string
+  customerChannelCode: string
   cartStatus: CartStatus
   unitPriceSnapshot: number
   optionTotalAmount: number
@@ -268,7 +269,8 @@ export class CartService {
 
     return {
       actorProfileId,
-      actorChannelCode
+      actorChannelCode,
+      customerChannelCode: actorChannelCode
     }
   }
 
@@ -416,23 +418,23 @@ export class CartService {
     return optionValue
   }
 
-  private getOwnedCartItem(actorChannelCode: string, cartItemId: number): CartItemOwnerRow {
+  private getOwnedCartItem(customerChannelCode: string, cartItemId: number): CartItemOwnerRow {
     const row = db
       .prepare(
         `
           SELECT
             id,
-            actorChannelCode,
+            customerChannelCode,
             cartStatus,
             COALESCE(unitPriceSnapshot, 0) AS unitPriceSnapshot,
             COALESCE(optionTotalAmount, 0) AS optionTotalAmount
-          FROM cart_items
+          FROM cart_items ci
           WHERE id = ?
-            AND actorChannelCode = ?
+            AND customerChannelCode = ?
           LIMIT 1
         `
       )
-      .get(cartItemId, actorChannelCode) as CartItemOwnerRow | undefined
+      .get(cartItemId, customerChannelCode) as CartItemOwnerRow | undefined
 
     if (!row?.id) {
       throw new NotFoundException('cart item not found')
@@ -558,8 +560,8 @@ export class CartService {
             fulfillmentType,
             fulfillmentSignature,
             lineTotalAmount
-          FROM cart_items
-          WHERE actorChannelCode = ?
+          FROM cart_items ci
+          WHERE customerChannelCode = ?
             AND providerChannelCode = ?
             AND sourceType = ?
             AND productCode = ?
@@ -570,7 +572,7 @@ export class CartService {
         `
       )
       .get(
-        actor.actorChannelCode,
+        actor.customerChannelCode,
         provider.channelCode,
         sourceType,
         product.productCode,
@@ -593,7 +595,7 @@ export class CartService {
         message: '이미 장바구니에 저장되었습니다.',
         item: {
           id: duplicate.id,
-          actorChannelCode: actor.actorChannelCode,
+          customerChannelCode: actor.customerChannelCode,
           providerChannelCode: provider.channelCode,
           cartCode: duplicate.cartCode ?? duplicate.cartSessionCode ?? null,
           cartSessionCode: duplicate.cartSessionCode ?? null,
@@ -619,14 +621,14 @@ export class CartService {
             cartCode,
             cartSessionCode
           FROM cart_items
-          WHERE actorChannelCode = ?
+          WHERE customerChannelCode = ?
             AND providerChannelCode = ?
             AND cartStatus = 'ACTIVE'
           ORDER BY id DESC
           LIMIT 1
         `
       )
-      .get(actor.actorChannelCode, provider.channelCode) as {
+      .get(actor.customerChannelCode, provider.channelCode) as {
         cartCode?: string | null
         cartSessionCode?: string | null
       } | undefined
@@ -646,6 +648,7 @@ export class CartService {
             INSERT INTO cart_items(
               actorProfileId,
               actorChannelCode,
+              customerChannelCode,
               providerProfileId,
               providerChannelCode,
               productId,
@@ -672,12 +675,19 @@ export class CartService {
               createdAt,
               updatedAt
             )
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'ACTIVE',?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+            VALUES(
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+              ?, ?, ?, ?, ?, ?,
+              CURRENT_TIMESTAMP,
+              CURRENT_TIMESTAMP
+            )
           `
         )
         .run(
           actor.actorProfileId,
           actor.actorChannelCode,
+          actor.customerChannelCode,
           provider.id,
           provider.channelCode,
           product.id,
@@ -699,6 +709,7 @@ export class CartService {
           0,
           0,
           orderFlowType,
+          'ACTIVE',
           requestMemo
         )
 
@@ -770,7 +781,7 @@ export class CartService {
       message: '장바구니에 저장되었습니다.',
       item: {
         id: cartItemId,
-        actorChannelCode: actor.actorChannelCode,
+        customerChannelCode: actor.customerChannelCode,
         providerChannelCode: provider.channelCode,
         cartCode,
         cartSessionCode,
@@ -817,15 +828,15 @@ export class CartService {
             ci.orderCode,
             ci.requestMemo,
             ci.createdAt
-          FROM cart_items
+          FROM cart_items ci
           LEFT JOIN pos_products p
             ON p.id = ci.productId
-          WHERE ci.actorChannelCode = ?
+          WHERE ci.customerChannelCode = ?
             AND ci.cartStatus = ?
           ORDER BY ci.createdAt DESC, ci.id DESC
         `
       )
-      .all(actor.actorChannelCode, cartStatus) as Array<{
+      .all(actor.customerChannelCode, cartStatus) as Array<{
         id: number
         cartSessionCode: string | null
         cartCode: string | null
@@ -865,13 +876,13 @@ export class CartService {
           WHERE cartItemId IN (
             SELECT id
             FROM cart_items
-            WHERE actorChannelCode = ?
+            WHERE customerChannelCode = ?
               AND cartStatus = ?
           )
           ORDER BY cartItemId ASC, sortOrder ASC, id ASC
         `
       )
-      .all(actor.actorChannelCode, cartStatus) as Array<{
+      .all(actor.customerChannelCode, cartStatus) as Array<{
         id: number
         cartItemId: number
         optionNameSnapshot: string
@@ -944,7 +955,7 @@ export class CartService {
       throw new BadRequestException('cartItemId is invalid')
     }
 
-    const owned = this.getOwnedCartItem(actor.actorChannelCode, cartItemId)
+    const owned = this.getOwnedCartItem(actor.customerChannelCode, cartItemId)
     if (owned.cartStatus !== 'ACTIVE') {
       throw new BadRequestException('only ACTIVE cart item can be updated')
     }
@@ -981,7 +992,7 @@ export class CartService {
       throw new BadRequestException('cartItemId is invalid')
     }
 
-    const owned = this.getOwnedCartItem(actor.actorChannelCode, cartItemId)
+    const owned = this.getOwnedCartItem(actor.customerChannelCode, cartItemId)
     if (owned.cartStatus !== 'ACTIVE') {
       throw new BadRequestException('only ACTIVE cart item can be updated')
     }
@@ -1016,7 +1027,7 @@ export class CartService {
       throw new BadRequestException('cartItemId is invalid')
     }
 
-    this.getOwnedCartItem(actor.actorChannelCode, cartItemId)
+    this.getOwnedCartItem(actor.customerChannelCode, cartItemId)
 
     db.prepare(
       `
@@ -1026,9 +1037,9 @@ export class CartService {
           deletedAt = CURRENT_TIMESTAMP,
           updatedAt = CURRENT_TIMESTAMP
         WHERE id = ?
-          AND actorChannelCode = ?
+          AND customerChannelCode = ?
       `
-    ).run(cartItemId, actor.actorChannelCode)
+    ).run(cartItemId, actor.customerChannelCode)
 
     return {
       ok: true as const,
@@ -1050,11 +1061,11 @@ export class CartService {
             cartStatus = 'DELETED',
             deletedAt = CURRENT_TIMESTAMP,
             updatedAt = CURRENT_TIMESTAMP
-          WHERE actorChannelCode = ?
+          WHERE customerChannelCode = ?
             AND providerChannelCode = ?
             AND cartStatus = 'ACTIVE'
         `
-      ).run(actor.actorChannelCode, normalizedProviderChannelCode)
+      ).run(actor.customerChannelCode, normalizedProviderChannelCode)
     } else {
       db.prepare(
         `
@@ -1063,10 +1074,10 @@ export class CartService {
             cartStatus = 'DELETED',
             deletedAt = CURRENT_TIMESTAMP,
             updatedAt = CURRENT_TIMESTAMP
-          WHERE actorChannelCode = ?
+          WHERE customerChannelCode = ?
             AND cartStatus = 'ACTIVE'
         `
-      ).run(actor.actorChannelCode)
+      ).run(actor.customerChannelCode)
     }
 
     return {
@@ -1083,10 +1094,10 @@ export class CartService {
           COUNT(*) AS activeItemCount,
           COALESCE(SUM(quantity), 0) AS activeProductQuantity
         FROM cart_items
-        WHERE actorChannelCode = ?
+        WHERE customerChannelCode = ?
           AND cartStatus = 'ACTIVE'
       `
-    ).get(actor.actorChannelCode) as {
+    ).get(actor.customerChannelCode) as {
       activeItemCount?: number
       activeProductQuantity?: number
     } | undefined

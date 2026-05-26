@@ -33,6 +33,7 @@ export type PlaceSearchScope =
   | 'PRODUCT'
 
 type Props = {
+  title?: string
   industryFilters: PlaceIndustryFilter[]
   selectedIndustry: string
   selectedSort: PlaceSortType
@@ -96,6 +97,7 @@ const SEARCH_SCOPE_FILTERS: Array<{
 ]
 
 export default function PlaceFeedSidebar({
+  title = '플레이스',
   industryFilters,
   selectedIndustry,
   selectedSort,
@@ -156,7 +158,7 @@ export default function PlaceFeedSidebar({
     <aside style={sidebarStyle}>
       <div style={headerRowStyle}>
         <div style={sidebarTitleStyle}>
-          플레이스
+          {title}
         </div>
       </div>
 

@@ -13,6 +13,7 @@
 // SECTION 01 : IMPORT
 
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 import styles from '../../ProfilePage.module.css'
 
@@ -51,7 +52,8 @@ type BusinessProfileActionItem = {
   key: string
   label: string
   description: string
-  onClick: () => void
+  onClick?: () => void
+  href?: string
 }
 
 // SECTION 03 : CONSTANT
@@ -63,11 +65,9 @@ const BUSINESS_PAGE_DESCRIPTION = '비즈니스 계정 정보와 운영 관리 �
 
 export default function BusinessMyPage({
   accountInfo,
-  profileConfig,
   loadingSwitch,
   managementItems,
   onSwitchProfile,
-  onMoveBusinessAccount,
   onMoveStoreView,
   onMovePosView
 }: BusinessMyPageProps) {
@@ -91,6 +91,12 @@ export default function BusinessMyPage({
       label: '포스 뷰',
       description: '사업자 POS 화면으로 이동',
       onClick: onMovePosView
+    },
+    {
+      key: 'product-info-system',
+      label: '상품정보시스템',
+      description: 'RAPUS 등록 상품 리스트 조회',
+      href: '/protect'
     }
   ]
 
@@ -205,24 +211,38 @@ function BusinessProfileActionGrid({
     <div className={styles.businessProfileStack}>
       <div className={styles.businessActionGrid}>
         {items.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            className={[
-              styles.businessActionButton,
-              disabled ? styles.profileEntryCardDisabled : ''
-            ].join(' ').trim()}
-            disabled={disabled}
-            onClick={item.onClick}
-          >
-            <strong className={styles.cardTitle}>
-              {item.label}
-            </strong>
-
-            <span className={styles.cardDescription}>
-              {item.description}
-            </span>
-          </button>
+          item.href ? (
+            <Link
+              key={item.key}
+              href={item.href}
+              className={styles.businessActionButton}
+            >
+              <strong className={styles.cardTitle}>
+                {item.label}
+              </strong>
+              <span className={styles.cardDescription}>
+                {item.description}
+              </span>
+            </Link>
+          ) : (
+            <button
+              key={item.key}
+              type="button"
+              className={[
+                styles.businessActionButton,
+                disabled ? styles.profileEntryCardDisabled : ''
+              ].join(' ').trim()}
+              disabled={disabled}
+              onClick={item.onClick}
+            >
+              <strong className={styles.cardTitle}>
+                {item.label}
+              </strong>
+              <span className={styles.cardDescription}>
+                {item.description}
+              </span>
+            </button>
+          )
         ))}
       </div>
     </div>

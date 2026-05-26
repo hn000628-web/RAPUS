@@ -5,6 +5,8 @@
 ※ 파일 3개이상 동시 수정은 [AI]가 [자동수정] 모드 제안/ 물론 사용자는 AI가 코드를 출력해주면 직접 수정할 수는 있음 
 
 [SNAPSHOT]
+.context/SNAPSHOT/stable-snapshots/POS_UI_CSS_STANDARD_SNAPSHOT.txt
+-> 기본적인 포스의 UI_CSS 기본값
 S001-2_SNAPSHOT_서머리_BUSINESS SUMMARY PAGE
 S001_SNAPSHOT_매뉴_INFO
 S001-3_SNAPSHOT__평점시스템 규칙
@@ -13,6 +15,8 @@ S001-3_SNAPSHOT__평점시스템 규칙
 RAPUS_코드규칙
 PRODUCT_ID_PRODUCT_CODE_SOURCE_TYPE_RULE_SNAPSHOT
 상품코드 규칙_productCode
+바코드 등록 템플릿 CSV : .context/master_barcodes/master_barcode_import_template
+
 
 ☆[Always]☆
 ※작업 완료 후 반드시 [000_작업지시_절대규칙.txt] 기준으로 완료보고서를 제출한다.※

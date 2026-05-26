@@ -13,6 +13,10 @@
 
 // SECTION 01 : IMPORT
 import {
+  usePathname
+} from 'next/navigation'
+
+import {
   CSSProperties,
   ReactNode,
   useEffect,
@@ -40,6 +44,7 @@ export default function AfterLoginLayout({
   children
 }: Props) {
   const { profile, loading } = useAuth()
+  const pathname = usePathname()
   const [isMobile, setIsMobile] = useState(false)
 
   // SECTION 05 : WINDOW RESIZE EFFECT
@@ -59,6 +64,8 @@ export default function AfterLoginLayout({
 
   // SECTION 06 : PROFILE TYPE NORMALIZE
   const profileType = normalizeProfileType(profile?.profileType)
+  const shouldShowProfileSidebar =
+    !pathname?.startsWith('/feed/market')
 
   // SECTION 07 : RETURN
   return (
@@ -66,11 +73,17 @@ export default function AfterLoginLayout({
       <TopMenuZone />
 
       <div style={body}>
-        {!loading && !isMobile && profileType === 'GENERAL' && (
+        {shouldShowProfileSidebar &&
+        !loading &&
+        !isMobile &&
+        profileType === 'GENERAL' && (
           <GeneralProfileSidebar />
         )}
 
-        {!loading && !isMobile && profileType === 'BUSINESS' && (
+        {shouldShowProfileSidebar &&
+        !loading &&
+        !isMobile &&
+        profileType === 'BUSINESS' && (
           <BusinessProfileSidebar />
         )}
 

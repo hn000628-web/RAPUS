@@ -1,4 +1,4 @@
-﻿// FILE: C:\Users\kjm\social-platform\backend\src\init\init-db.ts
+// FILE: C:\Users\kjm\social-platform\backend\src\init\init-db.ts
 // ROOT : C:\Users\kjm\social-platform\backend\src\init\init-db.ts
 // STATUS : PRODUCTION DB INIT FINAL (TEST SECTION FIRST ORDER)
 
@@ -926,7 +926,7 @@ CREATE TABLE IF NOT EXISTS image_assets(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   channelCode TEXT NOT NULL,
   usageType TEXT NOT NULL
-  CHECK(usageType IN ('avatar','post','hero','gallery','place-thumbnail','pos-product-thumbnail')),
+  CHECK(usageType IN ('avatar','post','hero','gallery','place-thumbnail','pos-product-thumbnail','BARCODE_PRODUCT_THUMBNAIL')),
   fileName TEXT NOT NULL,
   filePath TEXT NOT NULL UNIQUE,
   mimeType TEXT,
@@ -937,8 +937,7 @@ CREATE TABLE IF NOT EXISTS image_assets(
   checksum TEXT,
   isActive INTEGER DEFAULT 1,
   lastUsedAt TEXT,
-  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode)
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_image_assets_channel
@@ -993,8 +992,113 @@ if (!imageAssetsSupportsPosProductThumbnail) {
         checksum TEXT,
         isActive INTEGER DEFAULT 1,
         lastUsedAt TEXT,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(channelCode) REFERENCES profiles(channelCode)
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    db.exec(`
+      INSERT INTO image_assets_new(
+        id,
+        channelCode,
+        usageType,
+        fileName,
+        filePath,
+        mimeType,
+        fileSize,
+        width,
+        height,
+        storageProvider,
+        checksum,
+        isActive,
+        lastUsedAt,
+        createdAt
+      )
+      SELECT
+        id,
+        channelCode,
+        usageType,
+        fileName,
+        filePath,
+        mimeType,
+        fileSize,
+        width,
+        height,
+        storageProvider,
+        checksum,
+        COALESCE(isActive, 1),
+        lastUsedAt,
+        COALESCE(createdAt, CURRENT_TIMESTAMP)
+      FROM image_assets
+    `)
+
+    db.exec(`DROP TABLE image_assets`)
+    db.exec(`ALTER TABLE image_assets_new RENAME TO image_assets`)
+
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_image_assets_channel
+      ON image_assets(channelCode);
+
+      CREATE INDEX IF NOT EXISTS idx_image_assets_usage
+      ON image_assets(usageType);
+
+      CREATE INDEX IF NOT EXISTS idx_image_assets_active
+      ON image_assets(isActive);
+
+      CREATE INDEX IF NOT EXISTS idx_image_assets_created
+      ON image_assets(createdAt);
+    `)
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ON`)
+  }
+}
+
+//=====================================================
+// SECTION 05-1-2 : IMAGE ASSETS BARCODE PRODUCT USAGE TYPE
+// ROLE : BARCODE PRODUCT THUMBNAIL USAGE TYPE SUPPORT
+// RULE : image_assets keeps filePath as the only physical file path source
+//=====================================================
+
+const imageAssetsTableSqlForBarcodeRow = db.prepare(`
+  SELECT sql
+  FROM sqlite_master
+  WHERE type='table'
+    AND name='image_assets'
+  LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const imageAssetsTableSqlForBarcode = imageAssetsTableSqlForBarcodeRow && imageAssetsTableSqlForBarcodeRow.sql
+  ? imageAssetsTableSqlForBarcodeRow.sql
+  : ''
+
+const imageAssetsSupportsBarcodeProductThumbnail =
+  imageAssetsTableSqlForBarcode.includes(`'BARCODE_PRODUCT_THUMBNAIL'`)
+
+const imageAssetsHasProfileForeignKey =
+  imageAssetsTableSqlForBarcode.includes('REFERENCES profiles')
+
+if (!imageAssetsSupportsBarcodeProductThumbnail || imageAssetsHasProfileForeignKey) {
+  db.exec(`PRAGMA foreign_keys = OFF`)
+
+  try {
+    db.exec(`DROP TABLE IF EXISTS image_assets_new`)
+
+    db.exec(`
+      CREATE TABLE image_assets_new(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        channelCode TEXT NOT NULL,
+        usageType TEXT NOT NULL
+        CHECK(usageType IN ('avatar','post','hero','gallery','place-thumbnail','pos-product-thumbnail','BARCODE_PRODUCT_THUMBNAIL')),
+        fileName TEXT NOT NULL,
+        filePath TEXT NOT NULL UNIQUE,
+        mimeType TEXT,
+        fileSize INTEGER,
+        width INTEGER,
+        height INTEGER,
+        storageProvider TEXT,
+        checksum TEXT,
+        isActive INTEGER DEFAULT 1,
+        lastUsedAt TEXT,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
       )
     `)
 
@@ -7073,6 +7177,344 @@ const hasPosProductBarcodesTable =
     LIMIT 1
   `).get() as { 1?: number } | undefined
 
+//====================================================
+// SECTION 26-1 : MASTER BARCODE / MASTER PRODUCT CORE
+// ROLE : GLOBAL MASTER CATALOG (NO channelCode)
+//====================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS master_barcodes(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  gtin TEXT NOT NULL UNIQUE CHECK(length(gtin)=13),
+  barcodeType TEXT DEFAULT 'EAN13',
+  productCategoryCode TEXT,
+  productCategoryName TEXT,
+  rawProductName TEXT,
+  productNameKo TEXT,
+  productNameEn TEXT,
+  otherProductName TEXT,
+  itemName TEXT,
+  modelName TEXT,
+  productNumber TEXT,
+  companyInfo TEXT,
+  importType TEXT,
+  normalizedProductName TEXT,
+  brandName TEXT,
+  brandOwnerName TEXT,
+  manufacturerName TEXT,
+  categoryName TEXT,
+  categoryCode TEXT,
+  originInfo TEXT,
+  specInfo TEXT,
+  unitLabel TEXT,
+  packageInfo TEXT,
+  packageQuantity INTEGER,
+  netWeight TEXT,
+  grossWeight TEXT,
+  widthCm TEXT,
+  depthCm TEXT,
+  heightCm TEXT,
+  taxType TEXT,
+  productShape TEXT,
+  packageMaterial TEXT,
+  recycleLabel TEXT,
+  isAdultProduct INTEGER NOT NULL DEFAULT 0,
+  isChildProduct INTEGER NOT NULL DEFAULT 0,
+  storageNotice TEXT,
+  marketingText TEXT,
+  ingredientText TEXT,
+  sourceThumbnailUrl TEXT,
+  sourceType TEXT NOT NULL DEFAULT 'MANUAL'
+  CHECK(sourceType IN('CSV','API','MANUAL')),
+  rawPayload TEXT,
+  isActive INTEGER NOT NULL DEFAULT 1,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT
+)
+`)
+
+safeAddColumn('master_barcodes', 'barcodeType', "TEXT DEFAULT 'EAN13'")
+safeAddColumn('master_barcodes', 'productCategoryCode', 'TEXT')
+safeAddColumn('master_barcodes', 'productCategoryName', 'TEXT')
+safeAddColumn('master_barcodes', 'rawProductName', 'TEXT')
+safeAddColumn('master_barcodes', 'productNameKo', 'TEXT')
+safeAddColumn('master_barcodes', 'productNameEn', 'TEXT')
+safeAddColumn('master_barcodes', 'otherProductName', 'TEXT')
+safeAddColumn('master_barcodes', 'itemName', 'TEXT')
+safeAddColumn('master_barcodes', 'modelName', 'TEXT')
+safeAddColumn('master_barcodes', 'productNumber', 'TEXT')
+safeAddColumn('master_barcodes', 'companyInfo', 'TEXT')
+safeAddColumn('master_barcodes', 'importType', 'TEXT')
+safeAddColumn('master_barcodes', 'normalizedProductName', 'TEXT')
+safeAddColumn('master_barcodes', 'brandName', 'TEXT')
+safeAddColumn('master_barcodes', 'brandOwnerName', 'TEXT')
+safeAddColumn('master_barcodes', 'manufacturerName', 'TEXT')
+safeAddColumn('master_barcodes', 'categoryName', 'TEXT')
+safeAddColumn('master_barcodes', 'categoryCode', 'TEXT')
+safeAddColumn('master_barcodes', 'originInfo', 'TEXT')
+safeAddColumn('master_barcodes', 'specInfo', 'TEXT')
+safeAddColumn('master_barcodes', 'unitLabel', 'TEXT')
+safeAddColumn('master_barcodes', 'packageInfo', 'TEXT')
+safeAddColumn('master_barcodes', 'packageQuantity', 'INTEGER')
+safeAddColumn('master_barcodes', 'netWeight', 'TEXT')
+safeAddColumn('master_barcodes', 'grossWeight', 'TEXT')
+safeAddColumn('master_barcodes', 'widthCm', 'TEXT')
+safeAddColumn('master_barcodes', 'depthCm', 'TEXT')
+safeAddColumn('master_barcodes', 'heightCm', 'TEXT')
+safeAddColumn('master_barcodes', 'taxType', 'TEXT')
+safeAddColumn('master_barcodes', 'productShape', 'TEXT')
+safeAddColumn('master_barcodes', 'packageMaterial', 'TEXT')
+safeAddColumn('master_barcodes', 'recycleLabel', 'TEXT')
+safeAddColumn('master_barcodes', 'isAdultProduct', 'INTEGER NOT NULL DEFAULT 0')
+safeAddColumn('master_barcodes', 'isChildProduct', 'INTEGER NOT NULL DEFAULT 0')
+safeAddColumn('master_barcodes', 'storageNotice', 'TEXT')
+safeAddColumn('master_barcodes', 'marketingText', 'TEXT')
+safeAddColumn('master_barcodes', 'ingredientText', 'TEXT')
+safeAddColumn('master_barcodes', 'sourceThumbnailUrl', 'TEXT')
+safeAddColumn(
+  'master_barcodes',
+  'sourceType',
+  "TEXT NOT NULL DEFAULT 'MANUAL' CHECK(sourceType IN('CSV','API','MANUAL'))"
+)
+safeAddColumn('master_barcodes', 'rawPayload', 'TEXT')
+safeAddColumn('master_barcodes', 'isActive', 'INTEGER NOT NULL DEFAULT 1')
+safeAddColumn('master_barcodes', 'updatedAt', 'TEXT')
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_barcodes_category_code
+ON master_barcodes(categoryCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_barcodes_product_category_code
+ON master_barcodes(productCategoryCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_barcodes_brand_name
+ON master_barcodes(brandName)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_barcodes_raw_product_name
+ON master_barcodes(rawProductName)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_barcodes_source_type
+ON master_barcodes(sourceType)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_barcodes_is_active
+ON master_barcodes(isActive)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS master_products(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  productCode TEXT NOT NULL UNIQUE CHECK(length(productCode)=12),
+  productName TEXT NOT NULL,
+  normalizedProductName TEXT,
+  brandName TEXT,
+  manufacturerName TEXT,
+  categoryCode TEXT,
+  categoryName TEXT,
+  unitLabel TEXT,
+  specInfo TEXT,
+  thumbnailImageAssetId INTEGER,
+  isAdultProduct INTEGER NOT NULL DEFAULT 0,
+  isActive INTEGER NOT NULL DEFAULT 1,
+  approvalStatus TEXT NOT NULL DEFAULT 'DRAFT'
+  CHECK(approvalStatus IN('DRAFT','APPROVED','REJECTED')),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(thumbnailImageAssetId) REFERENCES image_assets(id)
+)
+`)
+
+safeAddColumn('master_products', 'normalizedProductName', 'TEXT')
+safeAddColumn('master_products', 'brandName', 'TEXT')
+safeAddColumn('master_products', 'manufacturerName', 'TEXT')
+safeAddColumn('master_products', 'categoryCode', 'TEXT')
+safeAddColumn('master_products', 'categoryName', 'TEXT')
+safeAddColumn('master_products', 'unitLabel', 'TEXT')
+safeAddColumn('master_products', 'specInfo', 'TEXT')
+safeAddColumn('master_products', 'thumbnailImageAssetId', 'INTEGER')
+safeAddColumn('master_products', 'isAdultProduct', 'INTEGER NOT NULL DEFAULT 0')
+safeAddColumn('master_products', 'isActive', 'INTEGER NOT NULL DEFAULT 1')
+safeAddColumn(
+  'master_products',
+  'approvalStatus',
+  "TEXT NOT NULL DEFAULT 'DRAFT' CHECK(approvalStatus IN('DRAFT','APPROVED','REJECTED'))"
+)
+safeAddColumn('master_products', 'updatedAt', 'TEXT')
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_products_category_code
+ON master_products(categoryCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_products_is_active
+ON master_products(isActive)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_products_approval_status
+ON master_products(approvalStatus)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS master_product_barcodes(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  masterProductId INTEGER NOT NULL,
+  masterBarcodeId INTEGER NOT NULL,
+  gtin TEXT NOT NULL CHECK(length(gtin)=13),
+  productCode TEXT NOT NULL CHECK(length(productCode)=12),
+  isPrimary INTEGER NOT NULL DEFAULT 1,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(masterProductId) REFERENCES master_products(id),
+  FOREIGN KEY(masterBarcodeId) REFERENCES master_barcodes(id)
+)
+`)
+
+safeAddColumn('master_product_barcodes', 'gtin', 'TEXT CHECK(length(gtin)=13)')
+safeAddColumn('master_product_barcodes', 'productCode', 'TEXT CHECK(length(productCode)=12)')
+safeAddColumn('master_product_barcodes', 'isPrimary', 'INTEGER NOT NULL DEFAULT 1')
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_master_product_barcodes_gtin_unique
+ON master_product_barcodes(gtin)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_master_product_barcodes_pair_unique
+ON master_product_barcodes(masterProductId, masterBarcodeId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_product_barcodes_product_id
+ON master_product_barcodes(masterProductId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_product_barcodes_barcode_id
+ON master_product_barcodes(masterBarcodeId)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS master_barcode_food_details(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  masterBarcodeId INTEGER NOT NULL UNIQUE,
+  gtin TEXT NOT NULL CHECK(length(gtin)=13),
+  nutritionText TEXT,
+  foodIngredientText TEXT,
+  cookingTimeText TEXT,
+  foodType TEXT,
+  gmoNotice TEXT,
+  babyDietAdReview TEXT,
+  reportNumber TEXT,
+  allergyText TEXT,
+  facilityAllergyText TEXT,
+  certificationText TEXT,
+  cookingMethodText TEXT,
+  additionalFoodTypeText TEXT,
+  storageMethod TEXT,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(masterBarcodeId) REFERENCES master_barcodes(id)
+)
+`)
+
+safeAddColumn('master_barcode_food_details', 'gtin', 'TEXT CHECK(length(gtin)=13)')
+safeAddColumn('master_barcode_food_details', 'nutritionText', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'foodIngredientText', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'cookingTimeText', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'foodType', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'gmoNotice', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'babyDietAdReview', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'reportNumber', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'allergyText', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'facilityAllergyText', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'certificationText', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'cookingMethodText', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'additionalFoodTypeText', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'storageMethod', 'TEXT')
+safeAddColumn('master_barcode_food_details', 'updatedAt', 'TEXT')
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_barcode_food_details_gtin
+ON master_barcode_food_details(gtin)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_barcode_food_details_master_barcode_id
+ON master_barcode_food_details(masterBarcodeId)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS pos_product_barcodes(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profileId INTEGER NOT NULL,
+  channelCode TEXT NOT NULL,
+  productId INTEGER NOT NULL,
+  productCode TEXT,
+  gtin TEXT CHECK(gtin IS NULL OR length(gtin)=13),
+  masterProductId INTEGER,
+  masterBarcodeId INTEGER,
+  barcodeType TEXT DEFAULT 'EAN13',
+  barcodeValue TEXT,
+  isPrimary INTEGER DEFAULT 0,
+  isActive INTEGER DEFAULT 1,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  deletedAt TEXT,
+  FOREIGN KEY(profileId) REFERENCES profiles(id),
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(productId) REFERENCES pos_products(id),
+  FOREIGN KEY(masterProductId) REFERENCES master_products(id),
+  FOREIGN KEY(masterBarcodeId) REFERENCES master_barcodes(id)
+)
+`)
+
+safeAddColumn('pos_product_barcodes', 'productCode', 'TEXT')
+safeAddColumn('pos_product_barcodes', 'productDbId', 'INTEGER')
+safeAddColumn('pos_product_barcodes', 'gtin', 'TEXT CHECK(gtin IS NULL OR length(gtin)=13)')
+safeAddColumn('pos_product_barcodes', 'masterProductId', 'INTEGER')
+safeAddColumn('pos_product_barcodes', 'masterBarcodeId', 'INTEGER')
+
+db.exec(`
+UPDATE pos_product_barcodes
+SET productDbId = productId
+WHERE productDbId IS NULL
+  AND productId IS NOT NULL
+`)
+
+db.exec(`
+UPDATE pos_product_barcodes
+SET gtin = barcodeValue
+WHERE (gtin IS NULL OR TRIM(gtin) = '')
+  AND barcodeValue GLOB '[0-9]*'
+  AND length(barcodeValue) = 13
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_pos_product_barcodes_channel_gtin_unique
+ON pos_product_barcodes(channelCode, gtin)
+WHERE gtin IS NOT NULL
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_barcodes_master_product_id
+ON pos_product_barcodes(masterProductId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_pos_product_barcodes_master_barcode_id
+ON pos_product_barcodes(masterBarcodeId)
+`)
+
 if (hasPosProductBarcodesTable) {
   db.exec(`
     INSERT INTO pos_product_scan_codes(
@@ -7406,6 +7848,7 @@ CREATE TABLE IF NOT EXISTS cart_items(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 actorProfileId INTEGER NOT NULL,
 actorChannelCode TEXT NOT NULL,
+customerChannelCode TEXT NOT NULL,
 providerProfileId INTEGER NOT NULL,
 providerChannelCode TEXT NOT NULL,
 productId INTEGER,
@@ -7451,11 +7894,18 @@ updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
 deletedAt TEXT,
 FOREIGN KEY(actorProfileId) REFERENCES profiles(id),
 FOREIGN KEY(actorChannelCode) REFERENCES profiles(channelCode),
+FOREIGN KEY(customerChannelCode) REFERENCES profiles(channelCode),
 FOREIGN KEY(providerProfileId) REFERENCES profiles(id),
 FOREIGN KEY(providerChannelCode) REFERENCES profiles(channelCode),
 FOREIGN KEY(productId) REFERENCES pos_products(id)
 )
 `)
+
+safeAddColumn(
+  'cart_items',
+  'customerChannelCode',
+  'TEXT'
+)
 
 safeAddColumn(
   'cart_items',
@@ -7504,6 +7954,13 @@ safeAddColumn(
   'orderCode',
   'TEXT CHECK(orderCode IS NULL OR length(orderCode)=12)'
 )
+
+db.exec(`
+UPDATE cart_items
+SET customerChannelCode = actorChannelCode
+WHERE customerChannelCode IS NULL
+   OR TRIM(customerChannelCode) = ''
+`)
 
 db.exec(`
 UPDATE cart_items
@@ -7565,6 +8022,11 @@ ON cart_items(actorChannelCode)
 `)
 
 db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_customer_channel
+ON cart_items(customerChannelCode)
+`)
+
+db.exec(`
 CREATE INDEX IF NOT EXISTS idx_cart_items_provider_channel
 ON cart_items(providerChannelCode)
 `)
@@ -7605,6 +8067,11 @@ ON cart_items(actorChannelCode, cartStatus, createdAt)
 `)
 
 db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_customer_status_created
+ON cart_items(customerChannelCode, cartStatus, createdAt)
+`)
+
+db.exec(`
 CREATE INDEX IF NOT EXISTS idx_cart_items_provider_product_status
 ON cart_items(providerChannelCode, productCode, cartStatus)
 `)
@@ -7615,9 +8082,14 @@ ON cart_items(actorChannelCode, providerChannelCode, cartStatus)
 `)
 
 db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_items_customer_provider_status
+ON cart_items(customerChannelCode, providerChannelCode, cartStatus)
+`)
+
+db.exec(`
 CREATE INDEX IF NOT EXISTS idx_cart_items_duplicate_guard
 ON cart_items(
-  actorChannelCode,
+  customerChannelCode,
   providerChannelCode,
   sourceType,
   productCode,
@@ -7629,7 +8101,7 @@ ON cart_items(
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_cart_items_duplicate_guard_v2
 ON cart_items(
-  actorChannelCode,
+  customerChannelCode,
   providerChannelCode,
   sourceType,
   productCode,

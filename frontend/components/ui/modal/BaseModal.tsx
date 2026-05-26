@@ -44,6 +44,8 @@ headerRight?:ReactNode
 closeButtonInHeaderActions?:boolean
 
 headerStyle?:CSSProperties
+titleStyle?:CSSProperties
+descriptionStyle?:CSSProperties
 
 panelStyle?:CSSProperties
 
@@ -69,6 +71,8 @@ hideIcon=false,
 headerRight,
 closeButtonInHeaderActions=false,
 headerStyle,
+titleStyle:titleStyleOverride,
+descriptionStyle:descriptionStyleOverride,
 panelStyle,
 bodyStyle
 
@@ -160,6 +164,7 @@ type==='info'?'i':
 <div style={(headerRight || closeButtonInHeaderActions) ? titleWrapWithActionStyle : undefined}>
 <div style={{
 ...titleStyle,
+...titleStyleOverride,
 ...((headerRight || closeButtonInHeaderActions) ? titleWithActionStyle : undefined)
 }}>
 {title}
@@ -169,6 +174,7 @@ type==='info'?'i':
 
 <div style={{
 ...descStyle,
+...descriptionStyleOverride,
 ...((headerRight || closeButtonInHeaderActions) ? descWithActionStyle : undefined)
 }}>
 {description}

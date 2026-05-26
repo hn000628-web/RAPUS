@@ -34,7 +34,7 @@
   border-radius: 24px;
   background: linear-gradient(180deg, #f2f8ff 0%, #ffffff 62%);
   box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
-  min-height: 400px;
+  min-height: 435px;
   padding: 22px;
   display: flex;
   flex-direction: column;
@@ -296,6 +296,8 @@
 .cardFooter {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .detailButton {
@@ -305,6 +307,18 @@
   border-radius: 10px;
   background: #ffffff;
   color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.orderButton {
+  height: 34px;
+  min-width: 92px;
+  border: 1px solid #0f172a;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #ffffff;
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
@@ -328,6 +342,19 @@
 }
 
 @media (max-width: 1024px) {
+  .heroPanel {
+    min-height: 360px;
+    padding: 20px;
+  }
+
+  .heroActions {
+    margin-top: 8px;
+  }
+
+  .hubNotice {
+    margin-top: 8px;
+  }
+
   .modalList {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -354,7 +381,8 @@
   }
 
   .heroPanel {
-    min-height: 340px;
+    min-height: 330px;
+    padding: 18px;
   }
 
   .statusCardGrid {
@@ -373,16 +401,40 @@
 
 @media (max-width: 640px) {
   .heroPanel {
-    min-height: 320px;
+    min-height: auto;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .heroTitle {
+    font-size: clamp(28px, 8.6vw, 34px);
+    line-height: 1.12;
+  }
+
+  .heroDescription {
+    line-height: 1.45;
+  }
+
+  .heroActions {
+    margin-top: 4px;
+  }
+
+  .hubNotice {
+    margin-top: 4px;
   }
 
   .statusCardGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
   }
 
   .statusCard {
-    min-height: 120px;
-    padding: 16px;
+    min-height: 112px;
+    padding: 18px;
+  }
+
+  .statusCardValue {
+    font-size: 34px;
   }
 
   .cardMeta {
@@ -392,5 +444,11 @@
 
   .cardMeta strong {
     text-align: left;
+  }
+}
+
+@media (max-width: 460px) {
+  .statusCardGrid {
+    grid-template-columns: 1fr;
   }
 }

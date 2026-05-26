@@ -1,0 +1,230 @@
+FILE : POS_UI_CSS_STANDARD_SNAPSHOT.txt
+ROOT : .context/SNAPSHOT/stable-snapshots/POS_UI_CSS_STANDARD_SNAPSHOT.txt
+STATUS : STABLE SNAPSHOT
+ROLE : POS / ADMIN UI CSS STANDARD
+BASE SCREEN : /pos/table/settings
+
+SECTION 01 : CORE STANDARD
+
+POS / 관리 화면의 기본 CSS 기준은
+/pos/table/settings 화면을 기준으로 한다.
+
+이 화면의 패널, 카드, 버튼, 탭, 모달, 반응형 기준을
+POS / Admin 계열 UI의 기본값으로 사용한다.
+
+SECTION 02 : DESIGN TOKEN STANDARD
+
+기본 CSS 변수명은 아래를 사용한다.
+
+--pos-page-padding-x
+--pos-page-padding-y
+--pos-panel-padding
+--pos-panel-gap
+--pos-card-padding
+--pos-card-gap
+--pos-radius-panel
+--pos-radius-card
+
+SECTION 03 : GAP STANDARD
+
+최소 gap : 10px
+기본 gap : 12px ~ 14px
+넓은 화면 gap : 18px ~ 20px
+
+원칙:
+
+- 카드 내부 gap은 10px ~ 14px
+- 패널 간 gap은 12px ~ 20px
+- 버튼/필터 간 gap은 8px ~ 12px
+- POS / 관리 화면에서 20px 초과 gap은 특별한 레이아웃 목적이 있을 때만 허용
+
+SECTION 04 : PADDING STANDARD
+
+모바일 / 최소 화면:
+
+page padding-x : 10px
+page padding-y : 8px
+panel padding : 12px
+card padding : 12px
+
+태블릿:
+
+page padding-x : 14px
+page padding-y : 10px
+panel padding : 16px
+card padding : 14px
+
+POS / PC:
+
+page padding-x : 16px ~ 20px
+page padding-y : 10px ~ 14px
+panel padding : 22px ~ 24px
+card padding : 16px ~ 18px
+
+SECTION 05 : BORDER RADIUS STANDARD
+
+card radius : 14px ~ 18px
+panel radius : 14px ~ 20px
+button radius : 10px
+pill button radius : 999px
+modal radius : 18px
+
+원칙:
+
+- 일반 카드 : 14px 이상
+- 메인 패널 : 18px 이상 권장
+- 큰 화면 1280px 이상 : panel 20px / card 18px 허용
+- 버튼은 10px 기준
+- 필터/상태 배지는 999px 고정
+
+SECTION 06 : COLOR STANDARD
+
+page background:
+#f5f7fb
+
+panel background:
+#ffffff
+rgba(255, 255, 255, 0.95)
+
+sub panel background:
+#f8fafc
+
+main text:
+#111827
+#0f172a
+
+sub text:
+#64748b
+#6b7280
+#475569
+
+border:
+#e5e7eb
+#d8e0ea
+#d1d5db
+#e2e8f0
+
+primary button:
+background #0f172a
+color #ffffff
+
+SECTION 07 : CARD STANDARD
+
+기본 카드 구조:
+
+- border 1px
+- background #ffffff
+- border-radius var(--pos-radius-card)
+- padding var(--pos-card-padding)
+- gap var(--pos-card-gap)
+- box-sizing border-box
+
+카드 최소 높이:
+
+summary card : 88px ~ 110px
+action card : 72px ~ 96px
+table manage card : 150px ~ 170px
+
+SECTION 08 : PANEL STANDARD
+
+메인 패널 구조:
+
+- background rgba(255,255,255,0.95)
+- border 1px solid rgba(148,163,184,0.22)
+- border-radius var(--pos-radius-panel)
+- padding var(--pos-panel-padding)
+- gap var(--pos-panel-gap)
+- box-shadow 0 18px 40px rgba(15,23,42,0.06)
+
+SECTION 09 : RESPONSIVE STANDARD
+
+640px 미만:
+- min-width 해제 가능
+- 1열 구조 우선
+- modal width calc(100vw - 24px)
+
+640px ~ 767px:
+- page padding 10px
+- panel padding 12px
+- card gap 10px
+- 2열 가능 영역만 2열
+
+768px ~ 1023px:
+- page padding 14px
+- panel padding 16px
+- card padding 14px
+- 주요 grid 2열
+
+1024px 이상:
+- POS 기본 기준
+- posShell min-width 1024px
+- panel padding 22px
+- gap 18px
+- card radius 16px
+
+1280px 이상:
+- page padding 20px
+- panel padding 24px
+- gap 20px
+- panel radius 20px
+- card radius 18px
+
+SECTION 10 : MODAL STANDARD
+
+modal backdrop:
+padding 12px ~ 24px
+background rgba(15,23,42,0.58)
+
+modal panel:
+border-radius 18px
+background #ffffff
+box-shadow 0 24px 60px rgba(15,23,42,0.26)
+
+관리형 모달:
+width calc(100vw - 24px)
+height calc(100dvh - 24px)
+
+PC 모달:
+width min(1120px, calc(100vw - 48px))
+max-height calc(100dvh - 80px)
+
+SECTION 11 : BUTTON STANDARD
+
+기본 버튼:
+
+height 34px ~ 40px
+border-radius 10px
+font-weight 800 ~ 900
+
+primary:
+background #0f172a
+border #0f172a
+color #ffffff
+
+outline:
+background #ffffff
+border #d1d5db
+color #111827
+
+danger:
+background #fff1f2
+border #fecaca
+color #b91c1c
+
+SECTION 12 : FINAL DECLARATION
+
+/pos/table/settings CSS 구조를
+POS / Admin / 관리 페이지의 기본 UI CSS 표준으로 고정한다.
+
+상위 기준:
+
+gap : 10px ~ 20px
+padding : 10px ~ 24px
+radius : 14px ~ 20px
+panel : white card system
+background : #f5f7fb
+button radius : 10px
+pill radius : 999px
+
+본 스냅샷 이후 POS / 관리 화면 신규 CSS는
+이 기준을 우선 적용한다.

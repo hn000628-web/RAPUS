@@ -28,6 +28,7 @@ type SearchCategory =
   | '라이프'
   | '플레이스'
   | '라이프 서비스'
+  | '마켓'
 
 type MainCategoryItem = {
   key: SearchCategory
@@ -40,7 +41,8 @@ type MainCategoryItem = {
 const SEARCH_CATEGORIES: SearchCategory[] = [
   '라이프',
   '플레이스',
-  '라이프 서비스'
+  '라이프 서비스',
+  '마켓'
 ]
 
 const RECOMMENDED_KEYWORDS = [
@@ -75,6 +77,13 @@ const MAIN_CATEGORY_ITEMS: MainCategoryItem[] = [
     description: '전문가 / 생활 서비스',
     icon: 'S',
     href: '/feed/life-service'
+  },
+  {
+    key: '마켓',
+    title: '마켓',
+    description: '마트 / 식료품',
+    icon: '🛒',
+    href: '/feed/market'
   }
 ]
 

@@ -27,6 +27,12 @@ from '../media/media.module'
 import { ProfileAccountModule }
 from './account/profile-account.module'
 
+import { ProfileOrdersController }
+from './orders/profile-orders.controller'
+
+import { ProfileOrdersService }
+from './orders/profile-orders.service'
+
 // SECTION 02 : MODULE
 
 @Module({
@@ -41,13 +47,15 @@ ProfileAccountModule
 
 controllers:[
 
-ProfilesController
+ProfilesController,
+ProfileOrdersController
 
 ],
 
 providers:[
 
-ProfilesService
+ProfilesService,
+ProfileOrdersService
 
 ],
 

@@ -1,0 +1,26 @@
+| 폴더                 | 역할           |
+| ------------------ | ------------ |
+| temp-snapshots     | 작업중 임시 스냅샷   |
+| stable-snapshots   | 현재 운영 기준 확정본 |
+| archived-snapshots | 폐기/이전 버전 보관  |
+
+=====================
+docs/
+
+├── snapshots/
+│
+├── temp/
+│   ├── db/
+│   ├── api/
+│   ├── frontend/
+│   └── workflow/
+│
+├── stable/
+│   ├── db/
+│   ├── api/
+│   ├── frontend/
+│   └── workflow/
+│
+└── archive/
+    ├── 2026-05/
+    └── legacy/

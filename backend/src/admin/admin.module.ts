@@ -7,54 +7,44 @@ FIX :
 AdminMediaService DI FIX
 ================================================== */
 
-import { Module } from '@nestjs/common'
-import { JwtModule } from '@nestjs/jwt'
-
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
 
 /* CONTROLLER */
 
-import { AdminController }
-from './admin.controller'
+import { AdminController } from './admin.controller';
 
-import { DevLoginController }
-from './dev-login/dev-login.controller'
+import { DevLoginController } from './dev-login/dev-login.controller';
 
-import { AdminMediaController }
-from './media/admin-media.controller'
-
+import { AdminMediaController } from './media/admin-media.controller';
 
 /* SERVICE */
 
-import { AdminService }
-from './admin.service'
+import { AdminService } from './admin.service';
 
-import { DevLoginService }
-from './dev-login/dev-login.service'
+import { DevLoginService } from './dev-login/dev-login.service';
 
-import { AdminMediaService }
-from './media/admin-media.service'   // ★ 추가
-
+import { AdminMediaService } from './media/admin-media.service'; // ★ 추가
 
 /* DOMAIN MODULES */
 
-import { UsersModule }
-from './users/users.module'
+import { UsersModule } from './users/users.module';
 
-import { RegionsModule }
-from './regions/regions.module'
+import { RegionsModule } from './regions/regions.module';
 
-import { CategoriesModule }
-from './categories/categories.module'
+import { CategoriesModule } from './categories/categories.module';
 
-import { IndustriesModule }
-from './industries/industries.module'
+import { IndustriesModule } from './industries/industries.module';
 
-import { IndustrySubtypesModule }
-from './industry-subtypes/industry-subtypes.module'
+import { IndustrySubtypesModule } from './industry-subtypes/industry-subtypes.module';
 
-import { MediaModule }
-from '../modules/media/media.module'
+import { MediaModule } from '../modules/media/media.module';
 
+import { MasterBarcodesModule } from './master-barcodes/master-barcodes.module';
+
+import { MasterProductsModule } from './master-products/master-products.module';
+
+import { AdminBarcodesModule } from '../modules/admin/barcodes/barcodes.module';
 
 /* ==================================================
 SECTION 01 : ADMIN MODULE
@@ -62,74 +52,65 @@ ROLE : ADMIN DOMAIN ROOT
 ================================================== */
 
 @Module({
+  imports: [
+    JwtModule.register({
+      secret: 'dev-secret',
 
-imports:[
+      signOptions: {
+        expiresIn: '7d',
+      },
+    }),
 
-JwtModule.register({
+    UsersModule,
 
-secret:'dev-secret',
+    RegionsModule,
 
-signOptions:{
-expiresIn:'7d'
+    CategoriesModule,
 
-}
+    IndustriesModule,
 
-}),
+    IndustrySubtypesModule,
 
-UsersModule,
+    MediaModule, // MediaService DI source
 
-RegionsModule,
+    MasterBarcodesModule,
 
-CategoriesModule,
+    MasterProductsModule,
 
-IndustriesModule,
+    AdminBarcodesModule,
+  ],
 
-IndustrySubtypesModule,
+  controllers: [AdminController, DevLoginController, AdminMediaController],
 
-MediaModule   // MediaService DI source
+  providers: [
+    AdminService,
 
-],
+    DevLoginService,
 
-controllers:[
+    AdminMediaService, // ★ 필수 (DI 해결)
+  ],
 
-AdminController,
+  exports: [
+    UsersModule,
 
-DevLoginController,
+    RegionsModule,
 
-AdminMediaController
+    CategoriesModule,
 
-],
+    IndustriesModule,
 
-providers:[
+    IndustrySubtypesModule,
 
-AdminService,
+    MediaModule,
 
-DevLoginService,
+    MasterBarcodesModule,
 
-AdminMediaService   // ★ 필수 (DI 해결)
+    MasterProductsModule,
 
-],
-
-exports:[
-
-UsersModule,
-
-RegionsModule,
-
-CategoriesModule,
-
-IndustriesModule,
-
-IndustrySubtypesModule,
-
-MediaModule
-
-]
-
+    AdminBarcodesModule,
+  ],
 })
-
-export class AdminModule{}
-
+export class AdminModule {}
 
 /* ==================================================
 SECTION END
