@@ -39,9 +39,19 @@ type BusinessProfileRow = {
   primaryIndustrySubtypeId: number | null
   primaryIndustryCode: string | null
   primaryIndustrySubtypeCode: string | null
+  placeFeedTypeCode: PlaceFeedTypeCode | null
   createdAt: string
   updatedAt: string | null
 }
+
+type PlaceFeedTypeCode =
+  | 'NORMAL'
+  | 'MARKET'
+  | 'FOOD'
+  | 'BEAUTY'
+  | 'CULTURE'
+  | 'STAY'
+  | 'RENTCAR'
 
 type RegionRow = {
   id: number
@@ -260,6 +270,7 @@ export class BusinessProfileService {
         primaryIndustrySubtypeId,
         primaryIndustryCode,
         primaryIndustrySubtypeCode,
+        placeFeedTypeCode,
         createdAt,
         updatedAt
       FROM profiles

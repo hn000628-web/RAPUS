@@ -630,6 +630,7 @@ export class AuthService {
 
     let businessTypeId: number | null = null
     let businessTypeCode: BusinessTypeCode | null = null
+    let placeFeedTypeCode: 'NORMAL' | null = null
 
     if (profileType === 'BUSINESS') {
       const selectedBusinessTypeCode = body.businessTypeCode ?? 'NORMAL'
@@ -645,6 +646,7 @@ export class AuthService {
 
       businessTypeCode = selectedBusinessTypeCode
       businessTypeId = this.getBusinessTypeId(selectedBusinessTypeCode)
+      placeFeedTypeCode = 'NORMAL'
     }
 
     const displayName = body.displayName?.trim() || `${email}_${profileType.toLowerCase()}`
@@ -663,9 +665,10 @@ export class AuthService {
           channelURL,
           contactPhone,
           businessTypeId,
-          businessTypeCode
+          businessTypeCode,
+          placeFeedTypeCode
         )
-        VALUES(?,?,?,?,?,?,?,?,?)
+        VALUES(?,?,?,?,?,?,?,?,?,?)
       `).run(
         userId,
         profileType,
@@ -675,7 +678,8 @@ export class AuthService {
         channelURL,
         null,
         businessTypeId,
-        businessTypeCode
+        businessTypeCode,
+        placeFeedTypeCode
       )
 
       createdProfileId = Number(inserted.lastInsertRowid)

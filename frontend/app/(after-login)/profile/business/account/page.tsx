@@ -5,7 +5,11 @@ import { useRouter } from 'next/navigation'
 
 import styles from './BusinessAccountPage.module.css'
 import { getMe } from '@/lib/authApi'
-import { getProfileByChannelCode, type ProfileDetailPayload } from '@/lib/profile-summary-api'
+import {
+  getProfileByChannelCode,
+  type PlaceFeedTypeCode,
+  type ProfileDetailPayload
+} from '@/lib/profile-summary-api'
 import {
   getBusinessIndustrySubtypes,
   getCurrentBusinessIndustry,
@@ -140,6 +144,50 @@ const BUSINESS_HOURS_TODAY_KEY_MAP: DayKey[] = [
   'saturday'
 ]
 
+const PLACE_FEED_TYPE_OPTIONS: Array<{
+  code: PlaceFeedTypeCode
+  label: string
+}> = [
+  {
+    code: 'NORMAL',
+    label: '일반 프로필'
+  },
+  {
+    code: 'MARKET',
+    label: '마켓(유통업/마트)'
+  },
+  {
+    code: 'FOOD',
+    label: '푸드(음식점)'
+  },
+  {
+    code: 'BEAUTY',
+    label: '뷰티(미용/마사지)'
+  },
+  {
+    code: 'CULTURE',
+    label: '컬쳐(공연/밴드)'
+  },
+  {
+    code: 'STAY',
+    label: '스테이(숙박업:호텔/모텔)'
+  },
+  {
+    code: 'RENTCAR',
+    label: '렌트카'
+  }
+]
+
+const PLACE_FEED_ROUTE_HINTS: Record<PlaceFeedTypeCode, string> = {
+  NORMAL: '/channel/{channelCode}',
+  MARKET: '/market/{channelCode}',
+  FOOD: '/food/{channelCode}',
+  BEAUTY: '/beauty/{channelCode}',
+  CULTURE: '/culture/{channelCode}',
+  STAY: '/stay/{channelCode}',
+  RENTCAR: '/rentcar/{channelCode}'
+}
+
 const INITIAL_ACCOUNT_STATE: BusinessAccountState = {
   businessName: '',
   businessIndustryName: '',
@@ -230,6 +278,10 @@ export default function BusinessAccountPage() {
   const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null)
   const [businessTypes, setBusinessTypes] = useState<BusinessTypeItem[]>([])
   const [selectedBusinessTypeCode, setSelectedBusinessTypeCode] = useState<BusinessTypeCode | null>(null)
+  const [savedPlaceFeedTypeCode, setSavedPlaceFeedTypeCode] =
+    useState<PlaceFeedTypeCode>('NORMAL')
+  const [selectedPlaceFeedTypeCode, setSelectedPlaceFeedTypeCode] =
+    useState<PlaceFeedTypeCode>('NORMAL')
   const [industryOptions, setIndustryOptions] = useState<IndustryOption[]>([])
   const [selectedIndustry, setSelectedIndustry] = useState<SelectedIndustryState>({
     industryId: null,
@@ -287,6 +339,7 @@ export default function BusinessAccountPage() {
     if (modalType === 'businessName') {
       setModalValue(accountState.businessName ?? '')
       setModalIndustryValue(accountState.businessIndustryName ?? '')
+      setSelectedPlaceFeedTypeCode(savedPlaceFeedTypeCode)
       setIndustrySearchText('')
       return
     }
@@ -349,6 +402,23 @@ export default function BusinessAccountPage() {
     }
 
     return types.find((type) => type.code === businessTypeCode)?.name ?? businessTypeCode
+  }
+
+  const resolvePlaceFeedTypeCode = (
+    value?: string | null
+  ): PlaceFeedTypeCode => {
+    if (
+      value === 'MARKET' ||
+      value === 'FOOD' ||
+      value === 'BEAUTY' ||
+      value === 'CULTURE' ||
+      value === 'STAY' ||
+      value === 'RENTCAR'
+    ) {
+      return value
+    }
+
+    return 'NORMAL'
   }
 
   const formatIndustryLabel = (
@@ -545,7 +615,8 @@ export default function BusinessAccountPage() {
         await updateBusinessProfileCore(
           businessContext.profileId,
           {
-            displayName: modalValue.trim() || null
+            displayName: modalValue.trim() || null,
+            placeFeedTypeCode: selectedPlaceFeedTypeCode
           }
         )
 
@@ -574,6 +645,7 @@ export default function BusinessAccountPage() {
             businessTypes
           )
         }))
+        setSavedPlaceFeedTypeCode(selectedPlaceFeedTypeCode)
         closeModal()
       } catch (error) {
         console.error(error)
@@ -939,6 +1011,12 @@ export default function BusinessAccountPage() {
         })
         setBusinessTypes(nextBusinessTypes)
         setSelectedBusinessTypeCode(currentBusinessTypeCode)
+        setSelectedPlaceFeedTypeCode(
+          resolvePlaceFeedTypeCode(profileDetail.placeFeedTypeCode)
+        )
+        setSavedPlaceFeedTypeCode(
+          resolvePlaceFeedTypeCode(profileDetail.placeFeedTypeCode)
+        )
         setSelectedIndustry({
           industryId: currentIndustry.current.industryId ?? null,
           industryCode: currentIndustry.current.industryCode ?? null,
@@ -1424,6 +1502,32 @@ export default function BusinessAccountPage() {
                         })}
                       </div>
                     </section>
+
+                    <label className={styles.modalInputGroup}>
+                      <span className={styles.modalLabel}>플레이스 피드 타입</span>
+                      <select
+                        className={styles.modalSelect}
+                        value={selectedPlaceFeedTypeCode}
+                        onChange={(event) => {
+                          setSelectedPlaceFeedTypeCode(
+                            resolvePlaceFeedTypeCode(event.target.value)
+                          )
+                          setModalError('')
+                        }}
+                      >
+                        {PLACE_FEED_TYPE_OPTIONS.map((option) => (
+                          <option
+                            key={option.code}
+                            value={option.code}
+                          >
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <span className={styles.placeFeedRouteHint}>
+                        {PLACE_FEED_ROUTE_HINTS[selectedPlaceFeedTypeCode]}
+                      </span>
+                    </label>
 
                     <section className={styles.industrySection}>
                       <span className={styles.modalLabel}>현재 업종</span>

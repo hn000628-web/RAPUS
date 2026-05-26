@@ -94,7 +94,7 @@ export default function ServiceMenu({
 
             <ServiceItem
               label="플레이스"
-              onClick={() => go('/feed/place')}
+              onClick={() => go('/place')}
             />
           </>
         )}

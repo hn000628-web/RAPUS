@@ -22,8 +22,41 @@ export type ProfileDetailPayload = {
   primaryIndustrySubtypeId: number | null
   primaryIndustryCode: string | null
   primaryIndustrySubtypeCode: string | null
+  placeFeedTypeCode: PlaceFeedTypeCode | null
   createdAt: string
   updatedAt: string | null
+}
+
+export type PlaceFeedTypeCode =
+  | 'NORMAL'
+  | 'MARKET'
+  | 'FOOD'
+  | 'BEAUTY'
+  | 'CULTURE'
+  | 'STAY'
+  | 'RENTCAR'
+
+const PLACE_FEED_ROUTE_SEGMENTS: Record<Exclude<PlaceFeedTypeCode, 'NORMAL'>, string> = {
+  MARKET: 'market',
+  FOOD: 'food',
+  BEAUTY: 'beauty',
+  CULTURE: 'culture',
+  STAY: 'stay',
+  RENTCAR: 'rentcar'
+}
+
+export function buildProfileStoreRoute(
+  channelCode: string,
+  placeFeedTypeCode?: PlaceFeedTypeCode | null
+) {
+  const safeChannelCode = channelCode.trim()
+  const safePlaceFeedTypeCode = placeFeedTypeCode ?? 'NORMAL'
+
+  if (safePlaceFeedTypeCode === 'NORMAL') {
+    return `/channel/${safeChannelCode}`
+  }
+
+  return `/${PLACE_FEED_ROUTE_SEGMENTS[safePlaceFeedTypeCode]}/${safeChannelCode}`
 }
 
 export type BusinessProfileContext = {

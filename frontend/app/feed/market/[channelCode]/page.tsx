@@ -1,15 +1,26 @@
 'use client'
 
 import {
+  useEffect,
   useMemo,
+  useRef,
   useState
+} from 'react'
+
+import type {
+  FormEvent
 } from 'react'
 
 import Image from 'next/image'
 import {
   notFound,
+  useRouter,
   useParams
 } from 'next/navigation'
+
+import {
+  login
+} from '@/lib/authApi'
 
 import styles from './market-channel.module.css'
 
@@ -44,6 +55,19 @@ type MarketChannel = {
   status: '영업중' | '영업종료'
   description: string
   products: MarketProduct[]
+}
+
+type MarketCategoryCardItem = {
+  key: string
+  title: string
+  description: string
+  tone: 'grocery' | 'meat' | 'fruit' | 'vegetable' | 'seafood'
+  products: string[]
+}
+
+type GlobalMenuItem = {
+  label: string
+  path: string
 }
 
 const PAGE_SIZE =
@@ -192,6 +216,92 @@ const MARKET_CHANNELS: MarketChannel[] = [
   }
 ]
 
+const SPONSOR_LOGOS = [
+  '농심',
+  '오뚜기',
+  'SAMYANG',
+  'CJ 제일제당',
+  '동원F&B',
+  '풀무원',
+  '롯데'
+]
+
+const MARKET_CATEGORY_CARDS: MarketCategoryCardItem[] = [
+  {
+    key: 'grocery',
+    title: '공산품',
+    description: '라면, 카레, 식초 등 다양한 식재료',
+    tone: 'grocery',
+    products: [
+      '라면',
+      '카레',
+      '식초'
+    ]
+  },
+  {
+    key: 'meat',
+    title: '정육',
+    description: '신선한 고기와 다양한 정육 상품',
+    tone: 'meat',
+    products: [
+      '소고기',
+      '삼겹살'
+    ]
+  },
+  {
+    key: 'fruit',
+    title: '청과',
+    description: '신선한 제철 과일',
+    tone: 'fruit',
+    products: [
+      '수박',
+      '사과',
+      '오렌지'
+    ]
+  },
+  {
+    key: 'vegetable',
+    title: '야채',
+    description: '신선한 야채를 합리적인 가격으로',
+    tone: 'vegetable',
+    products: [
+      '상추',
+      '파프리카',
+      '당근'
+    ]
+  },
+  {
+    key: 'seafood',
+    title: '수산',
+    description: '신선한 수산물',
+    tone: 'seafood',
+    products: [
+      '생선',
+      '새우',
+      '조개'
+    ]
+  }
+]
+
+const GLOBAL_MENU_ITEMS: GlobalMenuItem[] = [
+  {
+    label: '홈(검색)',
+    path: '/'
+  },
+  {
+    label: '플레이스',
+    path: '/place'
+  },
+  {
+    label: '마켓',
+    path: '/market'
+  },
+  {
+    label: '라이프',
+    path: '/life'
+  }
+]
+
 function getChannelCodeFromParams(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
     return value[0] || ''
@@ -204,7 +314,47 @@ function getThumbnailLabel(product: MarketProduct): string {
   return product.categoryName.trim().slice(0, 2)
 }
 
+function MarketCategoryShowcaseCard({
+  item
+}: {
+  item: MarketCategoryCardItem
+}) {
+  return (
+    <article className={`${styles.categoryCard} ${styles[`categoryTone${item.tone}`]}`}>
+      <div className={styles.categoryText}>
+        <h2>
+          {item.title}
+        </h2>
+        <p>
+          {item.description}
+        </p>
+        <button
+          type="button"
+          aria-label={`${item.title} 대표 상품 보기`}
+        >
+          ›
+        </button>
+      </div>
+
+      <div
+        className={styles.categoryProducts}
+        aria-hidden="true"
+      >
+        {item.products.map((product) => (
+          <span key={product}>
+            {product}
+          </span>
+        ))}
+      </div>
+    </article>
+  )
+}
+
 export default function MarketChannelHubPage() {
+  const router =
+    useRouter()
+  const globalMenuRef =
+    useRef<HTMLDivElement | null>(null)
   const params =
     useParams()
   const channelCode =
@@ -223,6 +373,18 @@ export default function MarketChannelHubPage() {
     useState(1)
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] =
     useState(false)
+  const [isLoginModalOpen, setIsLoginModalOpen] =
+    useState(false)
+  const [isGlobalMenuOpen, setIsGlobalMenuOpen] =
+    useState(false)
+  const [loginEmail, setLoginEmail] =
+    useState('')
+  const [loginPassword, setLoginPassword] =
+    useState('')
+  const [loginLoading, setLoginLoading] =
+    useState(false)
+  const [selectedLoginProfile, setSelectedLoginProfile] =
+    useState<'GENERAL' | 'BUSINESS'>('GENERAL')
 
   const filteredProducts =
     useMemo(() => {
@@ -260,6 +422,59 @@ export default function MarketChannelHubPage() {
       selectedCategory
     ])
 
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsLoginModalOpen(false)
+      }
+    }
+
+    if (isLoginModalOpen) {
+      window.addEventListener('keydown', handleKeyDown)
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [
+    isLoginModalOpen
+  ])
+
+  useEffect(() => {
+    function handlePointerDown(event: PointerEvent) {
+      const target =
+        event.target as Node | null
+
+      if (
+        globalMenuRef.current &&
+        target &&
+        globalMenuRef.current.contains(target)
+      ) {
+        return
+      }
+
+      setIsGlobalMenuOpen(false)
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsGlobalMenuOpen(false)
+      }
+    }
+
+    if (isGlobalMenuOpen) {
+      document.addEventListener('pointerdown', handlePointerDown)
+      document.addEventListener('keydown', handleKeyDown)
+    }
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [
+    isGlobalMenuOpen
+  ])
+
   if (!channel) {
     notFound()
   }
@@ -273,6 +488,8 @@ export default function MarketChannelHubPage() {
       (safePage - 1) * PAGE_SIZE,
       safePage * PAGE_SIZE
     )
+  const searchPlaceholderMarketName =
+    channel.marketName?.trim() || '라푸스 마켓'
 
   function handleSelectCategory(category: CategoryType) {
     setSelectedCategory(category)
@@ -292,22 +509,75 @@ export default function MarketChannelHubPage() {
     })
   }
 
+  function handleGlobalMenuMove(path: string) {
+    setIsGlobalMenuOpen(false)
+    router.push(path)
+  }
+
+  async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (loginLoading) {
+      return
+    }
+
+    const normalizedEmail =
+      loginEmail.trim()
+    const normalizedPassword =
+      loginPassword.trim()
+
+    if (
+      !normalizedEmail ||
+      !normalizedPassword
+    ) {
+      alert('이메일과 비밀번호를 입력해 주세요.')
+      return
+    }
+
+    setLoginLoading(true)
+
+    try {
+      const data =
+        await login({
+          email: normalizedEmail,
+          password: normalizedPassword,
+          profileType: selectedLoginProfile
+        })
+
+      if (!data?.accessToken) {
+        alert('로그인에 실패했습니다.')
+        return
+      }
+
+      localStorage.setItem('accessToken', data.accessToken)
+      window.dispatchEvent(new Event('auth-change'))
+
+      if (data?.user?.userId) {
+        localStorage.setItem('userId', String(data.user.userId))
+      }
+
+      localStorage.setItem('profileType', selectedLoginProfile)
+      localStorage.setItem('activeProfileType', selectedLoginProfile)
+
+      localStorage.removeItem('profileId')
+      localStorage.removeItem('activeProfileId')
+      localStorage.removeItem('generalProfileId')
+      localStorage.removeItem('businessProfileId')
+
+      setIsLoginModalOpen(false)
+      setLoginPassword('')
+    } catch (error) {
+      console.error(error)
+      alert('서버 오류가 발생했습니다.')
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
         <header className={styles.commerceHeader}>
-          <div className={styles.utilityBar}>
-            <span>
-              지역: {channel.regionName}
-            </span>
-            <span>
-              영업상태: {channel.status}
-            </span>
-            <span>
-              채널코드: {channel.channelCode}
-            </span>
-          </div>
-
           <div className={styles.mainHeader}>
             <div className={styles.commerceHeaderGroup}>
               <div className={styles.headerLeftGroup}>
@@ -315,6 +585,7 @@ export default function MarketChannelHubPage() {
                   <button
                     type="button"
                     className={styles.categoryTrigger}
+                    aria-label="카테고리 메뉴 열기"
                     aria-expanded={isCategoryMenuOpen}
                     aria-controls="market-category-menu"
                     onClick={() => {
@@ -323,12 +594,9 @@ export default function MarketChannelHubPage() {
                       })
                     }}
                   >
-                    <span aria-hidden="true">
-                      ☰
-                    </span>
-                    {selectedCategory === '전체'
-                      ? '카테고리'
-                      : selectedCategory}
+                    <span className={styles.hamburgerLine} />
+                    <span className={styles.hamburgerLine} />
+                    <span className={styles.hamburgerLine} />
                   </button>
 
                   {isCategoryMenuOpen ? (
@@ -357,8 +625,11 @@ export default function MarketChannelHubPage() {
                 </div>
 
                 <div className={styles.storeIdentity}>
-                  <strong className={styles.storeName}>
-                    {channel.marketName}
+                  <strong
+                    className={styles.storeName}
+                    aria-label={channel.marketName}
+                  >
+                    RAPUS MART
                   </strong>
                 </div>
               </div>
@@ -371,32 +642,86 @@ export default function MarketChannelHubPage() {
                       setKeyword(event.target.value)
                       setPage(1)
                     }}
-                    placeholder={`${channel.marketName}에서 상품 검색`}
+                    placeholder={`${searchPlaceholderMarketName}의 상품을 검색합니다.`}
                   />
+                  <button
+                    type="button"
+                    className={styles.searchButton}
+                  >
+                    검색
+                  </button>
                 </label>
               </div>
 
               <div
                 className={styles.headerActions}
-                aria-label="마켓 허브 목업 액션"
+                aria-label="마켓 사용자 메뉴"
               >
-                <button type="button">
+                <div
+                  ref={globalMenuRef}
+                  className={styles.globalMenuArea}
+                >
+                  <button
+                    type="button"
+                    className={styles.globalMenuTrigger}
+                    aria-label="서브메뉴 열기"
+                    aria-expanded={isGlobalMenuOpen}
+                    aria-controls="market-global-menu"
+                    onClick={() => {
+                      setIsGlobalMenuOpen((currentValue) => {
+                        return !currentValue
+                      })
+                    }}
+                  >
+                    <span />
+                    <span />
+                    <span />
+                  </button>
+
+                  {isGlobalMenuOpen ? (
+                    <div
+                      id="market-global-menu"
+                      className={styles.globalMenuPopover}
+                    >
+                      {GLOBAL_MENU_ITEMS.map((item) => (
+                        <button
+                          key={item.path}
+                          type="button"
+                          className={styles.globalMenuItem}
+                          onClick={() => {
+                            handleGlobalMenuMove(item.path)
+                          }}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLoginModalOpen(true)
+                  }}
+                >
+                  로그인
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    router.push('/signup')
+                  }}
+                >
+                  회원가입
+                </button>
+                <button
+                  type="button"
+                  className={styles.cartButton}
+                  aria-label="장바구니"
+                >
                   장바구니
                 </button>
-                <div
-                  className={styles.businessHoursBox}
-                  aria-label="영업시간 안내"
-                >
-                  <span className={styles.businessHoursTitle}>
-                    영업시간 안내
-                  </span>
-                  <strong className={styles.businessHoursTime}>
-                    09:00 ~ 22:00
-                  </strong>
-                  <span className={styles.businessHoursNotice}>
-                    연중무휴
-                  </span>
-                </div>
               </div>
             </div>
           </div>
@@ -474,8 +799,57 @@ export default function MarketChannelHubPage() {
           </aside>
         </section>
 
+        <section
+          className={styles.sponsorStrip}
+          aria-label="스폰서 브랜드"
+        >
+          {SPONSOR_LOGOS.map((logo) => (
+            <span key={logo}>
+              {logo}
+            </span>
+          ))}
+        </section>
+
+        <section
+          className={styles.categoryShowcase}
+          aria-label="대표 카테고리"
+        >
+          <div className={styles.categoryTopGrid}>
+            {MARKET_CATEGORY_CARDS.slice(0, 2).map((item) => (
+              <MarketCategoryShowcaseCard
+                key={item.key}
+                item={item}
+              />
+            ))}
+          </div>
+
+          <div className={styles.categoryBottomGrid}>
+            {MARKET_CATEGORY_CARDS.slice(2).map((item) => (
+              <MarketCategoryShowcaseCard
+                key={item.key}
+                item={item}
+              />
+            ))}
+          </div>
+        </section>
+
         <section className={styles.layout}>
           <section className={styles.rightPanel}>
+            <div className={styles.dealHeader}>
+              <div>
+                <h2>
+                  오늘의 특가
+                </h2>
+                <span>
+                  행사상품을 모아 확인하세요.
+                </span>
+              </div>
+
+              <button type="button">
+                전체보기
+              </button>
+            </div>
+
             {pagedProducts.length === 0 ? (
               <section className={styles.emptyState}>
                 <strong>
@@ -564,6 +938,132 @@ export default function MarketChannelHubPage() {
           </section>
         </section>
       </div>
+
+      {isLoginModalOpen ? (
+        <div
+          className={styles.loginModalOverlay}
+          role="presentation"
+          onMouseDown={() => {
+            setIsLoginModalOpen(false)
+          }}
+        >
+          <section
+            className={styles.loginModalCard}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="market-login-title"
+            onMouseDown={(event) => {
+              event.stopPropagation()
+            }}
+          >
+            <button
+              type="button"
+              className={styles.loginModalCloseButton}
+              aria-label="로그인 모달 닫기"
+              onClick={() => {
+                setIsLoginModalOpen(false)
+              }}
+            >
+              ×
+            </button>
+
+            <h2
+              id="market-login-title"
+              className={styles.loginModalLogo}
+            >
+              RAPUS
+            </h2>
+            <p className={styles.loginModalSubtitle}>
+              Connect Local Business &amp; People
+            </p>
+
+            <div className={styles.loginProfileTabs}>
+              <button
+                type="button"
+                className={
+                  selectedLoginProfile === 'GENERAL'
+                    ? `${styles.loginProfileTab} ${styles.loginProfileTabActive}`
+                    : styles.loginProfileTab
+                }
+                onClick={() => {
+                  setSelectedLoginProfile('GENERAL')
+                }}
+                disabled={loginLoading}
+              >
+                일반
+              </button>
+              <button
+                type="button"
+                className={
+                  selectedLoginProfile === 'BUSINESS'
+                    ? `${styles.loginProfileTab} ${styles.loginProfileTabActive}`
+                    : styles.loginProfileTab
+                }
+                onClick={() => {
+                  setSelectedLoginProfile('BUSINESS')
+                }}
+                disabled={loginLoading}
+              >
+                비즈니스
+              </button>
+            </div>
+
+            <form
+              className={styles.loginModalForm}
+              onSubmit={handleLoginSubmit}
+            >
+              <input
+                type="email"
+                placeholder="이메일"
+                value={loginEmail}
+                onChange={(event) => {
+                  setLoginEmail(event.target.value)
+                }}
+                autoComplete="email"
+                required
+              />
+              <input
+                type="password"
+                placeholder="비밀번호"
+                value={loginPassword}
+                onChange={(event) => {
+                  setLoginPassword(event.target.value)
+                }}
+                autoComplete="current-password"
+                required
+              />
+              <p className={styles.loginHint}>
+                개발 임시 비밀번호는 1234입니다.
+              </p>
+
+              <button
+                type="button"
+                className={styles.signupSubmitButton}
+                disabled={loginLoading}
+                onClick={() => {
+                  router.push('/signup')
+                }}
+              >
+                회원가입
+              </button>
+
+              <button
+                type="submit"
+                className={styles.loginSubmitButton}
+                disabled={loginLoading}
+              >
+                {loginLoading
+                  ? '로그인 중...'
+                  : '로그인'}
+              </button>
+            </form>
+
+            <div className={styles.loginModalFooter}>
+              RAPUS Platform v1.0
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   )
 }

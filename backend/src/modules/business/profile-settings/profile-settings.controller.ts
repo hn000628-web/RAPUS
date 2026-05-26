@@ -164,6 +164,7 @@ export class ProfileSettingsController {
     @Req() req: AuthRequest,
     @Body() body: {
       displayName?: string
+      placeFeedTypeCode?: string | null
     }
   ) {
     const userId = req.user?.id ?? req.user?.userId ?? 0

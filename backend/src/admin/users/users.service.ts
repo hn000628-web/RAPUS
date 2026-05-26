@@ -461,9 +461,10 @@ export class UsersService {
           contactPhone,
           detailAddress,
           businessTypeId,
-          businessTypeCode
+          businessTypeCode,
+          placeFeedTypeCode
         )
-        VALUES(?,?,?,?,?,?,?,?,?,?,?)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
       `).run(
         userId,
         profileType,
@@ -475,7 +476,8 @@ export class UsersService {
         input.phone,
         input.detailAddress,
         input.businessTypeId,
-        input.businessTypeCode
+        input.businessTypeCode,
+        profileType === 'BUSINESS' ? 'NORMAL' : null
       )
 
       return {
@@ -497,6 +499,7 @@ export class UsersService {
         detailAddress=?,
         businessTypeId=?,
         businessTypeCode=?,
+        placeFeedTypeCode=?,
         updatedAt=CURRENT_TIMESTAMP
       WHERE id=?
     `).run(
@@ -509,6 +512,7 @@ export class UsersService {
       input.detailAddress,
       input.businessTypeId,
       input.businessTypeCode,
+      profileType === 'BUSINESS' ? 'NORMAL' : null,
       existing.id
     )
 

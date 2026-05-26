@@ -45,9 +45,19 @@ type BusinessProfileRow = {
   primaryIndustrySubtypeId: number | null
   primaryIndustryCode: string | null
   primaryIndustrySubtypeCode: string | null
+  placeFeedTypeCode: PlaceFeedTypeCode | null
   createdAt: string
   updatedAt: string | null
 }
+
+type PlaceFeedTypeCode =
+  | 'NORMAL'
+  | 'MARKET'
+  | 'FOOD'
+  | 'BEAUTY'
+  | 'CULTURE'
+  | 'STAY'
+  | 'RENTCAR'
 
 type BusinessProfilePasswordRow = {
   loginPasswordHash: string | null
@@ -426,6 +436,40 @@ export class ProfileSettingsService {
     return industryId
   }
 
+  private normalizePlaceFeedTypeCode(
+    placeFeedTypeCode: unknown,
+    fallback: PlaceFeedTypeCode | null
+  ): PlaceFeedTypeCode | null {
+    if (placeFeedTypeCode === undefined) {
+      return fallback
+    }
+
+    if (placeFeedTypeCode === null) {
+      return fallback
+    }
+
+    if (typeof placeFeedTypeCode !== 'string') {
+      throw new BadRequestException('invalid placeFeedTypeCode')
+    }
+
+    const normalizedPlaceFeedTypeCode =
+      placeFeedTypeCode.trim().toUpperCase()
+
+    if (
+      normalizedPlaceFeedTypeCode === 'NORMAL' ||
+      normalizedPlaceFeedTypeCode === 'MARKET' ||
+      normalizedPlaceFeedTypeCode === 'FOOD' ||
+      normalizedPlaceFeedTypeCode === 'BEAUTY' ||
+      normalizedPlaceFeedTypeCode === 'CULTURE' ||
+      normalizedPlaceFeedTypeCode === 'STAY' ||
+      normalizedPlaceFeedTypeCode === 'RENTCAR'
+    ) {
+      return normalizedPlaceFeedTypeCode
+    }
+
+    throw new BadRequestException('invalid placeFeedTypeCode')
+  }
+
   // SECTION 04 : PROFILE CORE READ
 
   getProfile(profileId: number): BusinessProfileRow {
@@ -463,6 +507,7 @@ export class ProfileSettingsService {
         primaryIndustrySubtypeId,
         primaryIndustryCode,
         primaryIndustrySubtypeCode,
+        placeFeedTypeCode,
         createdAt,
         updatedAt
       FROM profiles
@@ -828,20 +873,28 @@ export class ProfileSettingsService {
 
   updateProfileCore(userId: number, profileId: number, channelCode: string, payload: {
     displayName?: string
+    placeFeedTypeCode?: string | null
   }) {
     this.assertProfileOwnershipWithChannel(userId, profileId, channelCode)
 
     const current = this.getProfile(profileId)
+    const nextPlaceFeedTypeCode =
+      this.normalizePlaceFeedTypeCode(
+        payload.placeFeedTypeCode,
+        current.placeFeedTypeCode ?? 'NORMAL'
+      )
 
     db.prepare(`
       UPDATE profiles
       SET
         displayName = ?,
+        placeFeedTypeCode = ?,
         updatedAt = CURRENT_TIMESTAMP
       WHERE id = ?
         AND profileType = 'BUSINESS'
     `).run(
       payload.displayName ?? current.displayName,
+      nextPlaceFeedTypeCode,
       profileId
     )
 

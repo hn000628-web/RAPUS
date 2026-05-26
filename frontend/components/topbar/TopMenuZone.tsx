@@ -28,7 +28,7 @@ export default function TopMenuZone({
   const router = useRouter()
   const pathname = usePathname()
   const isHomePage = pathname === '/'
-  const isPlacePage = pathname === '/feed/place'
+  const isPlacePage = pathname === '/place'
 
   const [serviceOpen,setServiceOpen] = useState(false)
   const [profileOpen,setProfileOpen] = useState(false)
@@ -138,19 +138,15 @@ export default function TopMenuZone({
     }
   }, [serviceOpen])
 
-  useEffect(() => {
-    closeAll()
-  }, [pathname])
+  const closeAll = useCallback(() => {
+    setServiceOpen(false)
+    setProfileOpen(false)
+  }, [])
 
   const isMobileRegionTopbar =
     (isPlacePage || isHomePage) &&
     viewportWidth > 0 &&
     viewportWidth <= 640
-
-  const closeAll = useCallback(() => {
-    setServiceOpen(false)
-    setProfileOpen(false)
-  }, [])
 
   function toggleService(){
     setServiceOpen(prev=>!prev)

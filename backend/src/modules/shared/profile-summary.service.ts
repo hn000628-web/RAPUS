@@ -20,9 +20,19 @@ export type ProfileDetailPayload = {
   primaryIndustrySubtypeId: number | null
   primaryIndustryCode: string | null
   primaryIndustrySubtypeCode: string | null
+  placeFeedTypeCode: PlaceFeedTypeCode | null
   createdAt: string
   updatedAt: string
 }
+
+export type PlaceFeedTypeCode =
+  | 'NORMAL'
+  | 'MARKET'
+  | 'FOOD'
+  | 'BEAUTY'
+  | 'CULTURE'
+  | 'STAY'
+  | 'RENTCAR'
 
 @Injectable()
 export class ProfileSummaryService {

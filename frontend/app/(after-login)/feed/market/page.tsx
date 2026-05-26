@@ -219,8 +219,8 @@ function MarketFeedPageContent() {
 
     router.push(
       query
-        ? `/feed/market?${query}`
-        : '/feed/market'
+        ? `/market?${query}`
+        : '/market'
     )
   }
 
@@ -232,7 +232,7 @@ function MarketFeedPageContent() {
   }
 
   function handleOpenMarketHub(channelCode: string) {
-    router.push(`/feed/market/${channelCode}`)
+    router.push(`/market/${channelCode}`)
   }
 
   const HeaderUI = (

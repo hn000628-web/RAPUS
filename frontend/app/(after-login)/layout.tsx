@@ -65,7 +65,8 @@ export default function AfterLoginLayout({
   // SECTION 06 : PROFILE TYPE NORMALIZE
   const profileType = normalizeProfileType(profile?.profileType)
   const shouldShowProfileSidebar =
-    !pathname?.startsWith('/feed/market')
+    !pathname?.startsWith('/feed/market') &&
+    !pathname?.startsWith('/market')
 
   // SECTION 07 : RETURN
   return (

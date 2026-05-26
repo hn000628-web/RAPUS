@@ -498,6 +498,27 @@
   padding: 0 12px;
 }
 
+.modalSelect {
+  width: 100%;
+  height: 44px;
+  box-sizing: border-box;
+  border: 1px solid #dbe3ec;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 800;
+  padding: 0 12px;
+}
+
+.placeFeedRouteHint {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+  word-break: keep-all;
+}
+
 .industrySection {
   display: grid;
   gap: 8px;

@@ -1241,6 +1241,20 @@ CHECK(
   )
 ),
 
+placeFeedTypeCode TEXT
+CHECK(
+  placeFeedTypeCode IS NULL
+  OR placeFeedTypeCode IN(
+    'NORMAL',
+    'MARKET',
+    'FOOD',
+    'BEAUTY',
+    'CULTURE',
+    'STAY',
+    'RENTCAR'
+  )
+),
+
 primaryIndustryId INTEGER,
 primaryIndustrySubtypeId INTEGER,
 primaryIndustryCode TEXT,
@@ -1268,6 +1282,20 @@ CHECK(
     'STORE',
     'FREELANCER',
     'MOBILE_BIZ'
+  ))
+),
+
+CHECK(
+  (profileType='GENERAL' AND placeFeedTypeCode IS NULL)
+  OR
+  (profileType='BUSINESS' AND placeFeedTypeCode IN(
+    'NORMAL',
+    'MARKET',
+    'FOOD',
+    'BEAUTY',
+    'CULTURE',
+    'STAY',
+    'RENTCAR'
   ))
 ),
 
@@ -1354,6 +1382,20 @@ if (!profilesSupportsNormalBusinessType) {
         )
       ),
 
+      placeFeedTypeCode TEXT
+      CHECK(
+        placeFeedTypeCode IS NULL
+        OR placeFeedTypeCode IN(
+          'NORMAL',
+          'MARKET',
+          'FOOD',
+          'BEAUTY',
+          'CULTURE',
+          'STAY',
+          'RENTCAR'
+        )
+      ),
+
       primaryIndustryId INTEGER,
       primaryIndustrySubtypeId INTEGER,
       primaryIndustryCode TEXT,
@@ -1384,6 +1426,20 @@ if (!profilesSupportsNormalBusinessType) {
         ))
       ),
 
+      CHECK(
+        (profileType='GENERAL' AND placeFeedTypeCode IS NULL)
+        OR
+        (profileType='BUSINESS' AND placeFeedTypeCode IN(
+          'NORMAL',
+          'MARKET',
+          'FOOD',
+          'BEAUTY',
+          'CULTURE',
+          'STAY',
+          'RENTCAR'
+        ))
+      ),
+
       FOREIGN KEY(userId) REFERENCES users(id),
       FOREIGN KEY(businessTypeId) REFERENCES business_types(id),
       FOREIGN KEY(primaryIndustryId) REFERENCES industries(id),
@@ -1410,6 +1466,7 @@ if (!profilesSupportsNormalBusinessType) {
       detailAddress,
       businessTypeId,
       businessTypeCode,
+      placeFeedTypeCode,
       primaryIndustryId,
       primaryIndustrySubtypeId,
       primaryIndustryCode,
@@ -1433,6 +1490,10 @@ if (!profilesSupportsNormalBusinessType) {
       detailAddress,
       businessTypeId,
       businessTypeCode,
+      CASE
+        WHEN profileType = 'BUSINESS' THEN 'NORMAL'
+        ELSE NULL
+      END,
       primaryIndustryId,
       primaryIndustrySubtypeId,
       primaryIndustryCode,
@@ -1478,6 +1539,23 @@ safeAddColumn(
 
 safeAddColumn(
   'profiles',
+  'placeFeedTypeCode',
+  `TEXT CHECK(
+    placeFeedTypeCode IS NULL
+    OR placeFeedTypeCode IN(
+      'NORMAL',
+      'MARKET',
+      'FOOD',
+      'BEAUTY',
+      'CULTURE',
+      'STAY',
+      'RENTCAR'
+    )
+  )`
+)
+
+safeAddColumn(
+  'profiles',
   'businessRegistrationNumber',
   'TEXT'
 )
@@ -1505,7 +1583,8 @@ db.exec(`
 UPDATE profiles
 SET
   businessTypeId = NULL,
-  businessTypeCode = NULL
+  businessTypeCode = NULL,
+  placeFeedTypeCode = NULL
 WHERE profileType = 'GENERAL'
 
 `)
@@ -1520,6 +1599,10 @@ SET
   ),
   businessTypeCode = COALESCE(
     businessTypeCode,
+    'NORMAL'
+  ),
+  placeFeedTypeCode = COALESCE(
+    placeFeedTypeCode,
     'NORMAL'
   )
 WHERE profileType = 'BUSINESS'
@@ -1697,6 +1780,15 @@ ON profiles(businessTypeCode)
 db.exec(`
 
 CREATE INDEX IF NOT EXISTS
+idx_profiles_place_feed_type
+
+ON profiles(placeFeedTypeCode)
+
+`)
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS
 idx_profiles_primaryIndustry
 
 ON profiles(primaryIndustryId)
@@ -1757,10 +1849,11 @@ channelCode,
 channelURL,
 contactPhone,
 businessTypeId,
-businessTypeCode
+businessTypeCode,
+placeFeedTypeCode
 )
 
-VALUES(?,?,?,?,?,?,?,?,?)
+VALUES(?,?,?,?,?,?,?,?,?,?)
 
 `)
 
@@ -1784,6 +1877,7 @@ insertProfile.run(
   'xxx.com/@A1B2C3D4E5F6G',
   null,
   null,
+  null,
   null
 )
 
@@ -1796,6 +1890,7 @@ insertProfile.run(
   'xxx.com/@B1B2C3D4E5F6G',
   null,
   normalBusinessTypeId,
+  'NORMAL',
   'NORMAL'
 )
 
@@ -1810,6 +1905,7 @@ insertProfile.run(
   'xxx.com/@A8X7C6V5B4N3M',
   null,
   null,
+  null,
   null
 )
 
@@ -1822,6 +1918,7 @@ insertProfile.run(
   'xxx.com/@B8X7C6V5B4N3M',
   null,
   normalBusinessTypeId,
+  'NORMAL',
   'NORMAL'
 )
 

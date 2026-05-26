@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api'
 import { getMe, MeResponse } from '@/lib/authApi'
+import type { PlaceFeedTypeCode } from '@/lib/profile-summary-api'
 
 /* ==================================================
 SECTION 01 : PROFILE SUMMARY TYPES
@@ -26,6 +27,7 @@ export type ProfileDetailPayload = {
   primaryIndustrySubtypeId: number | null
   primaryIndustryCode: string | null
   primaryIndustrySubtypeCode: string | null
+  placeFeedTypeCode: PlaceFeedTypeCode | null
   createdAt: string
   updatedAt: string | null
 }
@@ -61,6 +63,7 @@ export type BusinessProfile = {
   primaryIndustrySubtypeId: number | null
   primaryIndustryCode: string | null
   primaryIndustrySubtypeCode: string | null
+  placeFeedTypeCode: PlaceFeedTypeCode | null
   createdAt: string
   updatedAt: string | null
 }
@@ -204,7 +207,12 @@ export async function getBusinessProfileSummary(
 
 export async function updateBusinessProfileCore(
   profileId: number,
-  data: { displayName?: string | null; bio?: string | null; contactPhone?: string | null }
+  data: {
+    displayName?: string | null
+    bio?: string | null
+    contactPhone?: string | null
+    placeFeedTypeCode?: PlaceFeedTypeCode | null
+  }
 ): Promise<BusinessProfile> {
   return apiFetch(`${BUSINESS_PROFILE_BASE}/${profileId}/core`, {
     method: 'PATCH',

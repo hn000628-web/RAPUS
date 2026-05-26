@@ -69,7 +69,7 @@ const MAIN_CATEGORY_ITEMS: MainCategoryItem[] = [
     title: '플레이스',
     description: '비즈니스 / 장소',
     icon: 'P',
-    href: '/feed/place'
+    href: '/place'
   },
   {
     key: '라이프 서비스',
@@ -83,7 +83,7 @@ const MAIN_CATEGORY_ITEMS: MainCategoryItem[] = [
     title: '마켓',
     description: '마트 / 식료품',
     icon: '🛒',
-    href: '/feed/market'
+    href: '/market'
   }
 ]
 

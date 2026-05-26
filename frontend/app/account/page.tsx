@@ -44,7 +44,7 @@ return(
 
       <Item label="프로필" onClick={()=>go('/profile')} />
       <Item label="라이프" onClick={()=>go('/feed/life')} />
-      <Item label="플레이스" onClick={()=>go('/feed/place')} />
+      <Item label="플레이스" onClick={()=>go('/place')} />
       <Item label="비즈니스" onClick={()=>go('/profile/business')} />
 
     </div>

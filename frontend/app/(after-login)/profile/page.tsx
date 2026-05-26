@@ -36,6 +36,11 @@ import {
 import {
   getProfileAccount
 } from '@/lib/accountApi'
+import {
+  buildProfileStoreRoute,
+  getProfileByChannelCode,
+  type PlaceFeedTypeCode
+} from '@/lib/profile-summary-api'
 import type {
   ProfileAccountResponseData
 } from '@/lib/accountApi'
@@ -297,6 +302,9 @@ export default function ProfileHubPage() {
   const [generalAccountSummary, setGeneralAccountSummary] =
     useState<ProfileAccountResponseData | null>(null)
 
+  const [businessPlaceFeedTypeCode, setBusinessPlaceFeedTypeCode] =
+    useState<PlaceFeedTypeCode>('NORMAL')
+
   // SECTION 05 : EFFECT
 
   useEffect(() => {
@@ -332,6 +340,8 @@ export default function ProfileHubPage() {
 
         let nextGeneralAccountSummary: ProfileAccountResponseData | null =
           null
+        let nextBusinessPlaceFeedTypeCode: PlaceFeedTypeCode =
+          'NORMAL'
 
         if (
           nextProfileType === 'GENERAL' &&
@@ -345,9 +355,23 @@ export default function ProfileHubPage() {
             })
         }
 
+        if (
+          nextProfileType === 'BUSINESS' &&
+          nextAccountInfo.channelCode.length > 0
+        ) {
+          const businessProfile =
+            await getProfileByChannelCode(
+              nextAccountInfo.channelCode
+            )
+
+          nextBusinessPlaceFeedTypeCode =
+            businessProfile.placeFeedTypeCode ?? 'NORMAL'
+        }
+
         setAccountInfo(nextAccountInfo)
         setActiveProfileType(nextProfileType)
         setGeneralAccountSummary(nextGeneralAccountSummary)
+        setBusinessPlaceFeedTypeCode(nextBusinessPlaceFeedTypeCode)
       } catch (err) {
         console.error(
           'PROFILE HUB ACCOUNT INFO ERROR',
@@ -363,6 +387,7 @@ export default function ProfileHubPage() {
 
           setActiveProfileType(null)
           setGeneralAccountSummary(null)
+          setBusinessPlaceFeedTypeCode('NORMAL')
         }
       } finally {
         if (!cancelled) {
@@ -446,7 +471,12 @@ export default function ProfileHubPage() {
       return
     }
 
-    router.push(`/channel/${channelCode}`)
+    router.push(
+      buildProfileStoreRoute(
+        channelCode,
+        businessPlaceFeedTypeCode
+      )
+    )
   }
 
   function moveToBusinessPosView() {
