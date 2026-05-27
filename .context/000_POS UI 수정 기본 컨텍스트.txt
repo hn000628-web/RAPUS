@@ -9,7 +9,7 @@ POS UI 수정 작업은 코드 확인보다 실제 웹 UI 확인을 우선한다
 기본 진입 플로우:
 
 1. http://localhost:3000/login 접속
-2. test2@prod.com / 1234 로그인
+2. test2@prod.com / [REDACTED] 로그인
 3. 로그인 후 마이페이지 진입
 4. 마이페이지의 [포스] 버튼 또는 메뉴 클릭
 5. 실제 POS 화면 진입
@@ -30,7 +30,7 @@ POS UI 수정 작업은 코드 확인보다 실제 웹 UI 확인을 우선한다
 기준 테스트 계정:
 
 email: test2@prod.com
-password: 1234
+password: [REDACTED]
 
 POS UI 수정 허용 범위:
 
