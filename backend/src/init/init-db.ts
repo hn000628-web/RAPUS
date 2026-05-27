@@ -8417,6 +8417,168 @@ ON master_product_barcodes(masterBarcodeId)
 `)
 
 db.exec(`
+CREATE TABLE IF NOT EXISTS market_channel_products(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profileId INTEGER NOT NULL,
+  channelCode TEXT NOT NULL,
+  sourceProductId INTEGER NOT NULL,
+  productCode TEXT NOT NULL CHECK(length(productCode)=12),
+  productNameSnapshot TEXT NOT NULL,
+  brandNameSnapshot TEXT,
+  categoryNameSnapshot TEXT,
+  purchasePrice INTEGER NOT NULL DEFAULT 0 CHECK(purchasePrice >= 0),
+  salePrice INTEGER NOT NULL DEFAULT 0 CHECK(salePrice >= 0),
+  eventPrice INTEGER CHECK(eventPrice IS NULL OR eventPrice >= 0),
+  eventStartAt TEXT,
+  eventEndAt TEXT,
+  stockQuantity INTEGER NOT NULL DEFAULT 0 CHECK(stockQuantity >= 0),
+  safetyStockQuantity INTEGER NOT NULL DEFAULT 0 CHECK(safetyStockQuantity >= 0),
+  stockStatus TEXT NOT NULL DEFAULT 'IN_STOCK'
+    CHECK(stockStatus IN('IN_STOCK','LOW_STOCK','SOLD_OUT')),
+  isOnSale INTEGER NOT NULL DEFAULT 1 CHECK(isOnSale IN(0,1)),
+  isDisplayed INTEGER NOT NULL DEFAULT 1 CHECK(isDisplayed IN(0,1)),
+  isEventActive INTEGER NOT NULL DEFAULT 0 CHECK(isEventActive IN(0,1)),
+  isSoldOut INTEGER NOT NULL DEFAULT 0 CHECK(isSoldOut IN(0,1)),
+  lastSyncedAt TEXT,
+  priceUpdatedAt TEXT,
+  stockUpdatedAt TEXT,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  deletedAt TEXT,
+  FOREIGN KEY(profileId) REFERENCES profiles(id),
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(sourceProductId) REFERENCES master_products(id)
+)
+`)
+
+safeAddColumn('market_channel_products', 'profileId', 'INTEGER')
+safeAddColumn('market_channel_products', 'channelCode', 'TEXT')
+safeAddColumn('market_channel_products', 'sourceProductId', 'INTEGER')
+safeAddColumn('market_channel_products', 'productCode', 'TEXT CHECK(length(productCode)=12)')
+safeAddColumn('market_channel_products', 'productNameSnapshot', 'TEXT')
+safeAddColumn('market_channel_products', 'brandNameSnapshot', 'TEXT')
+safeAddColumn('market_channel_products', 'categoryNameSnapshot', 'TEXT')
+safeAddColumn('market_channel_products', 'purchasePrice', 'INTEGER NOT NULL DEFAULT 0 CHECK(purchasePrice >= 0)')
+safeAddColumn('market_channel_products', 'salePrice', 'INTEGER NOT NULL DEFAULT 0 CHECK(salePrice >= 0)')
+safeAddColumn('market_channel_products', 'eventPrice', 'INTEGER CHECK(eventPrice IS NULL OR eventPrice >= 0)')
+safeAddColumn('market_channel_products', 'eventStartAt', 'TEXT')
+safeAddColumn('market_channel_products', 'eventEndAt', 'TEXT')
+safeAddColumn('market_channel_products', 'stockQuantity', 'INTEGER NOT NULL DEFAULT 0 CHECK(stockQuantity >= 0)')
+safeAddColumn('market_channel_products', 'safetyStockQuantity', 'INTEGER NOT NULL DEFAULT 0 CHECK(safetyStockQuantity >= 0)')
+safeAddColumn(
+  'market_channel_products',
+  'stockStatus',
+  "TEXT NOT NULL DEFAULT 'IN_STOCK' CHECK(stockStatus IN('IN_STOCK','LOW_STOCK','SOLD_OUT'))"
+)
+safeAddColumn('market_channel_products', 'isOnSale', 'INTEGER NOT NULL DEFAULT 1 CHECK(isOnSale IN(0,1))')
+safeAddColumn('market_channel_products', 'isDisplayed', 'INTEGER NOT NULL DEFAULT 1 CHECK(isDisplayed IN(0,1))')
+safeAddColumn('market_channel_products', 'isEventActive', 'INTEGER NOT NULL DEFAULT 0 CHECK(isEventActive IN(0,1))')
+safeAddColumn('market_channel_products', 'isSoldOut', 'INTEGER NOT NULL DEFAULT 0 CHECK(isSoldOut IN(0,1))')
+safeAddColumn('market_channel_products', 'lastSyncedAt', 'TEXT')
+safeAddColumn('market_channel_products', 'priceUpdatedAt', 'TEXT')
+safeAddColumn('market_channel_products', 'stockUpdatedAt', 'TEXT')
+safeAddColumn('market_channel_products', 'updatedAt', 'TEXT')
+safeAddColumn('market_channel_products', 'deletedAt', 'TEXT')
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS uq_market_channel_products_channel_product_active
+ON market_channel_products(channelCode, productCode)
+WHERE deletedAt IS NULL
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_products_channel
+ON market_channel_products(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_products_product_code
+ON market_channel_products(productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_products_source_product
+ON market_channel_products(sourceProductId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_products_is_on_sale
+ON market_channel_products(isOnSale)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_products_is_displayed
+ON market_channel_products(isDisplayed)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_products_is_sold_out
+ON market_channel_products(isSoldOut)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_products_stock_status
+ON market_channel_products(stockStatus)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_products_updated_at
+ON market_channel_products(updatedAt)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS market_channel_product_history(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  marketProductId INTEGER NOT NULL,
+  channelCode TEXT NOT NULL,
+  productCode TEXT NOT NULL CHECK(length(productCode)=12),
+  changeType TEXT NOT NULL
+    CHECK(changeType IN('PRICE','STOCK','STATUS','DISPLAY','EVENT','SYNC')),
+  beforeValue TEXT,
+  afterValue TEXT,
+  changedByProfileId INTEGER,
+  changeMemo TEXT,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(marketProductId) REFERENCES market_channel_products(id),
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(changedByProfileId) REFERENCES profiles(id)
+)
+`)
+
+safeAddColumn('market_channel_product_history', 'marketProductId', 'INTEGER')
+safeAddColumn('market_channel_product_history', 'channelCode', 'TEXT')
+safeAddColumn('market_channel_product_history', 'productCode', 'TEXT CHECK(length(productCode)=12)')
+safeAddColumn(
+  'market_channel_product_history',
+  'changeType',
+  "TEXT CHECK(changeType IN('PRICE','STOCK','STATUS','DISPLAY','EVENT','SYNC'))"
+)
+safeAddColumn('market_channel_product_history', 'beforeValue', 'TEXT')
+safeAddColumn('market_channel_product_history', 'afterValue', 'TEXT')
+safeAddColumn('market_channel_product_history', 'changedByProfileId', 'INTEGER')
+safeAddColumn('market_channel_product_history', 'changeMemo', 'TEXT')
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_product_history_market_product
+ON market_channel_product_history(marketProductId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_product_history_channel
+ON market_channel_product_history(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_product_history_product_code
+ON market_channel_product_history(productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_channel_product_history_change_type
+ON market_channel_product_history(changeType)
+`)
+
+db.exec(`
 CREATE TABLE IF NOT EXISTS master_barcode_food_details(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   masterBarcodeId INTEGER NOT NULL UNIQUE,

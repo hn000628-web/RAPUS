@@ -6,9 +6,20 @@
 'use client'
 
 // SECTION 01 : IMPORT
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+import {
+  fetchMarketAdminProducts,
+  fetchMarketAdminPublicProducts,
+  importMarketAdminProduct,
+  updateMarketAdminProductPricing,
+  updateMarketAdminProductStock,
+  updateMarketAdminProductStatus,
+  type MarketAdminProduct,
+  type MarketAdminProductSummary,
+  type MarketAdminPublicProduct
+} from '@/lib/market-admin-products-api'
 import { usePosKeyboardMode } from '../pos/components/PosKeyboardModeContext'
 import PosTopbar from '../pos/components/PosTopbar'
 import styles from './market-admin.module.css'
@@ -41,11 +52,55 @@ type MarketAdminRealtimeItem = {
   status: MarketAdminStatus
 }
 
+type MarketProductMetricCard = {
+  id: string
+  label: string
+  value: string
+  description: string
+}
+
+type MarketProductImportForm = {
+  purchasePrice: string
+  salePrice: string
+  eventPrice: string
+  eventStartAt: string
+  eventEndAt: string
+  stockQuantity: string
+  safetyStockQuantity: string
+  isOnSale: boolean
+  isDisplayed: boolean
+}
+
 // SECTION 03 : CONSTANT
 const MARKET_CHANNEL_CODE = 'B8X7C6V5B4N3M'
 const MARKET_ADMIN_BADGE = 'MARKET ADMIN'
 const MARKET_ADMIN_STATUS: MarketAdminStatus = 'ACTIVE'
 const MOCK_CURRENT_TIME = '14:35'
+const PUBLIC_PRODUCT_PAGE_SIZE = 6
+
+const EMPTY_PRODUCT_SUMMARY: MarketAdminProductSummary = {
+  totalProducts: 0,
+  soldOutProducts: 0,
+  lowStockProducts: 0,
+  eventProducts: 0,
+  onSaleProducts: 0
+}
+
+const DEFAULT_IMPORT_FORM: MarketProductImportForm = {
+  purchasePrice: '0',
+  salePrice: '0',
+  eventPrice: '',
+  eventStartAt: '',
+  eventEndAt: '',
+  stockQuantity: '0',
+  safetyStockQuantity: '0',
+  isOnSale: true,
+  isDisplayed: true
+}
+
+const formatMarketNumberInput = (value: string) => {
+  return value.replace(/\D/g, '')
+}
 
 const SUMMARY_CARDS: MarketAdminSummaryCard[] = [
   {
@@ -186,11 +241,92 @@ export default function MarketAdminPage() {
     toggleKeyboardMode
   } = usePosKeyboardMode()
   const [selectedMenuId, setSelectedMenuId] = useState<string>(MENU_CARDS[0]?.id ?? '')
+  const [marketProducts, setMarketProducts] = useState<MarketAdminProduct[]>([])
+  const [productSummary, setProductSummary] = useState<MarketAdminProductSummary>(
+    EMPTY_PRODUCT_SUMMARY
+  )
+  const [publicProducts, setPublicProducts] = useState<MarketAdminPublicProduct[]>([])
+  const [productSearchKeyword, setProductSearchKeyword] = useState('')
+  const [selectedPublicProduct, setSelectedPublicProduct] =
+    useState<MarketAdminPublicProduct | null>(null)
+  const [importForm, setImportForm] =
+    useState<MarketProductImportForm>(DEFAULT_IMPORT_FORM)
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false)
+  const [isProductLoading, setIsProductLoading] = useState(false)
+  const [productErrorMessage, setProductErrorMessage] = useState<string | null>(null)
 
   // SECTION 05 : DATA
   const selectedMenu = useMemo(() => {
     return MENU_CARDS.find((card) => card.id === selectedMenuId) ?? MENU_CARDS[0]
   }, [selectedMenuId])
+
+  const productMetricCards = useMemo<MarketProductMetricCard[]>(() => {
+    return [
+      {
+        id: 'registered-products',
+        label: '총 등록 상품',
+        value: `${productSummary.totalProducts}개`,
+        description: '채널별 판매 상품'
+      },
+      {
+        id: 'sold-out-products',
+        label: '품절 상품',
+        value: `${productSummary.soldOutProducts}개`,
+        description: '품절 상태 상품'
+      },
+      {
+        id: 'low-stock-products',
+        label: '재고 부족 상품',
+        value: `${productSummary.lowStockProducts}개`,
+        description: '안전 재고 이하'
+      },
+      {
+        id: 'event-products',
+        label: '행사 진행 상품',
+        value: `${productSummary.eventProducts}개`,
+        description: '행사가 적용 상품'
+      },
+      {
+        id: 'on-sale-products',
+        label: '판매중 상품',
+        value: `${productSummary.onSaleProducts}개`,
+        description: '판매 상태 ON'
+      }
+    ]
+  }, [productSummary])
+
+  const loadMarketProducts = useCallback(async () => {
+    try {
+      setProductErrorMessage(null)
+      const response = await fetchMarketAdminProducts(MARKET_CHANNEL_CODE)
+      setMarketProducts(response.items)
+      setProductSummary(response.summary)
+    } catch {
+      setProductErrorMessage('마켓 등록 상품을 불러오지 못했습니다.')
+    }
+  }, [])
+
+  const loadPublicProducts = useCallback(async (keyword: string) => {
+    try {
+      setProductErrorMessage(null)
+      setIsProductLoading(true)
+      const response = await fetchMarketAdminPublicProducts({
+        channelCode: MARKET_CHANNEL_CODE,
+        page: 1,
+        pageSize: PUBLIC_PRODUCT_PAGE_SIZE,
+        keyword
+      })
+      setPublicProducts(response.items)
+    } catch {
+      setProductErrorMessage('공용 프로덕트 목록을 불러오지 못했습니다.')
+    } finally {
+      setIsProductLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadMarketProducts()
+  }, [loadMarketProducts])
 
   // SECTION 06 : EVENT
   const handleGoPosHome = () => {
@@ -206,15 +342,147 @@ export default function MarketAdminPage() {
   }
 
   const handleOpenProductSettings = () => {
-    router.push('/pos/settings/menu')
+    setIsProductModalOpen(true)
+    setSelectedPublicProduct(null)
+    setImportForm(DEFAULT_IMPORT_FORM)
+    void loadPublicProducts(productSearchKeyword)
   }
 
   const handleOpenOrderBoard = () => {
     router.push('/pos/table/orders')
   }
 
+  const handleOpenPublicProductList = () => {
+    router.push('/protect')
+  }
+
   const handleSelectMenu = (menuId: string) => {
     setSelectedMenuId(menuId)
+  }
+
+  const handleSearchPublicProducts = () => {
+    void loadPublicProducts(productSearchKeyword)
+  }
+
+  const handleSelectPublicProduct = (product: MarketAdminPublicProduct) => {
+    if (product.isRegistered) {
+      return
+    }
+
+    setSelectedPublicProduct(product)
+  }
+
+  const handleChangeImportForm = (
+    field: keyof MarketProductImportForm,
+    value: string | boolean
+  ) => {
+    const nextValue =
+      typeof value === 'string' &&
+      (
+        field === 'purchasePrice' ||
+        field === 'salePrice' ||
+        field === 'eventPrice' ||
+        field === 'stockQuantity' ||
+        field === 'safetyStockQuantity'
+      )
+        ? formatMarketNumberInput(value)
+        : value
+
+    setImportForm((current) => ({
+      ...current,
+      [field]: nextValue
+    }))
+  }
+
+  const handleCloseProductModal = () => {
+    setIsProductModalOpen(false)
+    setSelectedPublicProduct(null)
+    setProductErrorMessage(null)
+  }
+
+  const handleImportMarketProduct = async () => {
+    if (!selectedPublicProduct) {
+      setProductErrorMessage('등록할 공용 상품을 선택해주세요.')
+      return
+    }
+
+    try {
+      setIsProductLoading(true)
+      setProductErrorMessage(null)
+      await importMarketAdminProduct({
+        channelCode: MARKET_CHANNEL_CODE,
+        productCode: selectedPublicProduct.productCode,
+        purchasePrice: Number(importForm.purchasePrice || 0),
+        salePrice: Number(importForm.salePrice || 0),
+        eventPrice: importForm.eventPrice ? Number(importForm.eventPrice) : null,
+        eventStartAt: importForm.eventStartAt || null,
+        eventEndAt: importForm.eventEndAt || null,
+        stockQuantity: Number(importForm.stockQuantity || 0),
+        safetyStockQuantity: Number(importForm.safetyStockQuantity || 0),
+        isOnSale: importForm.isOnSale,
+        isDisplayed: importForm.isDisplayed,
+        changeMemo: 'MARKET 운영 허브 상품 등록'
+      })
+      await loadMarketProducts()
+      await loadPublicProducts(productSearchKeyword)
+      setSelectedPublicProduct(null)
+      setImportForm(DEFAULT_IMPORT_FORM)
+    } catch {
+      setProductErrorMessage('마켓 판매 상품 등록에 실패했습니다.')
+    } finally {
+      setIsProductLoading(false)
+    }
+  }
+
+  const handleIncreaseSalePrice = async (product: MarketAdminProduct) => {
+    try {
+      setProductErrorMessage(null)
+      await updateMarketAdminProductPricing(product.id, {
+        channelCode: MARKET_CHANNEL_CODE,
+        purchasePrice: product.purchasePrice,
+        salePrice: product.salePrice + 100,
+        eventPrice: product.eventPrice,
+        eventStartAt: product.eventStartAt,
+        eventEndAt: product.eventEndAt,
+        isEventActive: product.isEventActive === 1,
+        changeMemo: 'MARKET 운영 허브 판매가 빠른 수정'
+      })
+      await loadMarketProducts()
+    } catch {
+      setProductErrorMessage('판매가 수정에 실패했습니다.')
+    }
+  }
+
+  const handleIncreaseStock = async (product: MarketAdminProduct) => {
+    try {
+      setProductErrorMessage(null)
+      await updateMarketAdminProductStock(product.id, {
+        channelCode: MARKET_CHANNEL_CODE,
+        stockQuantity: product.stockQuantity + 1,
+        safetyStockQuantity: product.safetyStockQuantity,
+        isSoldOut: false,
+        changeMemo: 'MARKET 운영 허브 재고 빠른 수정'
+      })
+      await loadMarketProducts()
+    } catch {
+      setProductErrorMessage('재고 수정에 실패했습니다.')
+    }
+  }
+
+  const handleToggleDisplay = async (product: MarketAdminProduct) => {
+    try {
+      setProductErrorMessage(null)
+      await updateMarketAdminProductStatus(product.id, {
+        channelCode: MARKET_CHANNEL_CODE,
+        isOnSale: product.isOnSale === 1,
+        isDisplayed: product.isDisplayed !== 1,
+        isSoldOut: product.isSoldOut === 1,
+        changeMemo: 'MARKET 운영 허브 노출 상태 수정'
+      })
+      await loadMarketProducts()
+    } catch {
+      setProductErrorMessage('노출 상태 수정에 실패했습니다.')
+    }
   }
 
   // SECTION 07 : UI
@@ -228,6 +496,222 @@ export default function MarketAdminPage() {
       <span className={badgeClassName}>
         {status}
       </span>
+    )
+  }
+
+  const renderProductRegisterModal = () => {
+    if (!isProductModalOpen) {
+      return null
+    }
+
+    return (
+      <div className={styles.modalOverlay} role="presentation">
+        <section
+          className={styles.productModal}
+          role="dialog"
+          aria-modal="true"
+          aria-label="공용 프로덕트 등록 모달"
+        >
+          <div className={styles.modalHeader}>
+            <div>
+              <h2 className={styles.modalTitle}>
+                공용 프로덕트 목록
+              </h2>
+              <p className={styles.modalDescription}>
+                공용 상품 원장의 productCode를 기준으로 이 채널의 판매 정보를 등록합니다.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className={styles.modalCloseButton}
+              onClick={handleCloseProductModal}
+            >
+              닫기
+            </button>
+          </div>
+
+          <div className={styles.productSearchRow}>
+            <input
+              className={styles.productSearchInput}
+              value={productSearchKeyword}
+              placeholder="상품명, 브랜드, productCode 검색"
+              onChange={(event) => setProductSearchKeyword(event.target.value)}
+            />
+            <button
+              type="button"
+              className={styles.secondaryActionButton}
+              onClick={handleSearchPublicProducts}
+              disabled={isProductLoading}
+            >
+              검색
+            </button>
+          </div>
+
+          {productErrorMessage ? (
+            <p className={styles.errorMessage}>
+              {productErrorMessage}
+            </p>
+          ) : null}
+
+          <div className={styles.productRegisterGrid}>
+            <div className={styles.publicProductList}>
+              {publicProducts.map((product) => {
+                const isSelected = selectedPublicProduct?.productCode === product.productCode
+                const itemClassName = [
+                  styles.publicProductItem,
+                  isSelected ? styles.publicProductItemSelected : '',
+                  product.isRegistered ? styles.publicProductItemDisabled : ''
+                ].filter(Boolean).join(' ')
+
+                return (
+                  <button
+                    key={product.productCode}
+                    type="button"
+                    className={itemClassName}
+                    onClick={() => handleSelectPublicProduct(product)}
+                    disabled={product.isRegistered}
+                  >
+                    <span className={styles.publicProductThumb}>
+                      {product.thumbnailUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={product.thumbnailUrl}
+                          alt=""
+                        />
+                      ) : (
+                        'IMG'
+                      )}
+                    </span>
+
+                    <span className={styles.publicProductText}>
+                      <strong>
+                        {product.productName}
+                      </strong>
+                      <span>
+                        {product.brandName ?? '브랜드 미지정'} · {product.categoryName ?? '카테고리 미지정'}
+                      </span>
+                      <code>
+                        {product.productCode}
+                      </code>
+                    </span>
+
+                    <span className={styles.registerStateBadge}>
+                      {product.isRegistered ? '등록됨' : '선택'}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className={styles.importFormPanel}>
+              <h3 className={styles.importFormTitle}>
+                채널별 판매 정보
+              </h3>
+              <p className={styles.importFormDescription}>
+                판매가, 재고, 노출 상태는 공용 원장과 분리되어 저장됩니다.
+              </p>
+
+              <div className={styles.formGrid}>
+                <label className={styles.formField}>
+                  <span>매입가</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={importForm.purchasePrice}
+                    onChange={(event) => handleChangeImportForm('purchasePrice', event.target.value)}
+                  />
+                </label>
+                <label className={styles.formField}>
+                  <span>판매가</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={importForm.salePrice}
+                    onChange={(event) => handleChangeImportForm('salePrice', event.target.value)}
+                  />
+                </label>
+                <label className={styles.formField}>
+                  <span>행사가</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={importForm.eventPrice}
+                    onChange={(event) => handleChangeImportForm('eventPrice', event.target.value)}
+                  />
+                </label>
+                <label className={styles.formField}>
+                  <span>초기 재고</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={importForm.stockQuantity}
+                    onChange={(event) => handleChangeImportForm('stockQuantity', event.target.value)}
+                  />
+                </label>
+                <label className={styles.formField}>
+                  <span>안전 재고</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={importForm.safetyStockQuantity}
+                    onChange={(event) => handleChangeImportForm('safetyStockQuantity', event.target.value)}
+                  />
+                </label>
+                <label className={styles.formField}>
+                  <span>행사 시작일</span>
+                  <input
+                    type="date"
+                    value={importForm.eventStartAt}
+                    onChange={(event) => handleChangeImportForm('eventStartAt', event.target.value)}
+                  />
+                </label>
+                <label className={styles.formField}>
+                  <span>행사 종료일</span>
+                  <input
+                    type="date"
+                    value={importForm.eventEndAt}
+                    onChange={(event) => handleChangeImportForm('eventEndAt', event.target.value)}
+                  />
+                </label>
+              </div>
+
+              <div className={styles.checkboxRow}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={importForm.isOnSale}
+                    onChange={(event) => handleChangeImportForm('isOnSale', event.target.checked)}
+                  />
+                  판매 여부
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={importForm.isDisplayed}
+                    onChange={(event) => handleChangeImportForm('isDisplayed', event.target.checked)}
+                  />
+                  노출 여부
+                </label>
+              </div>
+
+              <button
+                type="button"
+                className={styles.primaryActionButton}
+                onClick={handleImportMarketProduct}
+                disabled={isProductLoading || !selectedPublicProduct}
+              >
+                내 마켓 판매상품으로 등록
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
     )
   }
 
@@ -279,6 +763,13 @@ export default function MarketAdminPage() {
             <button
               type="button"
               className={styles.secondaryActionButton}
+              onClick={handleOpenPublicProductList}
+            >
+              공용 프로덕트 목록
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryActionButton}
               onClick={handleOpenOrderBoard}
             >
               주문 현황
@@ -290,6 +781,95 @@ export default function MarketAdminPage() {
             >
               상품 등록
             </button>
+          </div>
+        </section>
+
+        <section className={styles.productMetricGrid} aria-label="마켓 상품 관리 요약">
+          {productMetricCards.map((card) => (
+            <article key={card.id} className={styles.productMetricCard}>
+              <span className={styles.summaryLabel}>
+                {card.label}
+              </span>
+              <strong className={styles.productMetricValue}>
+                {card.value}
+              </strong>
+              <p className={styles.summaryDescription}>
+                {card.description}
+              </p>
+            </article>
+          ))}
+        </section>
+
+        <section className={styles.productPanel} aria-label="마켓 등록 상품">
+          <div className={styles.sectionHeading}>
+            <div>
+              <h2 className={styles.sectionTitle}>
+                채널별 판매 상품
+              </h2>
+              <p className={styles.sectionDescription}>
+                공용 productCode를 기준으로 등록된 이 채널의 판매 가격과 재고입니다.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className={styles.secondaryActionButton}
+              onClick={handleOpenProductSettings}
+            >
+              공용 상품에서 등록
+            </button>
+          </div>
+
+          <div className={styles.marketProductList}>
+            {marketProducts.length > 0 ? (
+              marketProducts.slice(0, 5).map((product) => (
+                <article key={product.id} className={styles.marketProductItem}>
+                  <div>
+                    <strong>
+                      {product.productNameSnapshot}
+                    </strong>
+                    <span>
+                      {product.brandNameSnapshot ?? '브랜드 미지정'} · {product.productCode}
+                    </span>
+                  </div>
+                  <div className={styles.marketProductNumbers}>
+                    <span>
+                      판매가 {product.salePrice.toLocaleString()}원
+                    </span>
+                    <span>
+                      재고 {product.stockQuantity.toLocaleString()}개
+                    </span>
+                    <span>
+                      {product.stockStatus}
+                    </span>
+                  </div>
+                  <div className={styles.marketProductActions}>
+                    <button
+                      type="button"
+                      onClick={() => handleIncreaseSalePrice(product)}
+                    >
+                      판매가 +100
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleIncreaseStock(product)}
+                    >
+                      재고 +1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleDisplay(product)}
+                    >
+                      {product.isDisplayed === 1 ? '노출 OFF' : '노출 ON'}
+                    </button>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className={styles.emptyText}>
+                아직 등록된 마켓 판매 상품이 없습니다.
+              </p>
+            )}
           </div>
         </section>
 
@@ -401,6 +981,8 @@ export default function MarketAdminPage() {
           </div>
         </section>
       </main>
+
+      {renderProductRegisterModal()}
     </div>
   )
 }

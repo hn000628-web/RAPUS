@@ -31,6 +31,7 @@ import { ChannelModule } from './modules/channel/channel.module';
 import { BusinessModule } from './modules/business/business.module';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { CartModule } from './modules/cart/cart.module';
+import { MarketAdminModule } from './modules/market-admin/market-admin.module';
 
 // SECTION 08 : AUTH GUARD
 import { JwtAuthGuard } from './modules/auth/jwt.guard';
@@ -69,6 +70,7 @@ import { ProfileSummaryModule } from './modules/shared/profile-summary.module';
     BusinessModule,
     FavoritesModule,
     CartModule,
+    MarketAdminModule,
 
     AdminModule,
 
