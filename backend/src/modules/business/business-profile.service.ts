@@ -46,6 +46,7 @@ type BusinessProfileRow = {
 
 type PlaceFeedTypeCode =
   | 'NORMAL'
+  | 'CLASSIC'
   | 'MARKET'
   | 'FOOD'
   | 'BEAUTY'

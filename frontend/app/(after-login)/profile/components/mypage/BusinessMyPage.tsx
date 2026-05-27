@@ -46,6 +46,7 @@ type BusinessMyPageProps = {
   onMoveBusinessAccount: () => void
   onMoveStoreView: () => void
   onMovePosView: () => void
+  canUseProductSystem: boolean
 }
 
 type BusinessProfileActionItem = {
@@ -69,7 +70,8 @@ export default function BusinessMyPage({
   managementItems,
   onSwitchProfile,
   onMoveStoreView,
-  onMovePosView
+  onMovePosView,
+  canUseProductSystem
 }: BusinessMyPageProps) {
   const router = useRouter()
 
@@ -91,14 +93,17 @@ export default function BusinessMyPage({
       label: '포스 뷰',
       description: '사업자 POS 화면으로 이동',
       onClick: onMovePosView
-    },
-    {
+    }
+  ]
+
+  if (canUseProductSystem) {
+    businessActionItems.push({
       key: 'product-info-system',
       label: '상품정보시스템',
       description: 'RAPUS 등록 상품 리스트 조회',
       href: '/protect'
-    }
-  ]
+    })
+  }
 
   // SECTION 05 : UI BLOCK
 

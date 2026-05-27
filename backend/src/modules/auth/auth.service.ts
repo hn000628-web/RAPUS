@@ -11,7 +11,12 @@ import { randomInt } from 'crypto'
 import db from '../../config/database'
 
 type ProfileType = 'GENERAL' | 'BUSINESS'
-type BusinessTypeCode = 'NORMAL' | 'STORE' | 'FREELANCER' | 'MOBILE_BIZ'
+type BusinessTypeCode =
+  | 'NORMAL'
+  | 'STORE'
+  | 'SHOPPING_MALL'
+  | 'FREELANCER'
+  | 'MOBILE_BIZ'
 
 type SignupInput = {
   email: string
@@ -638,6 +643,7 @@ export class AuthService {
       if (
         selectedBusinessTypeCode !== 'NORMAL'
         && selectedBusinessTypeCode !== 'STORE'
+        && selectedBusinessTypeCode !== 'SHOPPING_MALL'
         && selectedBusinessTypeCode !== 'FREELANCER'
         && selectedBusinessTypeCode !== 'MOBILE_BIZ'
       ) {

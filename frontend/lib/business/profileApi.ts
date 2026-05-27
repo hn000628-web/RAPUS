@@ -141,6 +141,7 @@ export type BusinessProfile = {
 
 export type PlaceFeedTypeCode =
   | 'NORMAL'
+  | 'CLASSIC'
   | 'MARKET'
   | 'FOOD'
   | 'BEAUTY'

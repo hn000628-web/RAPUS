@@ -44,6 +44,7 @@ export type GetPlaceRepresentativeImagesInput = {
 type PlaceFeedRow = {
   id: number
   channelCode: string
+  placeFeedTypeCode: PlaceFeedTypeCode | null
   displayName: string | null
   bio: string | null
   activityRegionId: number | null
@@ -71,8 +72,19 @@ type PlaceFeedRow = {
   updatedAt: string | null
 }
 
+type PlaceFeedTypeCode =
+  | 'NORMAL'
+  | 'CLASSIC'
+  | 'MARKET'
+  | 'FOOD'
+  | 'BEAUTY'
+  | 'CULTURE'
+  | 'STAY'
+  | 'RENTCAR'
+
 export type PlaceFeedItem = {
   channelCode: string
+  placeFeedTypeCode: PlaceFeedTypeCode | null
   displayName: string
   bio: string
   imageUrl: string | null
@@ -376,6 +388,7 @@ export class PlaceFeedService {
       SELECT
         p.id,
         p.channelCode,
+        p.placeFeedTypeCode,
         p.displayName,
         p.bio,
         p.activityRegionId,
@@ -898,6 +911,7 @@ export class PlaceFeedService {
 
     return {
       channelCode: row.channelCode,
+      placeFeedTypeCode: row.placeFeedTypeCode ?? null,
       displayName: row.displayName || '?대쫫 ?놁쓬',
       bio: row.bio || '',
       imageUrl:

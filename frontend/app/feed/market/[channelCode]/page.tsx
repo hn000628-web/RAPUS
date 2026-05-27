@@ -12,6 +12,8 @@ import type {
 } from 'react'
 
 import Image from 'next/image'
+import QRCode from 'react-qr-code'
+
 import {
   notFound,
   useRouter,
@@ -21,6 +23,15 @@ import {
 import {
   login
 } from '@/lib/authApi'
+
+import type {
+  ProfileDetailPayload
+} from '@/lib/profile-summary-api'
+
+import {
+  buildProfileStoreRoute,
+  getProfileByChannelCode
+} from '@/lib/profile-summary-api'
 
 import styles from './market-channel.module.css'
 
@@ -375,6 +386,20 @@ export default function MarketChannelHubPage() {
     useState(false)
   const [isLoginModalOpen, setIsLoginModalOpen] =
     useState(false)
+  const [isChannelInfoModalOpen, setIsChannelInfoModalOpen] =
+    useState(false)
+  const [isChannelQrOpen, setIsChannelQrOpen] =
+    useState(false)
+  const [isChannelImageModalOpen, setIsChannelImageModalOpen] =
+    useState(false)
+  const [channelImageIndex, setChannelImageIndex] =
+    useState(0)
+  const [channelInfoLoading, setChannelInfoLoading] =
+    useState(false)
+  const [channelInfoError, setChannelInfoError] =
+    useState('')
+  const [channelInfo, setChannelInfo] =
+    useState<ProfileDetailPayload | null>(null)
   const [isGlobalMenuOpen, setIsGlobalMenuOpen] =
     useState(false)
   const [loginEmail, setLoginEmail] =
@@ -425,11 +450,22 @@ export default function MarketChannelHubPage() {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
+        if (isChannelImageModalOpen) {
+          setIsChannelImageModalOpen(false)
+          return
+        }
+
         setIsLoginModalOpen(false)
+        setIsChannelInfoModalOpen(false)
+        setIsChannelQrOpen(false)
       }
     }
 
-    if (isLoginModalOpen) {
+    if (
+      isLoginModalOpen ||
+      isChannelInfoModalOpen ||
+      isChannelImageModalOpen
+    ) {
       window.addEventListener('keydown', handleKeyDown)
     }
 
@@ -437,7 +473,9 @@ export default function MarketChannelHubPage() {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [
-    isLoginModalOpen
+    isLoginModalOpen,
+    isChannelInfoModalOpen,
+    isChannelImageModalOpen
   ])
 
   useEffect(() => {
@@ -490,6 +528,101 @@ export default function MarketChannelHubPage() {
     )
   const searchPlaceholderMarketName =
     channel.marketName?.trim() || '라푸스 마켓'
+  const channelInfoName =
+    channelInfo?.displayName ||
+    channel.marketName
+  const channelInfoBio =
+    channelInfo?.bio ||
+    channel.description
+  const channelInfoRegion =
+    channelInfo?.activityRegion?.fullName ||
+    channelInfo?.feedRegion?.fullName ||
+    channelInfo?.activityRegion?.name ||
+    channelInfo?.feedRegion?.name ||
+    channel.regionName
+  const channelInfoAddress =
+    [
+      channelInfoRegion,
+      channelInfo?.detailAddress
+    ]
+      .filter((value) => Boolean(value))
+      .join(' ')
+  const channelInfoPhone =
+    channelInfo?.contactPhone ||
+    '전화번호 미설정'
+  const channelInfoImageUrl =
+    channelInfo?.avatarImage?.imageUrl ||
+    channelInfo?.heroImage?.imageUrl ||
+    ''
+  const channelImageUrls =
+    useMemo(() => {
+      if (!channel) {
+        return []
+      }
+
+      const candidates = [
+        channelInfo?.avatarImage?.imageUrl,
+        channelInfo?.heroImage?.imageUrl,
+        ...channel.products.map((product) => product.thumbnailUrl)
+      ]
+
+      const dedupe =
+        new Set<string>()
+      const nextUrls: string[] =
+        []
+
+      for (const candidate of candidates) {
+        const imageUrl =
+          String(candidate || '').trim()
+
+        if (!imageUrl || dedupe.has(imageUrl)) {
+          continue
+        }
+
+        dedupe.add(imageUrl)
+        nextUrls.push(imageUrl)
+
+        if (nextUrls.length >= 6) {
+          break
+        }
+      }
+
+      return nextUrls
+    }, [
+      channel,
+      channelInfo?.avatarImage?.imageUrl,
+      channelInfo?.heroImage?.imageUrl
+    ])
+  const activeChannelImageUrl =
+    channelImageUrls[
+      Math.min(
+        channelImageIndex,
+        Math.max(channelImageUrls.length - 1, 0)
+      )
+    ] || ''
+  const channelThumbnailImageUrl =
+    channelInfoImageUrl ||
+    channelImageUrls[0] ||
+    ''
+  const hasMultipleChannelImages =
+    channelImageUrls.length > 1
+  const channelInfoHoursSummary =
+    channelInfo?.businessHours?.summary ||
+    channel.status
+  const channelInfoOpenStatus =
+    channelInfo?.businessHours
+      ? channelInfo.businessHours.isOpenNow
+        ? '영업중'
+        : '영업종료'
+      : channel.status
+  const channelGuidePath =
+    `/channel/${channel.channelCode}`
+  const channelGuideUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}${channelGuidePath}`
+      : channelGuidePath
+  const channelInfoInitial =
+    channelInfoName.trim().slice(0, 1) || 'M'
 
   function handleSelectCategory(category: CategoryType) {
     setSelectedCategory(category)
@@ -512,6 +645,94 @@ export default function MarketChannelHubPage() {
   function handleGlobalMenuMove(path: string) {
     setIsGlobalMenuOpen(false)
     router.push(path)
+  }
+
+  async function handleOpenChannelInfoModal() {
+    if (!channel) {
+      return
+    }
+
+    setIsChannelInfoModalOpen(true)
+    setIsChannelQrOpen(false)
+    setChannelInfoError('')
+
+    if (
+      channelInfo?.channelCode === channel.channelCode
+    ) {
+      return
+    }
+
+    try {
+      setChannelInfoLoading(true)
+
+      const summary =
+        await getProfileByChannelCode(channel.channelCode)
+
+      setChannelInfo(summary)
+    } catch (error) {
+      console.error('MARKET CHANNEL INFO LOAD FAILED', error)
+      setChannelInfoError('채널 안내 정보를 불러오지 못했습니다.')
+    } finally {
+      setChannelInfoLoading(false)
+    }
+  }
+
+  function handleCloseChannelInfoModal() {
+    setIsChannelInfoModalOpen(false)
+    setIsChannelQrOpen(false)
+    setIsChannelImageModalOpen(false)
+  }
+
+  function handleOpenChannelImageModal() {
+    if (channelImageUrls.length < 1) {
+      return
+    }
+
+    setChannelImageIndex(0)
+    setIsChannelImageModalOpen(true)
+  }
+
+  function handleCloseChannelImageModal() {
+    setIsChannelImageModalOpen(false)
+  }
+
+  function handleMoveChannelImage(direction: 'prev' | 'next') {
+    if (channelImageUrls.length < 2) {
+      return
+    }
+
+    setChannelImageIndex((currentIndex) => {
+      if (direction === 'prev') {
+        return currentIndex <= 0
+          ? channelImageUrls.length - 1
+          : currentIndex - 1
+      }
+
+      return currentIndex >= channelImageUrls.length - 1
+        ? 0
+        : currentIndex + 1
+    })
+  }
+
+  function handleOpenChannelPage() {
+    if (!channel) {
+      return
+    }
+
+    router.push(channelGuidePath)
+  }
+
+  function handleOpenMarketStorePage() {
+    if (!channel) {
+      return
+    }
+
+    router.push(
+      buildProfileStoreRoute(
+        channel.channelCode,
+        channelInfo?.placeFeedTypeCode ?? 'MARKET'
+      )
+    )
   }
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
@@ -624,14 +845,18 @@ export default function MarketChannelHubPage() {
                   ) : null}
                 </div>
 
-                <div className={styles.storeIdentity}>
+                <button
+                  type="button"
+                  className={styles.storeIdentity}
+                  onClick={handleOpenChannelInfoModal}
+                >
                   <strong
                     className={styles.storeName}
                     aria-label={channel.marketName}
                   >
                     RAPUS MART
                   </strong>
-                </div>
+                </button>
               </div>
 
               <div className={styles.headerSearchGroup}>
@@ -1060,6 +1285,252 @@ export default function MarketChannelHubPage() {
 
             <div className={styles.loginModalFooter}>
               RAPUS Platform v1.0
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {isChannelInfoModalOpen ? (
+        <div
+          className={styles.channelInfoOverlay}
+          role="presentation"
+          onMouseDown={handleCloseChannelInfoModal}
+        >
+          <section
+            className={styles.channelInfoCard}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="market-channel-info-title"
+            onMouseDown={(event) => {
+              event.stopPropagation()
+            }}
+          >
+            <button
+              type="button"
+              className={styles.channelInfoCloseButton}
+              aria-label="채널 안내 모달 닫기"
+              onClick={handleCloseChannelInfoModal}
+            >
+              ×
+            </button>
+
+            <div className={styles.channelInfoHeader}>
+              <button
+                type="button"
+                className={
+                  channelImageUrls.length > 0
+                    ? `${styles.channelInfoAvatar} ${styles.channelInfoAvatarButton}`
+                    : styles.channelInfoAvatar
+                }
+                onClick={handleOpenChannelImageModal}
+                disabled={channelImageUrls.length < 1}
+                aria-label={
+                  channelImageUrls.length > 0
+                    ? '대표 이미지 슬라이드 보기'
+                    : '대표 이미지 없음'
+                }
+              >
+                {channelThumbnailImageUrl ? (
+                  <Image
+                    src={channelThumbnailImageUrl}
+                    alt={`${channelInfoName} 대표 이미지`}
+                    fill
+                    sizes="82px"
+                    unoptimized
+                  />
+                ) : (
+                  channelInfoInitial
+                )}
+              </button>
+
+              <div>
+                <p className={styles.channelInfoEyebrow}>
+                  MARKET CHANNEL
+                </p>
+                <h2 id="market-channel-info-title">
+                  {channelInfoName}
+                </h2>
+                <span>
+                  {channel.channelCode}
+                </span>
+              </div>
+            </div>
+
+            {channelInfoLoading ? (
+              <div className={styles.channelInfoState}>
+                채널 안내 정보를 불러오는 중...
+              </div>
+            ) : (
+              <>
+                {channelInfoError ? (
+                  <div className={styles.channelInfoNotice}>
+                    {channelInfoError}
+                  </div>
+                ) : null}
+
+                <dl className={styles.channelInfoList}>
+                  <div>
+                    <dt>
+                      주소
+                    </dt>
+                    <dd>
+                      {channelInfoAddress || '주소 미설정'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>
+                      영업시간
+                    </dt>
+                    <dd>
+                      {channelInfoHoursSummary}
+                      <span className={styles.channelInfoStatus}>
+                        {channelInfoOpenStatus}
+                      </span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>
+                      전화번호
+                    </dt>
+                    <dd>
+                      {channelInfoPhone}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>
+                      소개
+                    </dt>
+                    <dd>
+                      {channelInfoBio || '소개 미설정'}
+                    </dd>
+                  </div>
+                </dl>
+
+                {isChannelQrOpen ? (
+                  <div className={styles.channelQrBox}>
+                    <QRCode
+                      value={channelGuideUrl}
+                      size={132}
+                      bgColor="#ffffff"
+                      fgColor="#111827"
+                    />
+                    <span>
+                      {channelGuideUrl}
+                    </span>
+                  </div>
+                ) : null}
+
+                <div className={styles.channelInfoActions}>
+                  <button
+                    type="button"
+                    onClick={handleOpenChannelPage}
+                  >
+                    자세히 보기
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+      ) : null}
+
+      {isChannelImageModalOpen && activeChannelImageUrl ? (
+        <div
+          className={styles.channelImageOverlay}
+          role="presentation"
+          onMouseDown={handleCloseChannelImageModal}
+        >
+          <section
+            className={styles.channelImageModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="market-channel-image-title"
+            onMouseDown={(event) => {
+              event.stopPropagation()
+            }}
+          >
+            <div className={styles.channelImageModalHeader}>
+              <div>
+                <span>
+                  MARKET CHANNEL
+                </span>
+                <h3 id="market-channel-image-title">
+                  {channelInfoName}
+                </h3>
+                <p>
+                  {channelInfoRegion || channel.regionName}
+                  {' · '}
+                  {channelInfoHoursSummary}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className={styles.channelImageCloseButton}
+                aria-label="이미지 모달 닫기"
+                onClick={handleCloseChannelImageModal}
+              >
+                닫기
+              </button>
+            </div>
+
+            <div className={styles.channelImageSlider}>
+              {hasMultipleChannelImages ? (
+                <button
+                  type="button"
+                  className={`${styles.channelImageNavButton} ${styles.channelImageNavPrev}`}
+                  aria-label="이전 이미지"
+                  onClick={() => {
+                    handleMoveChannelImage('prev')
+                  }}
+                >
+                  ‹
+                </button>
+              ) : null}
+
+              <div className={styles.channelImageFrame}>
+                <Image
+                  src={activeChannelImageUrl}
+                  alt={`${channelInfoName} 대표 이미지 ${channelImageIndex + 1}`}
+                  fill
+                  sizes="(max-width: 768px) 88vw, 520px"
+                  unoptimized
+                />
+              </div>
+
+              {hasMultipleChannelImages ? (
+                <button
+                  type="button"
+                  className={`${styles.channelImageNavButton} ${styles.channelImageNavNext}`}
+                  aria-label="다음 이미지"
+                  onClick={() => {
+                    handleMoveChannelImage('next')
+                  }}
+                >
+                  ›
+                </button>
+              ) : null}
+
+              <span className={styles.channelImageCount}>
+                {channelImageIndex + 1} / {channelImageUrls.length}
+              </span>
+            </div>
+
+            <div className={styles.channelImageActions}>
+              <button
+                type="button"
+                className={styles.channelImageStoreButton}
+                onClick={handleOpenMarketStorePage}
+              >
+                매장보기
+              </button>
+              <button
+                type="button"
+                className={styles.channelImageGuideButton}
+                onClick={handleOpenChannelPage}
+              >
+                매장안내
+              </button>
             </div>
           </section>
         </div>

@@ -31,7 +31,11 @@ import {
   type DayKey
 } from '@/lib/business/business-hours-api'
 import {
+  disconnectBusinessCustomDomain,
+  fetchBusinessCustomDomains,
   getMyBusinessProfileFull,
+  type FulfillmentTypeCode,
+  type LocalDeliveryRegion,
   updateBusinessChannelRegion,
   updateBusinessContactSettings,
   updateBusinessLoginPassword,
@@ -44,6 +48,9 @@ import type { Region } from '@/types/region'
 
 type BusinessAccountState = {
   businessName: string
+  customDomain: string
+  enabledFulfillmentTypes: FulfillmentTypeCode[]
+  localDeliveryRegions: LocalDeliveryRegion[]
   businessIndustryName: string
   businessTypeName: string
   address: string
@@ -153,6 +160,10 @@ const PLACE_FEED_TYPE_OPTIONS: Array<{
     label: '일반 프로필'
   },
   {
+    code: 'CLASSIC',
+    label: '클래식(회사소개/브랜딩)'
+  },
+  {
     code: 'MARKET',
     label: '마켓(유통업/마트)'
   },
@@ -180,6 +191,7 @@ const PLACE_FEED_TYPE_OPTIONS: Array<{
 
 const PLACE_FEED_ROUTE_HINTS: Record<PlaceFeedTypeCode, string> = {
   NORMAL: '/channel/{channelCode}',
+  CLASSIC: '/classic/{channelCode}',
   MARKET: '/market/{channelCode}',
   FOOD: '/food/{channelCode}',
   BEAUTY: '/beauty/{channelCode}',
@@ -188,8 +200,46 @@ const PLACE_FEED_ROUTE_HINTS: Record<PlaceFeedTypeCode, string> = {
   RENTCAR: '/rentcar/{channelCode}'
 }
 
+const FULFILLMENT_TYPE_OPTIONS: Array<{
+  code: FulfillmentTypeCode
+  label: string
+  description: string
+}> = [
+  {
+    code: 'NONE',
+    label: '없음',
+    description: '배송/수령을 제공하지 않음'
+  },
+  {
+    code: 'LOCAL_DELIVERY',
+    label: '지역배달',
+    description: '지역 기반 배달 서비스 제공'
+  },
+  {
+    code: 'QUICK_SERVICE',
+    label: '퀵서비스',
+    description: '퀵서비스를 통한 당일 배송 제공'
+  },
+  {
+    code: 'SHIPPING',
+    label: '택배발송',
+    description: '택배를 통한 발송 서비스 제공'
+  },
+  {
+    code: 'PICKUP',
+    label: '매장픽업',
+    description: '매장에서 직접 수령 가능'
+  }
+]
+
+const ALLOWED_FULFILLMENT_TYPES: FulfillmentTypeCode[] =
+  FULFILLMENT_TYPE_OPTIONS.map((option) => option.code)
+
 const INITIAL_ACCOUNT_STATE: BusinessAccountState = {
   businessName: '',
+  customDomain: '',
+  enabledFulfillmentTypes: ['NONE'],
+  localDeliveryRegions: [],
   businessIndustryName: '',
   businessTypeName: '',
   address: '',
@@ -293,6 +343,14 @@ export default function BusinessAccountPage() {
   })
   const [activeModal, setActiveModal] = useState<BusinessAccountModalType>(null)
   const [modalValue, setModalValue] = useState('')
+  const [customDomain, setCustomDomain] = useState('')
+  const [savedCustomDomain, setSavedCustomDomain] = useState('')
+  const [customDomainId, setCustomDomainId] = useState<number | null>(null)
+  const [isCustomDomainEditMode, setIsCustomDomainEditMode] = useState(true)
+  const [enabledFulfillmentTypes, setEnabledFulfillmentTypes] =
+    useState<FulfillmentTypeCode[]>(['NONE'])
+  const [localDeliveryRegions, setLocalDeliveryRegions] =
+    useState<LocalDeliveryRegion[]>([])
   const [modalIndustryValue, setModalIndustryValue] = useState('')
   const [industrySearchText, setIndustrySearchText] = useState('')
   const [isIndustryLoading, setIsIndustryLoading] = useState(false)
@@ -337,7 +395,19 @@ export default function BusinessAccountPage() {
     }
 
     if (modalType === 'businessName') {
+      const nextCustomDomain =
+        accountState.customDomain ?? ''
       setModalValue(accountState.businessName ?? '')
+      setCustomDomain(nextCustomDomain)
+      setSavedCustomDomain(nextCustomDomain)
+      setCustomDomainId(null)
+      setIsCustomDomainEditMode(nextCustomDomain.trim().length < 1)
+      setEnabledFulfillmentTypes(
+        normalizeFulfillmentTypes(accountState.enabledFulfillmentTypes)
+      )
+      setLocalDeliveryRegions(
+        normalizeLocalDeliveryRegions(accountState.localDeliveryRegions)
+      )
       setModalIndustryValue(accountState.businessIndustryName ?? '')
       setSelectedPlaceFeedTypeCode(savedPlaceFeedTypeCode)
       setIndustrySearchText('')
@@ -362,6 +432,11 @@ export default function BusinessAccountPage() {
   const closeModal = () => {
     setActiveModal(null)
     setModalValue('')
+    setCustomDomain('')
+    setSavedCustomDomain('')
+    setCustomDomainId(null)
+    setIsCustomDomainEditMode(true)
+    setEnabledFulfillmentTypes(['NONE'])
     setModalIndustryValue('')
     setIndustrySearchText('')
     setRegionSearchText('')
@@ -379,6 +454,55 @@ export default function BusinessAccountPage() {
     }
   }
 
+  useEffect(() => {
+    if (
+      activeModal !== 'businessName' ||
+      !businessContext ||
+      savedCustomDomain.trim().length < 1
+    ) {
+      return
+    }
+
+    let cancelled =
+      false
+    const currentBusinessContext =
+      businessContext
+
+    async function loadCustomDomainId() {
+      try {
+        const domains =
+          await fetchBusinessCustomDomains(currentBusinessContext.profileId)
+        const matchedDomain =
+          domains.find((domain) => {
+            return (
+              domain.isActive &&
+              domain.customDomain === savedCustomDomain.trim()
+            )
+          }) ?? null
+
+        if (!cancelled) {
+          setCustomDomainId(matchedDomain?.id ?? null)
+        }
+      } catch (error) {
+        console.error(error)
+
+        if (!cancelled) {
+          setCustomDomainId(null)
+        }
+      }
+    }
+
+    loadCustomDomainId()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    activeModal,
+    businessContext,
+    savedCustomDomain
+  ])
+
 
   const resolveBusinessTypeCodeFromProfile = (
     profileDetail: ProfileDetailPayload
@@ -386,7 +510,13 @@ export default function BusinessAccountPage() {
     const detail = profileDetail as ProfileDetailWithBusinessType
     const raw = String(detail.businessTypeCode ?? '').trim()
 
-    if (raw === 'STORE' || raw === 'FREELANCER' || raw === 'MOBILE_BIZ') {
+    if (
+      raw === 'NORMAL' ||
+      raw === 'STORE' ||
+      raw === 'SHOPPING_MALL' ||
+      raw === 'FREELANCER' ||
+      raw === 'MOBILE_BIZ'
+    ) {
       return raw
     }
 
@@ -408,6 +538,7 @@ export default function BusinessAccountPage() {
     value?: string | null
   ): PlaceFeedTypeCode => {
     if (
+      value === 'CLASSIC' ||
       value === 'MARKET' ||
       value === 'FOOD' ||
       value === 'BEAUTY' ||
@@ -433,6 +564,235 @@ export default function BusinessAccountPage() {
     }
 
     return normalizedIndustryName || normalizedSubtypeName || ''
+  }
+
+  const isValidCustomDomain = (value: string) => {
+    const normalizedValue =
+      value.trim()
+
+    const domainPattern =
+      /^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/
+
+    return (
+      !normalizedValue ||
+      (
+        value === normalizedValue &&
+        domainPattern.test(normalizedValue)
+      )
+    )
+  }
+
+  const normalizeFulfillmentTypes = (
+    values?: Array<string | null | undefined> | null
+  ): FulfillmentTypeCode[] => {
+    const normalizedValues =
+      Array.isArray(values)
+        ? values
+            .map((value) => String(value || '').trim().toUpperCase())
+            .filter((value) => {
+              return ALLOWED_FULFILLMENT_TYPES.includes(value as FulfillmentTypeCode)
+            }) as FulfillmentTypeCode[]
+        : []
+
+    if (
+      normalizedValues.length < 1 ||
+      normalizedValues.includes('NONE')
+    ) {
+      return ['NONE']
+    }
+
+    return Array.from(new Set(normalizedValues))
+  }
+
+  const normalizeLocalDeliveryRegions = (
+    regions?: LocalDeliveryRegion[] | null
+  ): LocalDeliveryRegion[] => {
+    if (!Array.isArray(regions)) {
+      return []
+    }
+
+    return regions.map((region, index) => ({
+      id: region.id,
+      regionName: String(region.regionName || '').trim(),
+      regionCode: region.regionCode ?? null,
+      deliveryFee: Math.max(0, Number(region.deliveryFee) || 0),
+      minimumOrderAmount: Math.max(0, Number(region.minimumOrderAmount) || 0),
+      sortOrder: index + 1,
+      isEnabled: region.isEnabled !== false
+    }))
+  }
+
+  const validateLocalDeliveryRegions = (
+    regions: LocalDeliveryRegion[]
+  ) => {
+    const seenRegionNames = new Set<string>()
+
+    for (const region of regions) {
+      const regionName =
+        region.regionName.trim()
+
+      if (!regionName) {
+        return '배달 가능 지역명을 입력해 주세요.'
+      }
+
+      if (regionName.length > 100) {
+        return '배달 가능 지역명은 100자 이하로 입력해 주세요.'
+      }
+
+      const regionNameKey =
+        regionName.toLowerCase()
+
+      if (seenRegionNames.has(regionNameKey)) {
+        return '같은 배달 가능 지역이 중복되었습니다.'
+      }
+
+      seenRegionNames.add(regionNameKey)
+
+      if (region.deliveryFee < 0) {
+        return '배달비는 0 이상 숫자만 입력해 주세요.'
+      }
+
+      if (region.minimumOrderAmount < 0) {
+        return '최소주문금액은 0 이상 숫자만 입력해 주세요.'
+      }
+    }
+
+    return ''
+  }
+
+  const toggleFulfillmentType = (type: FulfillmentTypeCode) => {
+    setModalError('')
+    setEnabledFulfillmentTypes((currentTypes) => {
+      const normalizedTypes =
+        normalizeFulfillmentTypes(currentTypes)
+
+      if (type === 'NONE') {
+        return ['NONE']
+      }
+
+      const nextTypes =
+        normalizedTypes.filter((currentType) => currentType !== 'NONE')
+
+      if (nextTypes.includes(type)) {
+        const removedTypes =
+          nextTypes.filter((currentType) => currentType !== type)
+
+        return removedTypes.length > 0
+          ? removedTypes
+          : ['NONE']
+      }
+
+      return [
+        ...nextTypes,
+        type
+      ]
+    })
+  }
+
+  const addLocalDeliveryRegion = () => {
+    setModalError('')
+    setLocalDeliveryRegions((currentRegions) => [
+      ...currentRegions,
+      {
+        regionName: '',
+        regionCode: null,
+        deliveryFee: 0,
+        minimumOrderAmount: 0,
+        sortOrder: currentRegions.length + 1,
+        isEnabled: true
+      }
+    ])
+  }
+
+  const updateLocalDeliveryRegion = (
+    index: number,
+    nextRegion: Partial<LocalDeliveryRegion>
+  ) => {
+    setModalError('')
+    setLocalDeliveryRegions((currentRegions) =>
+      currentRegions.map((region, regionIndex) => {
+        if (regionIndex !== index) {
+          return region
+        }
+
+        return {
+          ...region,
+          ...nextRegion
+        }
+      })
+    )
+  }
+
+  const removeLocalDeliveryRegion = (index: number) => {
+    setModalError('')
+    setLocalDeliveryRegions((currentRegions) =>
+      currentRegions
+        .filter((_, regionIndex) => regionIndex !== index)
+        .map((region, regionIndex) => ({
+          ...region,
+          sortOrder: regionIndex + 1
+        }))
+    )
+  }
+
+  const cancelCustomDomainEdit = () => {
+    setCustomDomain(savedCustomDomain)
+    setModalError('')
+    setIsCustomDomainEditMode(savedCustomDomain.trim().length < 1)
+  }
+
+  const disconnectCustomDomain = async () => {
+    if (!businessContext || isModalSaving) {
+      return
+    }
+
+    setIsModalSaving(true)
+    setModalError('')
+
+    try {
+      let nextCustomDomainId =
+        customDomainId
+
+      if (!nextCustomDomainId && savedCustomDomain.trim()) {
+        const domains =
+          await fetchBusinessCustomDomains(businessContext.profileId)
+        nextCustomDomainId =
+          domains.find((domain) => {
+            return (
+              domain.isActive &&
+              domain.customDomain === savedCustomDomain.trim()
+            )
+          })?.id ?? null
+      }
+
+      if (nextCustomDomainId) {
+        await disconnectBusinessCustomDomain(
+          businessContext.profileId,
+          nextCustomDomainId
+        )
+      } else {
+        await updateBusinessProfileCore(
+          businessContext.profileId,
+          {
+            customDomain: null
+          }
+        )
+      }
+
+      setCustomDomain('')
+      setSavedCustomDomain('')
+      setCustomDomainId(null)
+      setIsCustomDomainEditMode(true)
+      setAccountState((prev) => ({
+        ...prev,
+        customDomain: ''
+      }))
+    } catch (error) {
+      console.error(error)
+      setModalError('도메인 연결을 해제하지 못했습니다.')
+    } finally {
+      setIsModalSaving(false)
+    }
   }
 
   const parseBusinessHoursMinutes = (time: string) => {
@@ -608,6 +968,27 @@ export default function BusinessAccountPage() {
         return
       }
 
+      if (!isValidCustomDomain(customDomain)) {
+        setModalError('올바른 도메인 형식을 입력해주세요.')
+        return
+      }
+
+      const nextFulfillmentTypes =
+        normalizeFulfillmentTypes(enabledFulfillmentTypes)
+      const nextLocalDeliveryRegions =
+        nextFulfillmentTypes.includes('LOCAL_DELIVERY')
+          ? normalizeLocalDeliveryRegions(localDeliveryRegions)
+          : normalizeLocalDeliveryRegions(accountState.localDeliveryRegions)
+      const localDeliveryRegionError =
+        nextFulfillmentTypes.includes('LOCAL_DELIVERY')
+          ? validateLocalDeliveryRegions(nextLocalDeliveryRegions)
+          : ''
+
+      if (localDeliveryRegionError) {
+        setModalError(localDeliveryRegionError)
+        return
+      }
+
       setIsModalSaving(true)
       setModalError('')
 
@@ -616,6 +997,9 @@ export default function BusinessAccountPage() {
           businessContext.profileId,
           {
             displayName: modalValue.trim() || null,
+            customDomain: customDomain.trim() || null,
+            enabledFulfillmentTypes: nextFulfillmentTypes,
+            localDeliveryRegions: nextLocalDeliveryRegions,
             placeFeedTypeCode: selectedPlaceFeedTypeCode
           }
         )
@@ -636,6 +1020,9 @@ export default function BusinessAccountPage() {
         setAccountState((prev) => ({
           ...prev,
           businessName: modalValue.trim(),
+          customDomain: customDomain.trim(),
+          enabledFulfillmentTypes: nextFulfillmentTypes,
+          localDeliveryRegions: nextLocalDeliveryRegions,
           businessIndustryName: formatIndustryLabel(
             selectedIndustry.industryName,
             selectedIndustry.subtypeName
@@ -646,6 +1033,8 @@ export default function BusinessAccountPage() {
           )
         }))
         setSavedPlaceFeedTypeCode(selectedPlaceFeedTypeCode)
+        setSavedCustomDomain(customDomain.trim())
+        setIsCustomDomainEditMode(customDomain.trim().length < 1)
         closeModal()
       } catch (error) {
         console.error(error)
@@ -1041,6 +1430,13 @@ export default function BusinessAccountPage() {
         setAccountState((prev) => ({
           ...prev,
           businessName: profileDetail.displayName ?? '',
+          customDomain: businessProfileFull.profile.customDomain ?? '',
+          enabledFulfillmentTypes: normalizeFulfillmentTypes(
+            businessProfileFull.profile.enabledFulfillmentTypes
+          ),
+          localDeliveryRegions: normalizeLocalDeliveryRegions(
+            businessProfileFull.profile.localDeliveryRegions
+          ),
           businessIndustryName: currentIndustryLabel,
           businessTypeName: resolveBusinessTypeName(
             currentBusinessTypeCode,
@@ -1464,6 +1860,234 @@ export default function BusinessAccountPage() {
                         placeholder="상호 입력"
                       />
                     </label>
+
+                    <div className={styles.modalInputGroup}>
+                      <span className={styles.modalLabel}>외부 도메인 (선택)</span>
+                      <input
+                        className={
+                          isCustomDomainEditMode
+                            ? `${styles.modalInput} ${styles.customDomainInput} ${styles.customDomainInputEditable}`
+                            : `${styles.modalInput} ${styles.customDomainInput} ${styles.customDomainInputLocked}`
+                        }
+                        type="text"
+                        readOnly={!isCustomDomainEditMode}
+                        value={customDomain}
+                        onChange={(event) => {
+                          if (!isCustomDomainEditMode) {
+                            return
+                          }
+
+                          setCustomDomain(event.target.value)
+                          setModalError('')
+                        }}
+                        placeholder="example.com 또는 www.example.com"
+                      />
+                      <span className={`${styles.modalHelperText} ${styles.customDomainHelperText}`}>
+                        보유 중인 도메인을 연결하면 고객이 해당 주소로 RAPUS 페이지에 접속할 수 있습니다.
+                      </span>
+                      <div className={styles.customDomainActionRow}>
+                        {isCustomDomainEditMode ? (
+                          <>
+                            <button
+                              type="button"
+                              className={styles.customDomainSaveButton}
+                              onClick={saveModalValue}
+                              disabled={isModalSaving || isBusinessNameSaveDisabled}
+                            >
+                              저장
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.customDomainSubButton}
+                              onClick={cancelCustomDomainEdit}
+                            >
+                              취소
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className={styles.customDomainSubButton}
+                              onClick={() => {
+                                setIsCustomDomainEditMode(true)
+                                setModalError('')
+                              }}
+                            >
+                              도메인 변경
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.customDomainDangerButton}
+                              onClick={disconnectCustomDomain}
+                              disabled={isModalSaving}
+                            >
+                              연결 해제
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <section className={styles.fulfillmentSection}>
+                      <div className={styles.fulfillmentSectionHeader}>
+                        <div>
+                          <span className={styles.modalLabel}>배송 타입 설정</span>
+                          <p className={styles.fulfillmentDescription}>
+                            고객에게 제공할 배송/수령 방식을 선택하세요. 복수 선택 가능
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className={styles.fulfillmentTypeGrid}>
+                        {FULFILLMENT_TYPE_OPTIONS.map((option) => {
+                          const isSelected =
+                            enabledFulfillmentTypes.includes(option.code)
+
+                          return (
+                            <button
+                              key={option.code}
+                              type="button"
+                              className={
+                                isSelected
+                                  ? `${styles.fulfillmentTypeButton} ${styles.fulfillmentTypeButtonActive}`
+                                  : styles.fulfillmentTypeButton
+                              }
+                              onClick={() => {
+                                toggleFulfillmentType(option.code)
+                              }}
+                            >
+                              <span className={styles.fulfillmentCheck}>
+                                {isSelected ? '✓' : ''}
+                              </span>
+                              <span className={styles.fulfillmentTypeName}>
+                                {option.label}
+                              </span>
+                              <span className={styles.fulfillmentTypeDescription}>
+                                {option.description}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {enabledFulfillmentTypes.includes('LOCAL_DELIVERY') ? (
+                        <div className={styles.localDeliveryRegionSection}>
+                          <div className={styles.localDeliveryRegionHeader}>
+                            <div>
+                              <span className={styles.modalLabel}>
+                                배달 가능 지역 설정
+                              </span>
+                              <p className={styles.fulfillmentDescription}>
+                                지역배달을 제공할 지역과 배달비를 설정하세요.
+                              </p>
+                              <p className={styles.modalHelperText}>
+                                배달 가능 지역을 추가하면 고객에게 안내됩니다.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              className={styles.localDeliveryAddButton}
+                              onClick={addLocalDeliveryRegion}
+                            >
+                              + 배달 지역 추가
+                            </button>
+                          </div>
+
+                          {localDeliveryRegions.length > 0 ? (
+                            <div className={styles.localDeliveryRegionList}>
+                              {localDeliveryRegions.map((region, index) => (
+                                <div
+                                  key={`${region.regionName}-${index}`}
+                                  className={styles.localDeliveryRegionCard}
+                                >
+                                  <label className={styles.localDeliveryField}>
+                                    <span className={styles.modalLabel}>지역명</span>
+                                    <input
+                                      className={styles.modalInput}
+                                      type="text"
+                                      value={region.regionName}
+                                      maxLength={100}
+                                      onChange={(event) => {
+                                        updateLocalDeliveryRegion(index, {
+                                          regionName: event.target.value
+                                        })
+                                      }}
+                                      placeholder="예: 녹동"
+                                    />
+                                  </label>
+
+                                  <label className={styles.localDeliveryField}>
+                                    <span className={styles.modalLabel}>배달비</span>
+                                    <input
+                                      className={styles.modalInput}
+                                      type="number"
+                                      min={0}
+                                      value={region.deliveryFee}
+                                      onChange={(event) => {
+                                        updateLocalDeliveryRegion(index, {
+                                          deliveryFee: Math.max(
+                                            0,
+                                            Number(event.target.value) || 0
+                                          )
+                                        })
+                                      }}
+                                      placeholder="0"
+                                    />
+                                  </label>
+
+                                  <label className={styles.localDeliveryField}>
+                                    <span className={styles.modalLabel}>
+                                      최소주문금액
+                                    </span>
+                                    <input
+                                      className={styles.modalInput}
+                                      type="number"
+                                      min={0}
+                                      value={region.minimumOrderAmount}
+                                      onChange={(event) => {
+                                        updateLocalDeliveryRegion(index, {
+                                          minimumOrderAmount: Math.max(
+                                            0,
+                                            Number(event.target.value) || 0
+                                          )
+                                        })
+                                      }}
+                                      placeholder="0"
+                                    />
+                                  </label>
+
+                                  <label className={styles.localDeliveryToggle}>
+                                    <input
+                                      type="checkbox"
+                                      checked={region.isEnabled}
+                                      onChange={(event) => {
+                                        updateLocalDeliveryRegion(index, {
+                                          isEnabled: event.target.checked
+                                        })
+                                      }}
+                                    />
+                                    <span>사용 여부</span>
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    className={styles.localDeliveryRemoveButton}
+                                    onClick={() => removeLocalDeliveryRegion(index)}
+                                  >
+                                    삭제
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className={styles.localDeliveryEmptyText}>
+                              아직 등록된 배달 가능 지역이 없습니다.
+                            </p>
+                          )}
+                        </div>
+                      ) : null}
+                    </section>
 
                     <section className={styles.industrySection}>
                       <div className={styles.industrySectionHeader}>

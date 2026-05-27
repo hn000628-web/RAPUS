@@ -2,6 +2,37 @@ import { apiFetch } from '@/lib/api'
 import { getMe, MeResponse } from '@/lib/authApi'
 import type { PlaceFeedTypeCode } from '@/lib/profile-summary-api'
 
+export type FulfillmentTypeCode =
+  | 'NONE'
+  | 'LOCAL_DELIVERY'
+  | 'QUICK_SERVICE'
+  | 'SHIPPING'
+  | 'PICKUP'
+
+export type LocalDeliveryRegion = {
+  id?: number
+  regionName: string
+  regionCode?: string | null
+  deliveryFee: number
+  minimumOrderAmount: number
+  sortOrder: number
+  isEnabled: boolean
+}
+
+export type ProfileCustomDomain = {
+  id: number
+  profileId: number
+  channelCode: string
+  customDomain: string
+  domainStatus: 'PENDING' | 'ACTIVE' | 'FAILED' | 'DISABLED'
+  isPrimary: boolean
+  isActive: boolean
+  verifiedAt: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+}
+
 /* ==================================================
 SECTION 01 : PROFILE SUMMARY TYPES
 ================================================== */
@@ -15,6 +46,9 @@ export type ProfileDetailPayload = {
   bio: string | null
   channelURL: string | null
   channelName: string | null
+  customDomain: string | null
+  enabledFulfillmentTypes: FulfillmentTypeCode[]
+  localDeliveryRegions: LocalDeliveryRegion[]
   contactPhone: string | null
   secondaryPhone: string | null
   faxNumber: string | null
@@ -49,6 +83,9 @@ export type BusinessProfile = {
   channelCode: string
   channelURL: string | null
   channelName: string | null
+  customDomain: string | null
+  enabledFulfillmentTypes: FulfillmentTypeCode[]
+  localDeliveryRegions: LocalDeliveryRegion[]
   contactPhone: string | null
   secondaryPhone: string | null
   faxNumber: string | null
@@ -209,6 +246,9 @@ export async function updateBusinessProfileCore(
   profileId: number,
   data: {
     displayName?: string | null
+    customDomain?: string | null
+    enabledFulfillmentTypes?: FulfillmentTypeCode[]
+    localDeliveryRegions?: LocalDeliveryRegion[]
     bio?: string | null
     contactPhone?: string | null
     placeFeedTypeCode?: PlaceFeedTypeCode | null
@@ -217,6 +257,33 @@ export async function updateBusinessProfileCore(
   return apiFetch(`${BUSINESS_PROFILE_BASE}/${profileId}/core`, {
     method: 'PATCH',
     body: data
+  })
+}
+
+export async function fetchBusinessCustomDomains(
+  profileId: number
+): Promise<ProfileCustomDomain[]> {
+  return apiFetch(`${BUSINESS_PROFILE_BASE}/${profileId}/domains`)
+}
+
+export async function connectBusinessCustomDomain(
+  profileId: number,
+  customDomain: string
+): Promise<ProfileCustomDomain[]> {
+  return apiFetch(`${BUSINESS_PROFILE_BASE}/${profileId}/domains`, {
+    method: 'PATCH',
+    body: {
+      customDomain
+    }
+  })
+}
+
+export async function disconnectBusinessCustomDomain(
+  profileId: number,
+  customDomainId: number
+): Promise<ProfileCustomDomain[]> {
+  return apiFetch(`${BUSINESS_PROFILE_BASE}/${profileId}/domains/${customDomainId}/disconnect`, {
+    method: 'PATCH'
   })
 }
 

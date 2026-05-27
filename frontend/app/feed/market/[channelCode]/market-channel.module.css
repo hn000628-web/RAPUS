@@ -1,16 +1,20 @@
 .page {
+  width: 100%;
   min-height: 100vh;
   background: #f3f4f6;
   color: #111827;
+  overflow-x: hidden;
   padding: 0;
 }
 
 .shell {
   width: 100%;
+  min-width: 0;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 0;
+  overflow-x: hidden;
 }
 
 .commerceHeader {
@@ -64,12 +68,21 @@
 }
 
 .storeIdentity {
+  border: 0;
+  background: transparent;
+  padding: 0;
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
   flex: 0 1 auto;
   min-width: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.storeIdentity:hover .storeName {
+  color: #2563eb;
 }
 
 .storeName {
@@ -391,6 +404,7 @@
 }
 
 .heroBanner {
+  box-sizing: border-box;
   min-height: 320px;
   padding: 42px max(44px, calc((100vw - 1320px) / 2 + 44px));
   position: relative;
@@ -558,6 +572,7 @@
 
 .sponsorStrip {
   width: min(1320px, calc(100% - 32px));
+  box-sizing: border-box;
   min-height: 94px;
   margin: 18px auto 0;
   border: 1px solid #e5e7eb;
@@ -565,9 +580,11 @@
   background: #ffffff;
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 34px;
-  overflow-x: auto;
-  padding: 0 38px;
+  overflow-x: hidden;
+  padding: 18px 38px;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
 }
 
@@ -596,9 +613,11 @@
 
 .categoryShowcase {
   width: min(1320px, calc(100% - 32px));
+  box-sizing: border-box;
   margin: 18px auto 0;
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
 .categoryTopGrid {
@@ -778,6 +797,8 @@
   z-index: 1;
   display: block;
   width: min(1320px, calc(100% - 32px));
+  box-sizing: border-box;
+  min-width: 0;
   margin: 28px auto 0;
 }
 
@@ -1106,6 +1127,391 @@
   font-size: 11px;
 }
 
+.channelInfoOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  background: rgba(15, 23, 42, 0.46);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.channelInfoCard {
+  position: relative;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 26px 80px rgba(15, 23, 42, 0.22);
+  padding: 28px;
+  box-sizing: border-box;
+}
+
+.channelInfoCloseButton {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.channelInfoHeader {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-right: 34px;
+}
+
+.channelInfoAvatar {
+  position: relative;
+  overflow: hidden;
+  width: 82px;
+  height: 82px;
+  border: 0;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #111827, #2563eb);
+  color: #ffffff;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+  font-weight: 950;
+  cursor: default;
+}
+
+.channelInfoAvatarButton {
+  cursor: zoom-in;
+}
+
+.channelInfoAvatarButton:hover {
+  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.22);
+}
+
+.channelInfoAvatar:disabled {
+  cursor: default;
+}
+
+.channelInfoAvatar img {
+  object-fit: cover;
+}
+
+.channelInfoEyebrow {
+  margin: 0 0 6px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.channelInfoHeader h2 {
+  margin: 0 0 8px;
+  color: #111827;
+  font-size: 24px;
+  line-height: 1.2;
+  font-weight: 950;
+}
+
+.channelInfoHeader span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.channelInfoState,
+.channelInfoNotice {
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #475569;
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.channelInfoNotice {
+  margin-bottom: 14px;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.channelInfoList {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.channelInfoList div {
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  background: #f8fafc;
+  padding: 12px 14px;
+  display: grid;
+  gap: 5px;
+}
+
+.channelInfoList dt {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.channelInfoList dd {
+  margin: 0;
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 800;
+  word-break: keep-all;
+}
+
+.channelInfoStatus {
+  width: fit-content;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: #ecfdf3;
+  color: #15803d;
+  padding: 4px 8px;
+  display: block;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.channelQrBox {
+  margin-top: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 16px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.channelQrBox span {
+  max-width: 100%;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channelInfoActions {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.channelInfoActions button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.channelInfoActions button:first-child {
+  background: #2563eb;
+}
+
+.channelImageOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2300;
+  box-sizing: border-box;
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+  padding: 24px;
+}
+
+.channelImageModal {
+  width: min(760px, 100%);
+  min-width: 0;
+  max-height: calc(100vh - 48px);
+  box-sizing: border-box;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 28px 90px rgba(15, 23, 42, 0.28);
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.channelImageModalHeader {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.channelImageModalHeader span {
+  display: block;
+  margin-bottom: 6px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.channelImageModalHeader h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 24px;
+  font-weight: 950;
+  line-height: 1.22;
+}
+
+.channelImageModalHeader p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.channelImageCloseButton {
+  flex: 0 0 auto;
+  height: 38px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #111827;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.channelImageSlider {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 360px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f8fafc, #eef6ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 18px;
+}
+
+.channelImageFrame {
+  position: relative;
+  width: min(520px, 100%);
+  min-width: 0;
+  box-sizing: border-box;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 18px;
+  background: #f1f5f9;
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.16);
+}
+
+.channelImageFrame img {
+  object-fit: cover;
+}
+
+.channelImageNavButton {
+  position: absolute;
+  top: 50%;
+  z-index: 3;
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #111827;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 900;
+  cursor: pointer;
+  transform: translateY(-50%);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+}
+
+.channelImageNavPrev {
+  left: 28px;
+}
+
+.channelImageNavNext {
+  right: 28px;
+}
+
+.channelImageCaption {
+  display: none;
+}
+
+.channelImageCount {
+  position: absolute;
+  right: 18px;
+  bottom: 16px;
+  min-width: 58px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.76);
+  color: #ffffff;
+  padding: 7px 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.channelImageActions {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.channelImageActions button {
+  min-height: 46px;
+  border: 0;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.channelImageStoreButton {
+  background: #2563eb;
+}
+
+.channelImageGuideButton {
+  background: #111827;
+}
+
 @media (max-width: 1199px) {
   .searchBox {
     max-width: 520px;
@@ -1377,5 +1783,73 @@
 
   .loginModalLogo {
     font-size: 36px;
+  }
+
+  .channelInfoOverlay {
+    padding: 14px;
+  }
+
+  .channelInfoCard {
+    padding: 24px 18px;
+  }
+
+  .channelInfoHeader {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .channelInfoAvatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    font-size: 28px;
+  }
+
+  .channelInfoActions {
+    grid-template-columns: 1fr;
+  }
+
+  .channelImageOverlay {
+    padding: 14px;
+  }
+
+  .channelImageModal {
+    max-height: calc(100vh - 28px);
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .channelImageModalHeader {
+    flex-direction: column;
+  }
+
+  .channelImageModalHeader h3 {
+    font-size: 22px;
+  }
+
+  .channelImageSlider {
+    min-height: 260px;
+    padding: 12px;
+  }
+
+  .channelImageFrame {
+    width: 100%;
+  }
+
+  .channelImageNavButton {
+    width: 40px;
+    height: 40px;
+    font-size: 28px;
+  }
+
+  .channelImageNavPrev {
+    left: 18px;
+  }
+
+  .channelImageNavNext {
+    right: 18px;
+  }
+
+  .channelImageActions {
+    grid-template-columns: 1fr;
   }
 }

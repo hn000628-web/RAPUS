@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react'
 
-import styles from '../../table/PosTablePage.module.css'
+import styles from '../../../food_admin/PosTablePage.module.css'
 
 import { PosTableItem } from '../posTypes'
 

@@ -5,7 +5,7 @@
 // CHANGE SUMMARY :
 // - business_types 마스터 조회 API 추가
 // - profiles.businessTypeCode BUSINESS 전용 저장 API 추가
-// - STORE / FREELANCER / MOBILE_BIZ 타입 고정
+// - NORMAL / STORE / SHOPPING_MALL / FREELANCER / MOBILE_BIZ 타입 고정
 // - GENERAL 영향 없음
 
 'use client'
@@ -15,7 +15,9 @@ import { apiFetch } from '@/lib/api'
 // SECTION 01 : TYPE
 
 export type BusinessTypeCode =
+  | 'NORMAL'
   | 'STORE'
+  | 'SHOPPING_MALL'
   | 'FREELANCER'
   | 'MOBILE_BIZ'
 

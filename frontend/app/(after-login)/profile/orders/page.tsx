@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import BaseModal from '@/components/ui/modal/BaseModal'
 import { buildMediaUrl } from '@/lib/config'
 import { deleteCartItem as deleteCartItemApi } from '@/lib/cartApi'
+import { getBusinessProfileSummary } from '@/lib/business/profileApi'
+import { buildProfileStoreRoute } from '@/lib/profile-summary-api'
 import {
   fetchProfileCartItems,
   fetchProfileOrderDetail,
@@ -475,7 +477,33 @@ export default function ProfileOrdersPage() {
     }
   }
 
-  function handleOrderFromCart(item: ActivityItem) {
+  async function resolveStoreRoute(
+    channelCode: string,
+    openOrder = false
+  ) {
+    let routePath =
+      buildProfileStoreRoute(channelCode, null)
+
+    try {
+      const summary =
+        await getBusinessProfileSummary(channelCode)
+
+      routePath =
+        buildProfileStoreRoute(
+          channelCode,
+          summary.profile.placeFeedTypeCode ?? null
+        )
+    } catch {
+      routePath =
+        buildProfileStoreRoute(channelCode, null)
+    }
+
+    return openOrder
+      ? `${routePath}?openOrder=true`
+      : routePath
+  }
+
+  async function handleOrderFromCart(item: ActivityItem) {
     if (item.activityKind !== 'CART') {
       return
     }
@@ -486,7 +514,9 @@ export default function ProfileOrdersPage() {
       return
     }
 
-    router.push(`/channel/${channelCode}?openOrder=true`)
+    router.push(
+      await resolveStoreRoute(channelCode, true)
+    )
   }
 
   function isDeliveryFlow(orderFlowType: string | null | undefined): boolean {
@@ -604,7 +634,7 @@ export default function ProfileOrdersPage() {
     }
   }
 
-  function handleThumbnailOrderEntry(item: ActivityItem) {
+  async function handleThumbnailOrderEntry(item: ActivityItem) {
     const targetChannelCode = String(
       (item as ActivityItem & { businessChannelCode?: string }).providerChannelCode
       || (item as ActivityItem & { businessChannelCode?: string }).businessChannelCode
@@ -616,7 +646,9 @@ export default function ProfileOrdersPage() {
       return
     }
 
-    router.push(`/channel/${targetChannelCode}?openOrder=true`)
+    router.push(
+      await resolveStoreRoute(targetChannelCode, true)
+    )
   }
 
   return (
@@ -842,7 +874,7 @@ export default function ProfileOrdersPage() {
                                 cursor: 'pointer'
                               }}
                               onClick={() => {
-                                handleThumbnailOrderEntry(item)
+                                void handleThumbnailOrderEntry(item)
                               }}
                               aria-label="주문유형 선택으로 이동"
                             >
@@ -993,7 +1025,7 @@ export default function ProfileOrdersPage() {
                           type="button"
                           className={styles.orderButton}
                           onClick={() => {
-                            handleOrderFromCart(item)
+                            void handleOrderFromCart(item)
                           }}
                         >
                           주문하기

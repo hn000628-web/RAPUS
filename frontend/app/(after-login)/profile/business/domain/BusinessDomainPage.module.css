@@ -1,0 +1,399 @@
+.page {
+  width: 100%;
+  min-height: calc(100vh - 80px);
+  background: #f5f6f7;
+  overflow-x: hidden;
+}
+
+.shell {
+  width: 100%;
+  max-width: 1120px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.pageHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  align-items: stretch;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.pageTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.pageDescription {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.channelBox {
+  width: 100%;
+  max-width: 280px;
+  box-sizing: border-box;
+  justify-self: end;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.channelLabel {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.channelCode {
+  display: block;
+  margin-top: 5px;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.successMessage,
+.errorMessage {
+  margin: 0 0 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+  padding: 12px 14px;
+}
+
+.successMessage {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #047857;
+}
+
+.errorMessage {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.sectionCard {
+  min-width: 0;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 18px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.04);
+}
+
+.sectionCard + .sectionCard {
+  margin-top: 14px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.sectionDescription {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: keep-all;
+}
+
+.gridSection {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.gridSection .sectionCard + .sectionCard {
+  margin-top: 0;
+}
+
+.domainTable {
+  display: grid;
+  gap: 10px;
+}
+
+.domainRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.domainMain {
+  min-width: 0;
+}
+
+.domainName {
+  display: block;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.domainMeta {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.statusBadge,
+.primaryBadge {
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.statusPENDING {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.statusACTIVE {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.statusFAILED {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.statusDISABLED {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.primaryBadge {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.disconnectButton,
+.primaryButton,
+.secondaryButton {
+  border: 0;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.disconnectButton {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 10px 12px;
+}
+
+.disconnectButton:disabled,
+.primaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.inputGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.inputLabel {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.input {
+  width: 100%;
+  height: 44px;
+  box-sizing: border-box;
+  border: 1px solid #dbe3ec;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 14px;
+  padding: 0 12px;
+}
+
+.input:focus {
+  border-color: #2563eb;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.helperText {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.primaryButton,
+.secondaryButton {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 12px;
+  padding: 13px 14px;
+}
+
+.primaryButton {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.secondaryButton {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.searchResultList,
+.registrarGrid,
+.dnsGuideList {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.searchResultCard,
+.registrarCard,
+.dnsGuideItem,
+.emptyBox {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 13px;
+}
+
+.searchResultCard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.searchResultCard strong,
+.registrarCard strong,
+.dnsGuideItem strong {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.searchResultCard span,
+.dnsGuideItem span,
+.registrarCard p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.searchResultCard em {
+  color: #2563eb;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.dnsGuideItem {
+  display: grid;
+  gap: 5px;
+}
+
+.emptyBox {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+@media (max-width: 860px) {
+  .pageHeader {
+    grid-template-columns: 1fr;
+  }
+
+  .channelBox {
+    max-width: none;
+    width: 100%;
+    box-sizing: border-box;
+    justify-self: stretch;
+  }
+
+  .gridSection {
+    grid-template-columns: 1fr;
+  }
+
+  .domainRow {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .disconnectButton {
+    width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .shell {
+    padding: 16px;
+  }
+
+  .pageTitle {
+    font-size: 24px;
+  }
+
+  .sectionCard {
+    padding: 14px;
+  }
+
+  .searchResultCard {
+    grid-template-columns: 1fr;
+  }
+}

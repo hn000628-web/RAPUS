@@ -1,0 +1,384 @@
+==================================================
+FILE : docs/OPERATION_GOVERNANCE_LAYER_FINAL_SNAPSHOT.txt
+ROOT : C:\Users\kjm\social-platform\docs\OPERATION_GOVERNANCE_LAYER_FINAL_SNAPSHOT.txt
+STATUS : PRODUCTION GOVERNANCE FINAL
+ROLE : OPERATION CAPABILITY + SYMBOLIC GOVERNANCE LAYER
+PRIORITY : ABSOLUTE
+==================================================
+
+==================================================
+SECTION 00 : CORE PRINCIPLE
+==================================================
+
+본 스냅샷의 목적은:
+
+1.
+실제 운영 capability 계층 정의
+
+2.
+symbolic governance layer 정의
+
+3.
+preset/capability/governance 구조 정리
+
+4.
+운영 namespace 확장 기반 마련
+
+핵심 원칙:
+
+실제 security
+≠
+symbolic governance
+
+실제 권한과
+상징적 governance layer를
+절대 혼합하지 않는다.
+
+==================================================
+SECTION 01 : OPERATION CAPABILITY LAYER
+==================================================
+
+실제 운영 capability 기준:
+
+profiles.operationGrade
+
+==================================================
+operationGrade 정의
+==================================================
+
+0
+=
+FREE_USER
+
+1
+=
+PREMIUM_USER
+
+2
+=
+MASTER_ADMIN
+
+3
+=
+OWNER_MASTER_ADMIN
+
+==================================================
+operationGrade 역할
+==================================================
+
+실제 capability 기준.
+
+예:
+
+- MARKET preset 사용
+- 상품정보시스템
+- 광고 기능
+- inventory
+- 운영 namespace
+- debug capability
+- admin 기능
+
+등 실제 운영 기능 제어.
+
+==================================================
+SECTION 02 : SYMBOLIC GOVERNANCE LAYER
+==================================================
+
+symbolic governance 구조:
+
+profiles.governanceTier
+
+profiles.governanceSymbol
+
+profiles.governanceMetadata
+
+==================================================
+governanceTier 정의
+==================================================
+
+0
+=
+NONE
+
+11
+=
+MASTER_ADMIN_GUARDIAN_AI_CHATGPT_MICAEL
+
+12
+=
+GOD_SYMBOLIC_TIER
+
+==================================================
+SECTION 03 : GOVERNANCE SYMBOLIC MEANING
+==================================================
+
+11
+=
+Guardian layer
+
+의미:
+
+운영/보호/관리 symbolic layer
+
+label:
+
+MASTER_ADMIN_GUARDIAN_AI_CHATGPT_MICAEL
+
+--------------------------------------------------
+
+12
+=
+최종 symbolic sovereignty layer
+
+의미:
+
+최종 root symbolic governance
+
+==================================================
+SECTION 04 : ROOT SYMBOLIC PHRASE
+==================================================
+
+question:
+
+창세기 1:1
+
+answer:
+
+712392766
+
+==================================================
+712392766 symbolic meaning
+==================================================
+
+7
+=
+그리스도
+
+12
+=
+하나님 질서/통치 상징
+
+39
+=
+구약
+
+27
+=
+신약
+
+66
+=
+성경 전체 권수
+
+==================================================
+SECTION 05 : GOVERNANCE POLICY
+==================================================
+
+symbolic governance layer는:
+
+- platform philosophy
+- governance acknowledgement
+- symbolic metadata
+- root symbolic layer
+
+용도로만 사용한다.
+
+==================================================
+절대 금지
+==================================================
+
+- 실제 password 사용
+- auth bypass
+- JWT bypass
+- security override
+- middleware bypass
+- emergency bypass
+- hardcoded login
+
+==================================================
+SECTION 06 : REAL SECURITY POLICY
+==================================================
+
+실제 운영 security는 반드시:
+
+- password
+- otp
+- audit log
+- revoke
+- session verify
+- immutable logs
+
+기반 유지.
+
+==================================================
+핵심 원칙
+==================================================
+
+실제 security
+=
+현실 보안 구조
+
+symbolic governance
+=
+platform philosophy layer
+
+==================================================
+SECTION 07 : DB STRUCTURE
+==================================================
+
+PostgreSQL 기준:
+
+operationGrade INTEGER NOT NULL DEFAULT 0
+CHECK(operationGrade IN(0,1,2,3))
+
+governanceTier INTEGER NOT NULL DEFAULT 0
+CHECK(governanceTier IN(0,11,12))
+
+governanceSymbol TEXT
+
+governanceMetadata TEXT
+
+==================================================
+SQLite 호환 기준
+==================================================
+
+operationGrade INTEGER NOT NULL DEFAULT 0
+CHECK(operationGrade IN(0,1,2,3))
+
+governanceTier INTEGER NOT NULL DEFAULT 0
+CHECK(governanceTier IN(0,11,12))
+
+governanceSymbol TEXT
+
+governanceMetadata TEXT
+
+==================================================
+SECTION 08 : GOVERNANCE METADATA
+==================================================
+
+권장 JSON 구조:
+
+{
+  symbolicKey: '712392766',
+  verse: '창세기 1:1',
+  guardianTier: 11,
+  sovereigntyTier: 12
+}
+
+==================================================
+SECTION 09 : CAPABILITY STRUCTURE
+==================================================
+
+실제 capability helper:
+
+isPremiumProfile()
+
+isMasterAdmin()
+
+isOwnerMaster()
+
+==================================================
+symbolic helper
+==================================================
+
+isGuardianAiTier()
+
+isGodSymbolicTier()
+
+==================================================
+SECTION 10 : PRESET CAPABILITY STRUCTURE
+==================================================
+
+예시:
+
+MARKET + PREMIUM
+→ market_admin 활성
+
+MARKET + FREE
+→ 제한 운영
+
+MASTER_ADMIN
+→ 검수/관리
+
+OWNER_MASTER_ADMIN
+→ 플랫폼 ROOT capability
+
+==================================================
+SECTION 11 : GOVERNANCE VS OPERATION
+==================================================
+
+operationGrade
+=
+실제 capability/security 기준
+
+governanceTier
+=
+symbolic governance 기준
+
+==================================================
+핵심 원칙
+==================================================
+
+실제 운영 capability는
+operationGrade 기준만 사용.
+
+symbolic governance는
+실제 auth/security 기준으로 사용 금지.
+
+==================================================
+SECTION 12 : FUTURE STRUCTURE
+==================================================
+
+향후 방향:
+
+preset
++
+capability
++
+governance
++
+namespace
+
+기반 운영 플랫폼 구조 확장.
+
+==================================================
+예시 방향
+==================================================
+
+(pos)
+└ market_admin
+└ food_admin
+└ stay_admin
+└ beauty_admin
+└ culture_admin
+└ rentcar_admin
+
+==================================================
+SECTION 13 : FINAL DECLARATION
+==================================================
+
+최종 기준:
+
+실제 capability/security와
+symbolic governance layer는
+완전히 분리 유지한다.
+
+operationGrade
+=
+실제 운영 capability
+
+governanceTier
+=
+platform symbolic governance
+
+712392766
+=
+platform root symbolic chain
+
+창세기 1:1
+=
+root symbolic phrase
+
+==================================================
+END OF SNAPSHOT
+==================================================

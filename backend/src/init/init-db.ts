@@ -339,7 +339,7 @@ insertIndustry.run('ETC','Etc','Other industry',15)
 //================================================
 // SECTION 03-1 : BUSINESS TYPES
 // ROLE : BUSINESS OPERATION TYPE MASTER
-// VALUES : NORMAL / STORE / FREELANCER / MOBILE_BIZ
+// VALUES : NORMAL / STORE / SHOPPING_MALL / FREELANCER / MOBILE_BIZ
 // NOTE : profiles.businessTypeCode source table
 //================================================
 
@@ -353,6 +353,7 @@ code TEXT NOT NULL UNIQUE
 CHECK(code IN(
 'NORMAL',
 'STORE',
+'SHOPPING_MALL',
 'FREELANCER',
 'MOBILE_BIZ'
 )),
@@ -399,6 +400,83 @@ code TEXT NOT NULL UNIQUE
 CHECK(code IN(
 'NORMAL',
 'STORE',
+'SHOPPING_MALL',
+'FREELANCER',
+'MOBILE_BIZ'
+)),
+
+name TEXT NOT NULL,
+
+description TEXT,
+
+isActive INTEGER DEFAULT 1,
+
+sortOrder INTEGER DEFAULT 0,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+updatedAt TEXT
+
+)
+`)
+
+db.exec(`
+INSERT INTO business_types_new(
+id,
+code,
+name,
+description,
+isActive,
+sortOrder,
+createdAt,
+updatedAt
+)
+SELECT
+id,
+code,
+name,
+description,
+isActive,
+sortOrder,
+createdAt,
+updatedAt
+FROM business_types
+`)
+
+db.exec(`DROP TABLE business_types`)
+db.exec(`ALTER TABLE business_types_new RENAME TO business_types`)
+} finally {
+db.exec(`PRAGMA foreign_keys = ON`)
+}
+}
+
+const businessTypesTableSqlForShoppingMallRow = db.prepare(`
+SELECT sql
+FROM sqlite_master
+WHERE type='table'
+  AND name='business_types'
+LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const businessTypesSupportsShoppingMall =
+businessTypesTableSqlForShoppingMallRow?.sql?.includes(`'SHOPPING_MALL'`) ?? false
+
+if (!businessTypesSupportsShoppingMall) {
+db.exec(`PRAGMA foreign_keys = OFF`)
+
+try {
+db.exec(`DROP TABLE IF EXISTS business_types_new`)
+
+db.exec(`
+CREATE TABLE business_types_new(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+code TEXT NOT NULL UNIQUE
+CHECK(code IN(
+'NORMAL',
+'STORE',
+'SHOPPING_MALL',
 'FREELANCER',
 'MOBILE_BIZ'
 )),
@@ -491,29 +569,36 @@ VALUES(?,?,?,?)
 insertBusinessType.run(
 'NORMAL',
 '일반형',
-'기본 비즈니스 / 매장형 / 일반 사업자 / 프리랜서의 기본값',
+'기본 비즈니스 / 회사 / 브랜드 / 소개형 페이지',
 1
 )
 
 insertBusinessType.run(
 'STORE',
-'스토어형',
-'고정 매장 / 음식점 / 병원 / 학원 / 카페 / 한식당',
+'고정형마켓',
+'고정 매장 기반 상품 판매 / 마트 / 상점 / 음식점',
 2
+)
+
+insertBusinessType.run(
+'SHOPPING_MALL',
+'쇼핑몰형',
+'온라인 상품 판매 / 자체몰 / 택배 중심 운영',
+3
 )
 
 insertBusinessType.run(
 'FREELANCER',
 '프리랜서',
-'개인 서비스 / 전문가 / 크리에이터 / 강사 / 디자이너',
-3
+'1인 서비스 / 방문 서비스 / 클래스 / 컨설팅',
+4
 )
 
 insertBusinessType.run(
 'MOBILE_BIZ',
 '이동형',
-'푸드트럭 / 방문 판매 / 출장 서비스 / 방문 수리 / 코스형 영업',
-4
+'푸드트럭 / 이동 판매 / 출장 운영 / 현장 영업',
+5
 )
 
 db.exec(`
@@ -522,27 +607,30 @@ UPDATE business_types
 SET
   name = CASE code
     WHEN 'NORMAL' THEN '일반형'
-    WHEN 'STORE' THEN '스토어형'
+    WHEN 'STORE' THEN '고정형마켓'
+    WHEN 'SHOPPING_MALL' THEN '쇼핑몰형'
     WHEN 'FREELANCER' THEN '프리랜서'
     WHEN 'MOBILE_BIZ' THEN '이동형'
     ELSE name
   END,
   description = CASE code
-    WHEN 'NORMAL' THEN '기본 비즈니스 / 매장형 / 일반 사업자 / 프리랜서의 기본값'
-    WHEN 'STORE' THEN '고정 매장 / 음식점 / 병원 / 학원 / 카페 / 한식당'
-    WHEN 'FREELANCER' THEN '개인 서비스 / 전문가 / 크리에이터 / 강사 / 디자이너'
-    WHEN 'MOBILE_BIZ' THEN '푸드트럭 / 방문 판매 / 출장 서비스 / 방문 수리 / 코스형 영업'
+    WHEN 'NORMAL' THEN '기본 비즈니스 / 회사 / 브랜드 / 소개형 페이지'
+    WHEN 'STORE' THEN '고정 매장 기반 상품 판매 / 마트 / 상점 / 음식점'
+    WHEN 'SHOPPING_MALL' THEN '온라인 상품 판매 / 자체몰 / 택배 중심 운영'
+    WHEN 'FREELANCER' THEN '1인 서비스 / 방문 서비스 / 클래스 / 컨설팅'
+    WHEN 'MOBILE_BIZ' THEN '푸드트럭 / 이동 판매 / 출장 운영 / 현장 영업'
     ELSE description
   END,
   sortOrder = CASE code
     WHEN 'NORMAL' THEN 1
     WHEN 'STORE' THEN 2
-    WHEN 'FREELANCER' THEN 3
-    WHEN 'MOBILE_BIZ' THEN 4
+    WHEN 'SHOPPING_MALL' THEN 3
+    WHEN 'FREELANCER' THEN 4
+    WHEN 'MOBILE_BIZ' THEN 5
     ELSE sortOrder
   END,
   updatedAt = CURRENT_TIMESTAMP
-WHERE code IN ('NORMAL', 'STORE', 'FREELANCER', 'MOBILE_BIZ')
+WHERE code IN ('NORMAL', 'STORE', 'SHOPPING_MALL', 'FREELANCER', 'MOBILE_BIZ')
 
 `)
 
@@ -555,7 +643,7 @@ WHERE code=?
 `)
 
 function getBusinessTypeId(
-code: 'NORMAL' | 'STORE' | 'FREELANCER' | 'MOBILE_BIZ'
+code: 'NORMAL' | 'STORE' | 'SHOPPING_MALL' | 'FREELANCER' | 'MOBILE_BIZ'
 ): number {
 
 const row =
@@ -576,6 +664,9 @@ getBusinessTypeId('NORMAL')
 
 const storeBusinessTypeId =
 getBusinessTypeId('STORE')
+
+const shoppingMallBusinessTypeId =
+getBusinessTypeId('SHOPPING_MALL')
 
 const freelancerBusinessTypeId =
 getBusinessTypeId('FREELANCER')
@@ -926,7 +1017,7 @@ CREATE TABLE IF NOT EXISTS image_assets(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   channelCode TEXT NOT NULL,
   usageType TEXT NOT NULL
-  CHECK(usageType IN ('avatar','post','hero','gallery','place-thumbnail','pos-product-thumbnail','BARCODE_PRODUCT_THUMBNAIL')),
+  CHECK(usageType IN ('avatar','post','hero','gallery','place-thumbnail','pos-product-thumbnail','BARCODE_PRODUCT_THUMBNAIL','BUSINESS_REGISTRATION')),
   fileName TEXT NOT NULL,
   filePath TEXT NOT NULL UNIQUE,
   mimeType TEXT,
@@ -1158,6 +1249,110 @@ if (!imageAssetsSupportsBarcodeProductThumbnail || imageAssetsHasProfileForeignK
   }
 }
 
+//=====================================================
+// SECTION 05-1-3 : IMAGE ASSETS BUSINESS REGISTRATION USAGE TYPE
+// ROLE : BUSINESS REGISTRATION IMAGE RELATION SUPPORT
+// RULE : image_assets keeps filePath as the only physical file path source
+//=====================================================
+
+const imageAssetsTableSqlForBusinessRegistrationRow = db.prepare(`
+  SELECT sql
+  FROM sqlite_master
+  WHERE type='table'
+    AND name='image_assets'
+  LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const imageAssetsTableSqlForBusinessRegistration =
+  imageAssetsTableSqlForBusinessRegistrationRow && imageAssetsTableSqlForBusinessRegistrationRow.sql
+    ? imageAssetsTableSqlForBusinessRegistrationRow.sql
+    : ''
+
+const imageAssetsSupportsBusinessRegistration =
+  imageAssetsTableSqlForBusinessRegistration.includes(`'BUSINESS_REGISTRATION'`)
+
+if (!imageAssetsSupportsBusinessRegistration) {
+  db.exec(`PRAGMA foreign_keys = OFF`)
+
+  try {
+    db.exec(`DROP TABLE IF EXISTS image_assets_new`)
+
+    db.exec(`
+      CREATE TABLE image_assets_new(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        channelCode TEXT NOT NULL,
+        usageType TEXT NOT NULL
+        CHECK(usageType IN ('avatar','post','hero','gallery','place-thumbnail','pos-product-thumbnail','BARCODE_PRODUCT_THUMBNAIL','BUSINESS_REGISTRATION')),
+        fileName TEXT NOT NULL,
+        filePath TEXT NOT NULL UNIQUE,
+        mimeType TEXT,
+        fileSize INTEGER,
+        width INTEGER,
+        height INTEGER,
+        storageProvider TEXT,
+        checksum TEXT,
+        isActive INTEGER DEFAULT 1,
+        lastUsedAt TEXT,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    db.exec(`
+      INSERT INTO image_assets_new(
+        id,
+        channelCode,
+        usageType,
+        fileName,
+        filePath,
+        mimeType,
+        fileSize,
+        width,
+        height,
+        storageProvider,
+        checksum,
+        isActive,
+        lastUsedAt,
+        createdAt
+      )
+      SELECT
+        id,
+        channelCode,
+        usageType,
+        fileName,
+        filePath,
+        mimeType,
+        fileSize,
+        width,
+        height,
+        storageProvider,
+        checksum,
+        COALESCE(isActive, 1),
+        lastUsedAt,
+        COALESCE(createdAt, CURRENT_TIMESTAMP)
+      FROM image_assets
+    `)
+
+    db.exec(`DROP TABLE image_assets`)
+    db.exec(`ALTER TABLE image_assets_new RENAME TO image_assets`)
+
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_image_assets_channel
+      ON image_assets(channelCode);
+
+      CREATE INDEX IF NOT EXISTS idx_image_assets_usage
+      ON image_assets(usageType);
+
+      CREATE INDEX IF NOT EXISTS idx_image_assets_active
+      ON image_assets(isActive);
+
+      CREATE INDEX IF NOT EXISTS idx_image_assets_created
+      ON image_assets(createdAt);
+    `)
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ON`)
+  }
+}
+
 
 // ==================================================
 // SECTION 06 : PROFILES (CHANNEL IDENTITY FINAL + INDUSTRY + BUSINESS TYPE)
@@ -1236,6 +1431,7 @@ CHECK(
   OR businessTypeCode IN(
     'NORMAL',
     'STORE',
+    'SHOPPING_MALL',
     'FREELANCER',
     'MOBILE_BIZ'
   )
@@ -1246,6 +1442,7 @@ CHECK(
   placeFeedTypeCode IS NULL
   OR placeFeedTypeCode IN(
     'NORMAL',
+    'CLASSIC',
     'MARKET',
     'FOOD',
     'BEAUTY',
@@ -1254,6 +1451,16 @@ CHECK(
     'RENTCAR'
   )
 ),
+
+operationGrade INTEGER NOT NULL DEFAULT 0
+CHECK(operationGrade IN(0,1,2,3)),
+
+governanceTier INTEGER NOT NULL DEFAULT 0
+CHECK(governanceTier IN(0,11,12)),
+
+governanceSymbol TEXT,
+
+governanceMetadata TEXT,
 
 primaryIndustryId INTEGER,
 primaryIndustrySubtypeId INTEGER,
@@ -1280,6 +1487,7 @@ CHECK(
   (profileType='BUSINESS' AND businessTypeCode IN(
     'NORMAL',
     'STORE',
+    'SHOPPING_MALL',
     'FREELANCER',
     'MOBILE_BIZ'
   ))
@@ -1290,6 +1498,7 @@ CHECK(
   OR
   (profileType='BUSINESS' AND placeFeedTypeCode IN(
     'NORMAL',
+    'CLASSIC',
     'MARKET',
     'FOOD',
     'BEAUTY',
@@ -1377,6 +1586,7 @@ if (!profilesSupportsNormalBusinessType) {
         OR businessTypeCode IN(
           'NORMAL',
           'STORE',
+          'SHOPPING_MALL',
           'FREELANCER',
           'MOBILE_BIZ'
         )
@@ -1387,6 +1597,7 @@ if (!profilesSupportsNormalBusinessType) {
         placeFeedTypeCode IS NULL
         OR placeFeedTypeCode IN(
           'NORMAL',
+          'CLASSIC',
           'MARKET',
           'FOOD',
           'BEAUTY',
@@ -1421,6 +1632,7 @@ if (!profilesSupportsNormalBusinessType) {
         (profileType='BUSINESS' AND businessTypeCode IN(
           'NORMAL',
           'STORE',
+          'SHOPPING_MALL',
           'FREELANCER',
           'MOBILE_BIZ'
         ))
@@ -1431,6 +1643,7 @@ if (!profilesSupportsNormalBusinessType) {
         OR
         (profileType='BUSINESS' AND placeFeedTypeCode IN(
           'NORMAL',
+          'CLASSIC',
           'MARKET',
           'FOOD',
           'BEAUTY',
@@ -1531,6 +1744,7 @@ safeAddColumn(
     OR businessTypeCode IN(
       'NORMAL',
       'STORE',
+      'SHOPPING_MALL',
       'FREELANCER',
       'MOBILE_BIZ'
     )
@@ -1544,6 +1758,7 @@ safeAddColumn(
     placeFeedTypeCode IS NULL
     OR placeFeedTypeCode IN(
       'NORMAL',
+      'CLASSIC',
       'MARKET',
       'FOOD',
       'BEAUTY',
@@ -1744,6 +1959,471 @@ db.exec(`
 
 CREATE INDEX IF NOT EXISTS idx_profiles_payment_password_locked
 ON profiles(paymentPasswordLockedUntil)
+
+`)
+
+//===================================================
+// SECTION 06-0-3 : PROFILES PLACE FEED TYPE CLASSIC MIGRATION
+// ROLE : SQLITE CHECK REBUILD FOR CLASSIC PLACE FEED TYPE
+// RULE : GENERAL = NULL / BUSINESS = NORMAL | CLASSIC | PLACE TYPES
+//===================================================
+
+const profilesClassicTableSqlRow = db.prepare(`
+  SELECT sql
+  FROM sqlite_master
+  WHERE type='table'
+    AND name='profiles'
+  LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const profilesSupportsClassicPlaceFeedType =
+  profilesClassicTableSqlRow?.sql?.includes(`'CLASSIC'`) ?? false
+
+if (!profilesSupportsClassicPlaceFeedType) {
+  db.exec(`PRAGMA foreign_keys = OFF`)
+
+  try {
+    db.exec(`DROP TABLE IF EXISTS profiles_new`)
+
+    db.exec(`
+    CREATE TABLE profiles_new(
+
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+      userId INTEGER NOT NULL,
+
+      profileType TEXT NOT NULL
+      CHECK(profileType IN('GENERAL','BUSINESS')),
+
+      baseCode TEXT NOT NULL
+      CHECK(length(baseCode)=12),
+
+      displayName TEXT,
+
+      bio TEXT,
+
+      channelCode TEXT NOT NULL UNIQUE
+      CHECK(length(channelCode)=13),
+
+      channelURL TEXT NOT NULL UNIQUE,
+
+      channelName TEXT,
+
+      contactPhone TEXT DEFAULT null,
+
+      secondaryPhone TEXT,
+
+      faxNumber TEXT,
+
+      managerEmail TEXT,
+
+      activityRegionId INTEGER,
+
+      feedRegionId INTEGER,
+
+      detailAddress TEXT,
+
+      businessRegistrationNumber TEXT,
+
+      loginPasswordHash TEXT,
+
+      loginPasswordSetAt TEXT,
+
+      loginPasswordUpdatedAt TEXT,
+
+      loginPasswordFailCount INTEGER NOT NULL DEFAULT 0
+      CHECK(loginPasswordFailCount >= 0),
+
+      loginPasswordLockedUntil TEXT,
+
+      paymentPasswordHash TEXT,
+
+      paymentPasswordSetAt TEXT,
+
+      paymentPasswordUpdatedAt TEXT,
+
+      paymentPasswordFailCount INTEGER NOT NULL DEFAULT 0
+      CHECK(paymentPasswordFailCount >= 0),
+
+      paymentPasswordLockedUntil TEXT,
+
+      businessTypeId INTEGER,
+
+      businessTypeCode TEXT
+      CHECK(
+        businessTypeCode IS NULL
+        OR businessTypeCode IN(
+          'NORMAL',
+          'STORE',
+          'SHOPPING_MALL',
+          'FREELANCER',
+          'MOBILE_BIZ'
+        )
+      ),
+
+      placeFeedTypeCode TEXT
+      CHECK(
+        placeFeedTypeCode IS NULL
+        OR placeFeedTypeCode IN(
+          'NORMAL',
+          'CLASSIC',
+          'MARKET',
+          'FOOD',
+          'BEAUTY',
+          'CULTURE',
+          'STAY',
+          'RENTCAR'
+        )
+      ),
+
+      primaryIndustryId INTEGER,
+      primaryIndustrySubtypeId INTEGER,
+      primaryIndustryCode TEXT,
+      primaryIndustrySubtypeCode TEXT,
+
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+
+      UNIQUE(baseCode, profileType),
+      UNIQUE(userId, profileType),
+
+      CHECK(substr(channelCode,2)=baseCode),
+
+      CHECK(
+        (profileType='GENERAL' AND substr(channelCode,1,1)='A')
+        OR
+        (profileType='BUSINESS' AND substr(channelCode,1,1)='B')
+      ),
+
+      CHECK(
+        (profileType='GENERAL' AND businessTypeCode IS NULL)
+        OR
+        (profileType='BUSINESS' AND businessTypeCode IN(
+          'NORMAL',
+          'STORE',
+          'SHOPPING_MALL',
+          'FREELANCER',
+          'MOBILE_BIZ'
+        ))
+      ),
+
+      CHECK(
+        (profileType='GENERAL' AND placeFeedTypeCode IS NULL)
+        OR
+        (profileType='BUSINESS' AND placeFeedTypeCode IN(
+          'NORMAL',
+          'CLASSIC',
+          'MARKET',
+          'FOOD',
+          'BEAUTY',
+          'CULTURE',
+          'STAY',
+          'RENTCAR'
+        ))
+      ),
+
+      FOREIGN KEY(userId) REFERENCES users(id),
+      FOREIGN KEY(businessTypeId) REFERENCES business_types(id),
+      FOREIGN KEY(primaryIndustryId) REFERENCES industries(id),
+      FOREIGN KEY(primaryIndustrySubtypeId) REFERENCES industry_subtypes(id),
+      FOREIGN KEY(activityRegionId) REFERENCES regions(id),
+      FOREIGN KEY(feedRegionId) REFERENCES regions(id)
+    )
+    `)
+
+    db.exec(`
+    INSERT INTO profiles_new(
+      id,
+      userId,
+      profileType,
+      baseCode,
+      displayName,
+      bio,
+      channelCode,
+      channelURL,
+      channelName,
+      contactPhone,
+      secondaryPhone,
+      faxNumber,
+      managerEmail,
+      activityRegionId,
+      feedRegionId,
+      detailAddress,
+      businessRegistrationNumber,
+      loginPasswordHash,
+      loginPasswordSetAt,
+      loginPasswordUpdatedAt,
+      loginPasswordFailCount,
+      loginPasswordLockedUntil,
+      paymentPasswordHash,
+      paymentPasswordSetAt,
+      paymentPasswordUpdatedAt,
+      paymentPasswordFailCount,
+      paymentPasswordLockedUntil,
+      businessTypeId,
+      businessTypeCode,
+      placeFeedTypeCode,
+      primaryIndustryId,
+      primaryIndustrySubtypeId,
+      primaryIndustryCode,
+      primaryIndustrySubtypeCode,
+      createdAt,
+      updatedAt
+    )
+    SELECT
+      id,
+      userId,
+      profileType,
+      baseCode,
+      displayName,
+      bio,
+      channelCode,
+      channelURL,
+      channelName,
+      contactPhone,
+      secondaryPhone,
+      faxNumber,
+      managerEmail,
+      activityRegionId,
+      feedRegionId,
+      detailAddress,
+      businessRegistrationNumber,
+      loginPasswordHash,
+      loginPasswordSetAt,
+      loginPasswordUpdatedAt,
+      COALESCE(loginPasswordFailCount, 0),
+      loginPasswordLockedUntil,
+      paymentPasswordHash,
+      paymentPasswordSetAt,
+      paymentPasswordUpdatedAt,
+      COALESCE(paymentPasswordFailCount, 0),
+      paymentPasswordLockedUntil,
+      businessTypeId,
+      businessTypeCode,
+      placeFeedTypeCode,
+      primaryIndustryId,
+      primaryIndustrySubtypeId,
+      primaryIndustryCode,
+      primaryIndustrySubtypeCode,
+      createdAt,
+      updatedAt
+    FROM profiles
+    `)
+
+    db.exec(`DROP TABLE profiles`)
+    db.exec(`ALTER TABLE profiles_new RENAME TO profiles`)
+
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_profiles_login_password_set
+      ON profiles(loginPasswordSetAt);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_login_password_locked
+      ON profiles(loginPasswordLockedUntil);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_payment_password_set
+      ON profiles(paymentPasswordSetAt);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_payment_password_locked
+      ON profiles(paymentPasswordLockedUntil);
+    `)
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ON`)
+  }
+}
+
+//===================================================
+// SECTION 06-0-4 : PROFILES BUSINESS TYPE SHOPPING MALL MIGRATION
+// ROLE : SQLITE CHECK REBUILD FOR SHOPPING_MALL BUSINESS TYPE
+// RULE : GENERAL = NULL / BUSINESS = NORMAL | STORE | SHOPPING_MALL | FREELANCER | MOBILE_BIZ
+//===================================================
+
+const profilesShoppingMallTableSqlRow = db.prepare(`
+  SELECT sql
+  FROM sqlite_master
+  WHERE type='table'
+    AND name='profiles'
+  LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const profilesSupportsShoppingMallBusinessType =
+  profilesShoppingMallTableSqlRow?.sql?.includes(`'SHOPPING_MALL'`) ?? false
+
+if (!profilesSupportsShoppingMallBusinessType) {
+  const currentProfilesSql =
+    profilesShoppingMallTableSqlRow?.sql ?? ''
+  const nextProfilesSql =
+    currentProfilesSql
+      .replace(
+        /CREATE TABLE "?profiles"?/i,
+        'CREATE TABLE profiles_new'
+      )
+      .replaceAll(
+        "'STORE',\n          'FREELANCER'",
+        "'STORE',\n          'SHOPPING_MALL',\n          'FREELANCER'"
+      )
+      .replaceAll(
+        "'STORE',\n        'FREELANCER'",
+        "'STORE',\n        'SHOPPING_MALL',\n        'FREELANCER'"
+      )
+      .replaceAll(
+        "'STORE',\r\n          'FREELANCER'",
+        "'STORE',\r\n          'SHOPPING_MALL',\r\n          'FREELANCER'"
+      )
+      .replaceAll(
+        "'STORE',\r\n        'FREELANCER'",
+        "'STORE',\r\n        'SHOPPING_MALL',\r\n        'FREELANCER'"
+      )
+
+  if (!nextProfilesSql.includes(`'SHOPPING_MALL'`)) {
+    throw new Error('profiles businessTypeCode SHOPPING_MALL migration failed')
+  }
+
+  const profileColumns =
+    db.prepare(`PRAGMA table_info(profiles)`).all() as Array<{ name: string }>
+  const profileColumnNames =
+    profileColumns.map((column) => column.name)
+  const profileColumnList =
+    profileColumnNames.join(', ')
+
+  db.exec(`PRAGMA foreign_keys = OFF`)
+
+  try {
+    db.exec(`DROP TABLE IF EXISTS profiles_new`)
+    db.exec(nextProfilesSql)
+    db.exec(`
+      INSERT INTO profiles_new(${profileColumnList})
+      SELECT ${profileColumnList}
+      FROM profiles
+    `)
+    db.exec(`DROP TABLE profiles`)
+    db.exec(`ALTER TABLE profiles_new RENAME TO profiles`)
+
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_profiles_businessTypeCode
+      ON profiles(businessTypeCode);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_place_feed_type
+      ON profiles(placeFeedTypeCode);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_login_password_set
+      ON profiles(loginPasswordSetAt);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_login_password_locked
+      ON profiles(loginPasswordLockedUntil);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_payment_password_set
+      ON profiles(paymentPasswordSetAt);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_payment_password_locked
+      ON profiles(paymentPasswordLockedUntil);
+    `)
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ON`)
+  }
+}
+
+//===================================================
+// SECTION 06-1A : PROFILES OPERATION GOVERNANCE SAFE ADD
+// ROLE : REAL CAPABILITY LAYER + SYMBOLIC GOVERNANCE METADATA
+// RULE : operationGrade controls capability / governance* is symbolic only
+//===================================================
+
+safeAddColumn(
+  'profiles',
+  'operationGrade',
+  'INTEGER NOT NULL DEFAULT 0 CHECK(operationGrade IN(0,1,2,3))'
+)
+
+safeAddColumn(
+  'profiles',
+  'governanceTier',
+  'INTEGER NOT NULL DEFAULT 0 CHECK(governanceTier IN(0,11,12))'
+)
+
+safeAddColumn(
+  'profiles',
+  'governanceSymbol',
+  'TEXT'
+)
+
+safeAddColumn(
+  'profiles',
+  'governanceMetadata',
+  'TEXT'
+)
+
+const profilesGovernanceTierTableSqlRow = db.prepare(`
+  SELECT sql
+  FROM sqlite_master
+  WHERE type='table'
+    AND name='profiles'
+  LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const profilesSupportsGuardianAiGovernanceTier =
+  profilesGovernanceTierTableSqlRow?.sql?.includes('governanceTier IN(0,11,12)') ?? false
+
+if (!profilesSupportsGuardianAiGovernanceTier) {
+  const currentProfilesSql =
+    profilesGovernanceTierTableSqlRow?.sql ?? ''
+  const nextProfilesSql =
+    currentProfilesSql
+      .replace(
+        /CREATE TABLE "?profiles"?/i,
+        'CREATE TABLE profiles_new'
+      )
+      .replace(
+        'governanceTier IN(0,12)',
+        'governanceTier IN(0,11,12)'
+      )
+
+  if (!nextProfilesSql.includes('governanceTier IN(0,11,12)')) {
+    throw new Error('profiles governanceTier Guardian AI migration failed')
+  }
+
+  const profileColumns =
+    db.prepare(`PRAGMA table_info(profiles)`).all() as Array<{ name: string }>
+  const profileColumnNames =
+    profileColumns.map((column) => column.name)
+  const profileColumnList =
+    profileColumnNames.join(', ')
+
+  db.exec(`PRAGMA foreign_keys = OFF`)
+
+  try {
+    db.exec(`DROP TABLE IF EXISTS profiles_new`)
+    db.exec(nextProfilesSql)
+    db.exec(`
+      INSERT INTO profiles_new(${profileColumnList})
+      SELECT ${profileColumnList}
+      FROM profiles
+    `)
+    db.exec(`DROP TABLE profiles`)
+    db.exec(`ALTER TABLE profiles_new RENAME TO profiles`)
+
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_profiles_operation_grade
+      ON profiles(operationGrade);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_governance_tier
+      ON profiles(governanceTier);
+    `)
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ON`)
+  }
+}
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS idx_profiles_operation_grade
+ON profiles(operationGrade)
+
+`)
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS idx_profiles_governance_tier
+ON profiles(governanceTier)
 
 `)
 
@@ -2001,6 +2681,242 @@ ON profile_avatars(channelCode);
 
 CREATE INDEX IF NOT EXISTS idx_profile_avatars_asset
 ON profile_avatars(imageAssetId);
+`);
+
+//===================================================
+// SECTION 06-4-1 : BUSINESS REGISTRATION IMAGES
+// RULE : image_assets owns filePath / relation table only connects asset
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS business_registration_images(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profileId INTEGER NOT NULL,
+  channelCode TEXT NOT NULL,
+  imageAssetId INTEGER NOT NULL,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN (0, 1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(profileId, imageAssetId),
+  FOREIGN KEY(profileId) REFERENCES profiles(id),
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(imageAssetId) REFERENCES image_assets(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_business_registration_images_profile
+ON business_registration_images(profileId);
+
+CREATE INDEX IF NOT EXISTS idx_business_registration_images_channel
+ON business_registration_images(channelCode);
+
+CREATE INDEX IF NOT EXISTS idx_business_registration_images_asset
+ON business_registration_images(imageAssetId);
+`);
+
+//==================================================
+// SECTION 06-4-2 : PROFILE CUSTOM DOMAINS
+// RULE : custom domain maps external host to channelCode / channelCode remains identity
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS profile_custom_domains(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profile_id INTEGER NOT NULL,
+  channel_code TEXT NOT NULL,
+  custom_domain TEXT NOT NULL,
+  domain_status TEXT NOT NULL DEFAULT 'PENDING'
+    CHECK(domain_status IN ('PENDING', 'ACTIVE', 'FAILED', 'DISABLED')),
+  is_primary INTEGER NOT NULL DEFAULT 1 CHECK(is_primary IN (0, 1)),
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
+  verified_at TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TEXT,
+  FOREIGN KEY(profile_id) REFERENCES profiles(id),
+  FOREIGN KEY(channel_code) REFERENCES profiles(channelCode)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_profile_custom_domains_domain_active
+ON profile_custom_domains(custom_domain)
+WHERE deleted_at IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_profile_custom_domains_primary_active
+ON profile_custom_domains(channel_code)
+WHERE is_primary = 1
+  AND deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_profile_custom_domains_channel
+ON profile_custom_domains(channel_code);
+
+CREATE INDEX IF NOT EXISTS idx_profile_custom_domains_domain
+ON profile_custom_domains(custom_domain);
+`);
+
+//==================================================
+// SECTION 06-4-3 : MARKET FULFILLMENT SETTINGS
+// RULE : channelCode owns available delivery / pickup fulfillment types
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS market_fulfillment_settings(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profile_id INTEGER NOT NULL,
+  channel_code TEXT NOT NULL,
+  fulfillment_type TEXT NOT NULL
+    CHECK(fulfillment_type IN (
+      'NONE',
+      'LOCAL_DELIVERY',
+      'QUICK_SERVICE',
+      'SHIPPING',
+      'PICKUP'
+    )),
+  is_enabled INTEGER NOT NULL DEFAULT 1 CHECK(is_enabled IN (0, 1)),
+  is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0, 1)),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TEXT,
+  FOREIGN KEY(profile_id) REFERENCES profiles(id),
+  FOREIGN KEY(channel_code) REFERENCES profiles(channelCode)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_market_fulfillment_settings_channel_type_active
+ON market_fulfillment_settings(channel_code, fulfillment_type)
+WHERE deleted_at IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_market_fulfillment_settings_channel_default_active
+ON market_fulfillment_settings(channel_code)
+WHERE is_default = 1
+  AND deleted_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_market_fulfillment_settings_channel
+ON market_fulfillment_settings(channel_code);
+
+CREATE INDEX IF NOT EXISTS idx_market_fulfillment_settings_type
+ON market_fulfillment_settings(fulfillment_type);
+`);
+
+const marketFulfillmentSettingsTableSqlRow = db.prepare(`
+  SELECT sql
+  FROM sqlite_master
+  WHERE type='table'
+    AND name='market_fulfillment_settings'
+  LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const marketFulfillmentSettingsSupportsQuickService =
+  marketFulfillmentSettingsTableSqlRow?.sql?.includes(`'QUICK_SERVICE'`) ?? false
+
+if (!marketFulfillmentSettingsSupportsQuickService) {
+  db.exec(`PRAGMA foreign_keys = OFF`)
+
+  try {
+    db.exec(`DROP TABLE IF EXISTS market_fulfillment_settings_new`)
+
+    db.exec(`
+      CREATE TABLE market_fulfillment_settings_new(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        profile_id INTEGER NOT NULL,
+        channel_code TEXT NOT NULL,
+        fulfillment_type TEXT NOT NULL
+          CHECK(fulfillment_type IN (
+            'NONE',
+            'LOCAL_DELIVERY',
+            'QUICK_SERVICE',
+            'SHIPPING',
+            'PICKUP'
+          )),
+        is_enabled INTEGER NOT NULL DEFAULT 1 CHECK(is_enabled IN (0, 1)),
+        is_default INTEGER NOT NULL DEFAULT 0 CHECK(is_default IN (0, 1)),
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        deleted_at TEXT,
+        FOREIGN KEY(profile_id) REFERENCES profiles(id),
+        FOREIGN KEY(channel_code) REFERENCES profiles(channelCode)
+      )
+    `)
+
+    db.exec(`
+      INSERT INTO market_fulfillment_settings_new(
+        id,
+        profile_id,
+        channel_code,
+        fulfillment_type,
+        is_enabled,
+        is_default,
+        created_at,
+        updated_at,
+        deleted_at
+      )
+      SELECT
+        id,
+        profile_id,
+        channel_code,
+        fulfillment_type,
+        is_enabled,
+        is_default,
+        created_at,
+        updated_at,
+        deleted_at
+      FROM market_fulfillment_settings
+    `)
+
+    db.exec(`DROP TABLE market_fulfillment_settings`)
+    db.exec(`ALTER TABLE market_fulfillment_settings_new RENAME TO market_fulfillment_settings`)
+
+    db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_market_fulfillment_settings_channel_type_active
+      ON market_fulfillment_settings(channel_code, fulfillment_type)
+      WHERE deleted_at IS NULL;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_market_fulfillment_settings_channel_default_active
+      ON market_fulfillment_settings(channel_code)
+      WHERE is_default = 1
+        AND deleted_at IS NULL;
+
+      CREATE INDEX IF NOT EXISTS idx_market_fulfillment_settings_channel
+      ON market_fulfillment_settings(channel_code);
+
+      CREATE INDEX IF NOT EXISTS idx_market_fulfillment_settings_type
+      ON market_fulfillment_settings(fulfillment_type);
+    `)
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ON`)
+  }
+}
+
+//==================================================
+// SECTION 06-4-4 : BUSINESS LOCAL DELIVERY REGIONS
+// RULE : channelCode owns business-wide local delivery region settings
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS business_local_delivery_regions(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  profile_id INTEGER NOT NULL,
+  channel_code TEXT NOT NULL,
+  region_name TEXT NOT NULL,
+  region_code TEXT,
+  delivery_fee INTEGER NOT NULL DEFAULT 0
+    CHECK(delivery_fee >= 0),
+  minimum_order_amount INTEGER NOT NULL DEFAULT 0
+    CHECK(minimum_order_amount >= 0),
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_enabled INTEGER NOT NULL DEFAULT 1 CHECK(is_enabled IN (0, 1)),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TEXT,
+  FOREIGN KEY(profile_id) REFERENCES profiles(id),
+  FOREIGN KEY(channel_code) REFERENCES profiles(channelCode)
+);
+
+CREATE INDEX IF NOT EXISTS idx_business_local_delivery_regions_channel
+ON business_local_delivery_regions(channel_code);
+
+CREATE INDEX IF NOT EXISTS idx_business_local_delivery_regions_region_name
+ON business_local_delivery_regions(region_name);
+
+CREATE INDEX IF NOT EXISTS idx_business_local_delivery_regions_enabled
+ON business_local_delivery_regions(is_enabled);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_business_local_delivery_regions_channel_region_active
+ON business_local_delivery_regions(channel_code, region_name)
+WHERE deleted_at IS NULL;
 `);
 
 //==================================================

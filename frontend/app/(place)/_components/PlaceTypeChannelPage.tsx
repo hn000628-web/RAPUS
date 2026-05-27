@@ -9,7 +9,7 @@ import type {
 } from '@/lib/profile-summary-api'
 
 type PlaceTypeChannelPageProps = {
-  placeFeedTypeCode: Exclude<PlaceFeedTypeCode, 'NORMAL'>
+  placeFeedTypeCode: Exclude<PlaceFeedTypeCode, 'NORMAL' | 'CLASSIC'>
   title: string
   description: string
 }

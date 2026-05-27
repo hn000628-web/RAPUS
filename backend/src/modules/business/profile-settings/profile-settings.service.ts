@@ -31,6 +31,9 @@ type BusinessProfileRow = {
   channelCode: string
   channelURL: string | null
   channelName: string | null
+  customDomain: string | null
+  enabledFulfillmentTypes: FulfillmentTypeCode[]
+  localDeliveryRegions: LocalDeliveryRegionPayload[]
   contactPhone: string | null
   secondaryPhone: string | null
   faxNumber: string | null
@@ -52,6 +55,7 @@ type BusinessProfileRow = {
 
 type PlaceFeedTypeCode =
   | 'NORMAL'
+  | 'CLASSIC'
   | 'MARKET'
   | 'FOOD'
   | 'BEAUTY'
@@ -59,9 +63,88 @@ type PlaceFeedTypeCode =
   | 'STAY'
   | 'RENTCAR'
 
+type FulfillmentTypeCode =
+  | 'NONE'
+  | 'LOCAL_DELIVERY'
+  | 'QUICK_SERVICE'
+  | 'SHIPPING'
+  | 'PICKUP'
+
 type BusinessProfilePasswordRow = {
   loginPasswordHash: string | null
   paymentPasswordHash: string | null
+}
+
+type ProfileCustomDomainRow = {
+  id: number
+  profile_id: number
+  channel_code: string
+  custom_domain: string
+  domain_status: 'PENDING' | 'ACTIVE' | 'FAILED' | 'DISABLED'
+  is_primary: number
+  is_active: number
+  verified_at: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+type ResolvedCustomDomainPayload = {
+  channelCode: string
+  profileId: number
+  domainStatus: ProfileCustomDomainRow['domain_status']
+  isActive: boolean
+}
+
+type ProfileCustomDomainPayload = {
+  id: number
+  profileId: number
+  channelCode: string
+  customDomain: string
+  domainStatus: ProfileCustomDomainRow['domain_status']
+  isPrimary: boolean
+  isActive: boolean
+  verifiedAt: string | null
+  createdAt: string
+  updatedAt: string
+  deletedAt: string | null
+}
+
+type MarketFulfillmentSettingRow = {
+  id: number
+  profile_id: number
+  channel_code: string
+  fulfillment_type: FulfillmentTypeCode
+  is_enabled: number
+  is_default: number
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+type BusinessLocalDeliveryRegionRow = {
+  id: number
+  profile_id: number
+  channel_code: string
+  region_name: string
+  region_code: string | null
+  delivery_fee: number
+  minimum_order_amount: number
+  sort_order: number
+  is_enabled: number
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+type LocalDeliveryRegionPayload = {
+  id?: number
+  regionName: string
+  regionCode: string | null
+  deliveryFee: number
+  minimumOrderAmount: number
+  sortOrder: number
+  isEnabled: boolean
 }
 
 type RegionRow = {
@@ -457,6 +540,7 @@ export class ProfileSettingsService {
 
     if (
       normalizedPlaceFeedTypeCode === 'NORMAL' ||
+      normalizedPlaceFeedTypeCode === 'CLASSIC' ||
       normalizedPlaceFeedTypeCode === 'MARKET' ||
       normalizedPlaceFeedTypeCode === 'FOOD' ||
       normalizedPlaceFeedTypeCode === 'BEAUTY' ||
@@ -468,6 +552,189 @@ export class ProfileSettingsService {
     }
 
     throw new BadRequestException('invalid placeFeedTypeCode')
+  }
+
+  private normalizeCustomDomain(customDomain: unknown): string | null {
+    if (customDomain === undefined) {
+      return null
+    }
+
+    if (customDomain === null) {
+      return ''
+    }
+
+    if (typeof customDomain !== 'string') {
+      throw new BadRequestException('올바른 도메인 형식을 입력해주세요.')
+    }
+
+    const normalizedCustomDomain =
+      customDomain.trim().toLowerCase()
+
+    if (!normalizedCustomDomain) {
+      return ''
+    }
+
+    if (customDomain !== customDomain.trim()) {
+      throw new BadRequestException('올바른 도메인 형식을 입력해주세요.')
+    }
+
+    const domainPattern =
+      /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/
+
+    if (!domainPattern.test(normalizedCustomDomain)) {
+      throw new BadRequestException('올바른 도메인 형식을 입력해주세요.')
+    }
+
+    return normalizedCustomDomain
+  }
+
+  private normalizeFulfillmentTypes(
+    enabledFulfillmentTypes: unknown
+  ): FulfillmentTypeCode[] {
+    const allowedTypes: FulfillmentTypeCode[] = [
+      'NONE',
+      'LOCAL_DELIVERY',
+      'QUICK_SERVICE',
+      'SHIPPING',
+      'PICKUP'
+    ]
+
+    if (
+      enabledFulfillmentTypes === undefined ||
+      enabledFulfillmentTypes === null
+    ) {
+      return ['NONE']
+    }
+
+    if (!Array.isArray(enabledFulfillmentTypes)) {
+      throw new BadRequestException('invalid enabledFulfillmentTypes')
+    }
+
+    const normalizedTypes =
+      enabledFulfillmentTypes
+        .map((value) => {
+          return typeof value === 'string'
+            ? value.trim().toUpperCase()
+            : ''
+        })
+        .filter((value) => Boolean(value))
+
+    if (normalizedTypes.length < 1) {
+      return ['NONE']
+    }
+
+    for (const type of normalizedTypes) {
+      if (!allowedTypes.includes(type as FulfillmentTypeCode)) {
+        throw new BadRequestException('invalid enabledFulfillmentTypes')
+      }
+    }
+
+    if (normalizedTypes.includes('NONE')) {
+      return ['NONE']
+    }
+
+    const uniqueTypes =
+      Array.from(new Set(normalizedTypes)) as FulfillmentTypeCode[]
+
+    return uniqueTypes.length > 0
+      ? uniqueTypes
+      : ['NONE']
+  }
+
+  private normalizeLocalDeliveryRegions(
+    localDeliveryRegions: unknown
+  ): LocalDeliveryRegionPayload[] {
+    if (
+      localDeliveryRegions === undefined ||
+      localDeliveryRegions === null
+    ) {
+      return []
+    }
+
+    if (!Array.isArray(localDeliveryRegions)) {
+      throw new BadRequestException('invalid localDeliveryRegions')
+    }
+
+    const seenRegionNames = new Set<string>()
+
+    return localDeliveryRegions.map((region, index) => {
+      if (!region || typeof region !== 'object') {
+        throw new BadRequestException('invalid localDeliveryRegions')
+      }
+
+      const regionPayload =
+        region as Record<string, unknown>
+      const regionName =
+        typeof regionPayload.regionName === 'string'
+          ? regionPayload.regionName.trim()
+          : ''
+
+      if (!regionName || regionName.length > 100) {
+        throw new BadRequestException('배달 가능 지역명을 입력해 주세요.')
+      }
+
+      const regionNameKey =
+        regionName.toLowerCase()
+
+      if (seenRegionNames.has(regionNameKey)) {
+        throw new BadRequestException('같은 배달 가능 지역이 중복되었습니다.')
+      }
+
+      seenRegionNames.add(regionNameKey)
+
+      const regionCode =
+        typeof regionPayload.regionCode === 'string'
+          ? regionPayload.regionCode.trim() || null
+          : null
+
+      const deliveryFee =
+        Number(regionPayload.deliveryFee ?? 0)
+      const minimumOrderAmount =
+        Number(regionPayload.minimumOrderAmount ?? 0)
+
+      if (
+        !Number.isFinite(deliveryFee) ||
+        deliveryFee < 0 ||
+        !Number.isInteger(deliveryFee)
+      ) {
+        throw new BadRequestException('배달비는 0 이상 숫자만 입력해 주세요.')
+      }
+
+      if (
+        !Number.isFinite(minimumOrderAmount) ||
+        minimumOrderAmount < 0 ||
+        !Number.isInteger(minimumOrderAmount)
+      ) {
+        throw new BadRequestException('최소주문금액은 0 이상 숫자만 입력해 주세요.')
+      }
+
+      return {
+        regionName,
+        regionCode,
+        deliveryFee,
+        minimumOrderAmount,
+        sortOrder: index + 1,
+        isEnabled: regionPayload.isEnabled !== false
+      }
+    })
+  }
+
+  private mapProfileCustomDomain(
+    row: ProfileCustomDomainRow
+  ): ProfileCustomDomainPayload {
+    return {
+      id: row.id,
+      profileId: row.profile_id,
+      channelCode: row.channel_code,
+      customDomain: row.custom_domain,
+      domainStatus: row.domain_status,
+      isPrimary: row.is_primary === 1,
+      isActive: row.is_active === 1,
+      verifiedAt: row.verified_at,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      deletedAt: row.deleted_at
+    }
   }
 
   // SECTION 04 : PROFILE CORE READ
@@ -485,6 +752,17 @@ export class ProfileSettingsService {
         channelCode,
         channelURL,
         channelName,
+        (
+          SELECT custom_domain
+          FROM profile_custom_domains
+          WHERE profile_id = profiles.id
+            AND channel_code = profiles.channelCode
+            AND is_primary = 1
+            AND is_active = 1
+            AND deleted_at IS NULL
+          ORDER BY id DESC
+          LIMIT 1
+        ) AS customDomain,
         contactPhone,
         secondaryPhone,
         faxNumber,
@@ -514,13 +792,410 @@ export class ProfileSettingsService {
       WHERE id = ?
         AND profileType = 'BUSINESS'
       LIMIT 1
-    `).get(profileId) as BusinessProfileRow | undefined
+    `).get(profileId) as Omit<
+      BusinessProfileRow,
+      'enabledFulfillmentTypes' | 'localDeliveryRegions'
+    > | undefined
 
     if (!row) {
       throw new NotFoundException('Business profile not found')
     }
 
-    return row
+    return {
+      ...row,
+      enabledFulfillmentTypes: this.getEnabledFulfillmentTypes(
+        row.id,
+        row.channelCode
+      ),
+      localDeliveryRegions: this.getLocalDeliveryRegions(
+        row.id,
+        row.channelCode
+      )
+    }
+  }
+
+  getEnabledFulfillmentTypes(
+    profileId: number,
+    channelCode: string
+  ): FulfillmentTypeCode[] {
+    this.assertProfileId(profileId)
+
+    const rows = db.prepare(`
+      SELECT *
+      FROM market_fulfillment_settings
+      WHERE profile_id = ?
+        AND channel_code = ?
+        AND is_enabled = 1
+        AND deleted_at IS NULL
+      ORDER BY is_default DESC, id ASC
+    `).all(
+      profileId,
+      channelCode
+    ) as MarketFulfillmentSettingRow[]
+
+    const fulfillmentTypes =
+      rows.map((row) => row.fulfillment_type)
+
+    return fulfillmentTypes.length > 0
+      ? fulfillmentTypes
+      : ['NONE']
+  }
+
+  getLocalDeliveryRegions(
+    profileId: number,
+    channelCode: string
+  ): LocalDeliveryRegionPayload[] {
+    this.assertProfileId(profileId)
+
+    const rows = db.prepare(`
+      SELECT *
+      FROM business_local_delivery_regions
+      WHERE profile_id = ?
+        AND channel_code = ?
+        AND deleted_at IS NULL
+      ORDER BY sort_order ASC, id ASC
+    `).all(
+      profileId,
+      channelCode
+    ) as BusinessLocalDeliveryRegionRow[]
+
+    return rows.map((row) => ({
+      id: row.id,
+      regionName: row.region_name,
+      regionCode: row.region_code,
+      deliveryFee: row.delivery_fee,
+      minimumOrderAmount: row.minimum_order_amount,
+      sortOrder: row.sort_order,
+      isEnabled: row.is_enabled === 1
+    }))
+  }
+
+  getPrimaryCustomDomain(
+    profileId: number,
+    channelCode: string
+  ): ProfileCustomDomainRow | null {
+    this.assertProfileId(profileId)
+
+    const row = db.prepare(`
+      SELECT *
+      FROM profile_custom_domains
+      WHERE profile_id = ?
+        AND channel_code = ?
+        AND is_primary = 1
+        AND is_active = 1
+        AND deleted_at IS NULL
+      ORDER BY id DESC
+      LIMIT 1
+    `).get(
+      profileId,
+      channelCode
+    ) as ProfileCustomDomainRow | undefined
+
+    return row ?? null
+  }
+
+  resolveCustomDomain(
+    customDomain: string
+  ): ResolvedCustomDomainPayload | null {
+    const normalizedCustomDomain =
+      this.normalizeCustomDomain(customDomain)
+
+    if (!normalizedCustomDomain) {
+      return null
+    }
+
+    const row = db.prepare(`
+      SELECT *
+      FROM profile_custom_domains
+      WHERE custom_domain = ?
+        AND deleted_at IS NULL
+      ORDER BY is_primary DESC, id DESC
+      LIMIT 1
+    `).get(normalizedCustomDomain) as ProfileCustomDomainRow | undefined
+
+    if (!row) {
+      return null
+    }
+
+    return {
+      channelCode: row.channel_code,
+      profileId: row.profile_id,
+      domainStatus: row.domain_status,
+      isActive: row.is_active === 1
+    }
+  }
+
+  getProfileCustomDomains(
+    userId: number,
+    profileId: number,
+    channelCode: string
+  ): ProfileCustomDomainPayload[] {
+    this.assertProfileOwnershipWithChannel(userId, profileId, channelCode)
+
+    const rows = db.prepare(`
+      SELECT *
+      FROM profile_custom_domains
+      WHERE profile_id = ?
+        AND channel_code = ?
+        AND deleted_at IS NULL
+      ORDER BY is_primary DESC, id DESC
+    `).all(
+      profileId,
+      channelCode.trim()
+    ) as ProfileCustomDomainRow[]
+
+    return rows.map((row) => this.mapProfileCustomDomain(row))
+  }
+
+  connectCustomDomain(
+    userId: number,
+    profileId: number,
+    channelCode: string,
+    customDomain: unknown
+  ): ProfileCustomDomainPayload[] {
+    this.assertProfileOwnershipWithChannel(userId, profileId, channelCode)
+
+    this.saveCustomDomain(
+      profileId,
+      channelCode.trim(),
+      customDomain
+    )
+
+    return this.getProfileCustomDomains(
+      userId,
+      profileId,
+      channelCode
+    )
+  }
+
+  disconnectCustomDomain(
+    userId: number,
+    profileId: number,
+    channelCode: string,
+    domainId: number
+  ): ProfileCustomDomainPayload[] {
+    this.assertProfileOwnershipWithChannel(userId, profileId, channelCode)
+
+    if (!domainId) {
+      throw new BadRequestException('domainId missing')
+    }
+
+    db.prepare(`
+      UPDATE profile_custom_domains
+      SET
+        is_active = 0,
+        domain_status = 'DISABLED',
+        updated_at = CURRENT_TIMESTAMP,
+        deleted_at = COALESCE(deleted_at, CURRENT_TIMESTAMP)
+      WHERE id = ?
+        AND profile_id = ?
+        AND channel_code = ?
+        AND deleted_at IS NULL
+    `).run(
+      domainId,
+      profileId,
+      channelCode.trim()
+    )
+
+    return this.getProfileCustomDomains(
+      userId,
+      profileId,
+      channelCode
+    )
+  }
+
+  private saveCustomDomain(
+    profileId: number,
+    channelCode: string,
+    customDomain: unknown
+  ) {
+    if (customDomain === undefined) {
+      return
+    }
+
+    const normalizedCustomDomain =
+      this.normalizeCustomDomain(customDomain)
+
+    if (!normalizedCustomDomain) {
+      db.prepare(`
+        UPDATE profile_custom_domains
+        SET
+          is_active = 0,
+          domain_status = 'DISABLED',
+          updated_at = CURRENT_TIMESTAMP,
+          deleted_at = COALESCE(deleted_at, CURRENT_TIMESTAMP)
+        WHERE profile_id = ?
+          AND channel_code = ?
+          AND is_primary = 1
+          AND deleted_at IS NULL
+      `).run(
+        profileId,
+        channelCode
+      )
+
+      return
+    }
+
+    const duplicate = db.prepare(`
+      SELECT channel_code
+      FROM profile_custom_domains
+      WHERE custom_domain = ?
+        AND channel_code <> ?
+        AND deleted_at IS NULL
+      LIMIT 1
+    `).get(
+      normalizedCustomDomain,
+      channelCode
+    ) as { channel_code: string } | undefined
+
+    if (duplicate) {
+      throw new BadRequestException('이미 다른 채널에서 사용 중인 도메인입니다.')
+    }
+
+    const current =
+      this.getPrimaryCustomDomain(profileId, channelCode)
+
+    if (current) {
+      db.prepare(`
+        UPDATE profile_custom_domains
+        SET
+          custom_domain = ?,
+          domain_status = 'PENDING',
+          is_active = 1,
+          updated_at = CURRENT_TIMESTAMP,
+          deleted_at = NULL
+        WHERE id = ?
+      `).run(
+        normalizedCustomDomain,
+        current.id
+      )
+
+      return
+    }
+
+    db.prepare(`
+      INSERT INTO profile_custom_domains(
+        profile_id,
+        channel_code,
+        custom_domain,
+        domain_status,
+        is_primary,
+        is_active,
+        created_at,
+        updated_at
+      )
+      VALUES (?, ?, ?, 'PENDING', 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).run(
+      profileId,
+      channelCode,
+      normalizedCustomDomain
+    )
+  }
+
+  private saveFulfillmentTypes(
+    profileId: number,
+    channelCode: string,
+    enabledFulfillmentTypes: unknown
+  ) {
+    if (enabledFulfillmentTypes === undefined) {
+      return
+    }
+
+    const nextFulfillmentTypes =
+      this.normalizeFulfillmentTypes(enabledFulfillmentTypes)
+
+    db.prepare(`
+      UPDATE market_fulfillment_settings
+      SET
+        is_enabled = 0,
+        updated_at = CURRENT_TIMESTAMP,
+        deleted_at = COALESCE(deleted_at, CURRENT_TIMESTAMP)
+      WHERE profile_id = ?
+        AND channel_code = ?
+        AND deleted_at IS NULL
+    `).run(
+      profileId,
+      channelCode
+    )
+
+    for (const [index, fulfillmentType] of nextFulfillmentTypes.entries()) {
+      db.prepare(`
+        INSERT INTO market_fulfillment_settings(
+          profile_id,
+          channel_code,
+          fulfillment_type,
+          is_enabled,
+          is_default,
+          created_at,
+          updated_at
+        )
+        VALUES (?, ?, ?, 1, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `).run(
+        profileId,
+        channelCode,
+        fulfillmentType,
+        index === 0 ? 1 : 0
+      )
+    }
+  }
+
+  private saveLocalDeliveryRegions(
+    profileId: number,
+    channelCode: string,
+    enabledFulfillmentTypes: FulfillmentTypeCode[],
+    localDeliveryRegions: unknown
+  ) {
+    if (localDeliveryRegions === undefined) {
+      return
+    }
+
+    if (!enabledFulfillmentTypes.includes('LOCAL_DELIVERY')) {
+      return
+    }
+
+    const nextRegions =
+      this.normalizeLocalDeliveryRegions(localDeliveryRegions)
+
+    db.prepare(`
+      UPDATE business_local_delivery_regions
+      SET
+        is_enabled = 0,
+        updated_at = CURRENT_TIMESTAMP,
+        deleted_at = COALESCE(deleted_at, CURRENT_TIMESTAMP)
+      WHERE profile_id = ?
+        AND channel_code = ?
+        AND deleted_at IS NULL
+    `).run(
+      profileId,
+      channelCode
+    )
+
+    for (const region of nextRegions) {
+      db.prepare(`
+        INSERT INTO business_local_delivery_regions(
+          profile_id,
+          channel_code,
+          region_name,
+          region_code,
+          delivery_fee,
+          minimum_order_amount,
+          sort_order,
+          is_enabled,
+          created_at,
+          updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `).run(
+        profileId,
+        channelCode,
+        region.regionName,
+        region.regionCode,
+        region.deliveryFee,
+        region.minimumOrderAmount,
+        region.sortOrder,
+        region.isEnabled ? 1 : 0
+      )
+    }
   }
 
   getProfileBlocks(profileId: number): ProfileBlockRow[] {
@@ -873,6 +1548,9 @@ export class ProfileSettingsService {
 
   updateProfileCore(userId: number, profileId: number, channelCode: string, payload: {
     displayName?: string
+    customDomain?: string | null
+    enabledFulfillmentTypes?: string[] | null
+    localDeliveryRegions?: unknown
     placeFeedTypeCode?: string | null
   }) {
     this.assertProfileOwnershipWithChannel(userId, profileId, channelCode)
@@ -883,6 +1561,10 @@ export class ProfileSettingsService {
         payload.placeFeedTypeCode,
         current.placeFeedTypeCode ?? 'NORMAL'
       )
+    const nextFulfillmentTypes =
+      payload.enabledFulfillmentTypes === undefined
+        ? current.enabledFulfillmentTypes
+        : this.normalizeFulfillmentTypes(payload.enabledFulfillmentTypes)
 
     db.prepare(`
       UPDATE profiles
@@ -896,6 +1578,25 @@ export class ProfileSettingsService {
       payload.displayName ?? current.displayName,
       nextPlaceFeedTypeCode,
       profileId
+    )
+
+    this.saveCustomDomain(
+      profileId,
+      current.channelCode,
+      payload.customDomain
+    )
+
+    this.saveFulfillmentTypes(
+      profileId,
+      current.channelCode,
+      payload.enabledFulfillmentTypes
+    )
+
+    this.saveLocalDeliveryRegions(
+      profileId,
+      current.channelCode,
+      nextFulfillmentTypes,
+      payload.localDeliveryRegions
     )
 
     return this.getProfile(profileId)

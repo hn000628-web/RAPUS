@@ -33,6 +33,15 @@ import {
   getMe
 } from '@/lib/authApi'
 
+import {
+  buildProfileStoreRoute,
+  getProfileByChannelCode
+} from '@/lib/profile-summary-api'
+
+import type {
+  PlaceFeedTypeCode
+} from '@/lib/profile-summary-api'
+
 // SECTION 02 : TYPE
 
 type SidebarItem = {
@@ -91,6 +100,9 @@ export default function BusinessProfileSidebar() {
   const [channelCode, setChannelCode] =
     useState('')
 
+  const [placeFeedTypeCode, setPlaceFeedTypeCode] =
+    useState<PlaceFeedTypeCode | null>(null)
+
   useEffect(() => {
     let cancelled =
       false
@@ -106,9 +118,25 @@ export default function BusinessProfileSidebar() {
         if (!cancelled) {
           setChannelCode(nextChannelCode)
         }
+
+        if (nextChannelCode) {
+          try {
+            const profile =
+              await getProfileByChannelCode(nextChannelCode)
+
+            if (!cancelled) {
+              setPlaceFeedTypeCode(profile.placeFeedTypeCode ?? null)
+            }
+          } catch {
+            if (!cancelled) {
+              setPlaceFeedTypeCode(null)
+            }
+          }
+        }
       } catch {
         if (!cancelled) {
           setChannelCode('')
+          setPlaceFeedTypeCode(null)
         }
       }
     }
@@ -157,7 +185,7 @@ export default function BusinessProfileSidebar() {
         {BUSINESS_SIDEBAR_ITEMS.map((item) => {
           const targetHref =
             item.useChannelView && channelCode
-              ? `/channel/${channelCode}`
+              ? buildProfileStoreRoute(channelCode, placeFeedTypeCode)
               : item.href
 
           const isActive =

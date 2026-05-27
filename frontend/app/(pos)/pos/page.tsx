@@ -4,12 +4,19 @@
 'use client'
 
 // SECTION 01 : IMPORT
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import styles from './PosMainPage.module.css'
 
 import { usePosKeyboardMode } from './components/PosKeyboardModeContext'
 import PosTopbar from './components/PosTopbar'
+import {
+  getMyBusinessProfileFull
+} from '@/lib/business/profile-settings-api'
+import {
+  getEnabledPlaceFeedPosRoute
+} from '@/lib/profile-summary-api'
 
 // SECTION 02 : TYPE
 type HubItem = {
@@ -17,6 +24,8 @@ type HubItem = {
   title: string
   description: string
   path?: string
+  badge?: string
+  iconLabel?: string
 }
 
 // SECTION 03 : CONSTANT
@@ -44,6 +53,14 @@ const HUB_ITEMS: HubItem[] = [
     title: '설정',
     description: 'POS 설정으로 이동합니다.',
     path: '/pos/settings'
+  },
+  {
+    key: 'MARKET_ADMIN',
+    title: '마켓 운영센터',
+    description: '상품, 행사, 재고, 주문, 광고 등 마켓 운영을 통합 관리합니다.',
+    path: '/market_admin',
+    badge: 'NEW',
+    iconLabel: 'MART'
   }
 ]
 
@@ -51,6 +68,61 @@ const HUB_ITEMS: HubItem[] = [
 export default function PosHubPage() {
   const router = useRouter()
   const { keyboardMode, toggleKeyboardMode } = usePosKeyboardMode()
+  const [isResolvingPreset, setIsResolvingPreset] = useState(true)
+
+  useEffect(() => {
+    let isActive = true
+
+    const finishResolvingPreset = () => {
+      if (!isActive) {
+        return
+      }
+
+      setIsResolvingPreset(false)
+    }
+
+    const routeByBusinessPlaceFeedType = async () => {
+      try {
+        const businessProfileFull =
+          await getMyBusinessProfileFull()
+
+        if (!isActive) {
+          return
+        }
+
+        if (businessProfileFull.profile?.profileType !== 'BUSINESS') {
+          finishResolvingPreset()
+          return
+        }
+
+        const placeFeedTypeCode =
+          businessProfileFull.profile.placeFeedTypeCode ??
+          businessProfileFull.placeFeedTypeCode ??
+          'NORMAL'
+
+        const targetRoute =
+          getEnabledPlaceFeedPosRoute(placeFeedTypeCode)
+
+        if (!targetRoute || targetRoute === '/pos') {
+          finishResolvingPreset()
+          return
+        }
+
+        router.replace(targetRoute)
+      } catch {
+        // BUSINESS profile context가 없으면 기존 POS 허브를 유지합니다.
+        finishResolvingPreset()
+      }
+    }
+
+    void routeByBusinessPlaceFeedType()
+
+    return () => {
+      isActive = false
+    }
+  }, [
+    router
+  ])
 
   // SECTION 05 : EVENT FUNCTION
   const handleGoMyPage = () => {
@@ -71,6 +143,41 @@ export default function PosHubPage() {
     }
 
     router.push(item.path)
+  }
+
+  if (isResolvingPreset) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.posShell}>
+          <div className={styles.topbarWrap}>
+            <div className={styles.topbarInner}>
+              <PosTopbar
+                title="POS 메인"
+                onHomeClick={handleGoPosHome}
+                onSettingsClick={handleOpenPosSettings}
+                onMyPageClick={handleGoMyPage}
+                syncStatus="SYNCING"
+                homeShortcutLabel="F1"
+                keyboardMode={keyboardMode}
+                onToggleKeyboardMode={toggleKeyboardMode}
+              />
+            </div>
+          </div>
+
+          <main className={styles.loadingMain}>
+            <section className={styles.loadingPanel} aria-live="polite">
+              <span className={styles.loadingSpinner} aria-hidden="true" />
+              <h1 className={styles.loadingTitle}>
+                POS 운영모드 확인중...
+              </h1>
+              <p className={styles.loadingDescription}>
+                현재 비즈니스 프로필에 맞는 운영 화면을 준비하고 있습니다.
+              </p>
+            </section>
+          </main>
+        </div>
+      </div>
+    )
   }
 
   // SECTION 06 : RETURN
@@ -99,13 +206,49 @@ export default function PosHubPage() {
                 const isEnabled = Boolean(item.path)
 
                 return (
-                  <article key={item.key} className={styles.card}>
+                  <article
+                    key={item.key}
+                    className={[
+                      styles.card,
+                      isEnabled ? styles.cardClickable : ''
+                    ].filter(Boolean).join(' ')}
+                    role={isEnabled ? 'button' : undefined}
+                    tabIndex={isEnabled ? 0 : undefined}
+                    onClick={() => handleClickItem(item)}
+                    onKeyDown={(event) => {
+                      if (!isEnabled) {
+                        return
+                      }
+
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        handleClickItem(item)
+                      }
+                    }}
+                  >
+                    {(item.badge || item.iconLabel) ? (
+                      <div className={styles.cardMetaRow}>
+                        {item.iconLabel ? (
+                          <span className={styles.cardIcon}>
+                            {item.iconLabel}
+                          </span>
+                        ) : null}
+                        {item.badge ? (
+                          <span className={styles.cardBadge}>
+                            {item.badge}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <h2 className={styles.cardTitle}>{item.title}</h2>
                     <p className={styles.cardDescription}>{item.description}</p>
                     <button
                       type="button"
                       className={isEnabled ? styles.cardButton : styles.cardButtonDisabled}
-                      onClick={() => handleClickItem(item)}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        handleClickItem(item)
+                      }}
                       disabled={!isEnabled}
                     >
                       {isEnabled ? '이동' : '준비중'}

@@ -56,6 +56,7 @@ type CsvRow = {
 const BASE_CODE_REGEX = /^[A-Z0-9]{12}$/
 const ALLOWED_BUSINESS_TYPE_CODES = new Set([
   'STORE',
+  'SHOPPING_MALL',
   'FREELANCER',
   'MOBILE_BIZ'
 ])

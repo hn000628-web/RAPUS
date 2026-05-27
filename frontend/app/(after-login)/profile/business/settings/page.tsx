@@ -75,7 +75,7 @@ type ProfileSummaryLike = {
   contactPhone?: string | null
   channelName?: string | null
   channelURL?: string | null
-  businessTypeCode?: 'STORE' | 'FREELANCER' | 'MOBILE_BIZ' | null
+  businessTypeCode?: 'STORE' | 'SHOPPING_MALL' | 'FREELANCER' | 'MOBILE_BIZ' | null
   primaryIndustryId?: number | null
   primaryIndustrySubtypeId?: number | null
 }
@@ -168,7 +168,7 @@ export default function BusinessProfileSettingsPage() {
     useState('')
 
   const [businessTypeCode, setBusinessTypeCode] =
-    useState<'STORE' | 'FREELANCER' | 'MOBILE_BIZ' | null>(null)
+    useState<'STORE' | 'SHOPPING_MALL' | 'FREELANCER' | 'MOBILE_BIZ' | null>(null)
 
   const [displayIndustryLabel, setDisplayIndustryLabel] =
     useState('')
@@ -540,10 +540,14 @@ export default function BusinessProfileSettingsPage() {
   }
 
   function businessTypeCodeToLabel(
-    typeCode?: 'STORE' | 'FREELANCER' | 'MOBILE_BIZ' | null
+    typeCode?: 'STORE' | 'SHOPPING_MALL' | 'FREELANCER' | 'MOBILE_BIZ' | null
   ) {
     if (typeCode === 'STORE') {
-      return '스토어'
+      return '고정형마켓'
+    }
+
+    if (typeCode === 'SHOPPING_MALL') {
+      return '쇼핑몰형'
     }
 
     if (typeCode === 'FREELANCER') {
@@ -658,7 +662,7 @@ export default function BusinessProfileSettingsPage() {
 
       const resolvedBusinessTypeCode =
         (currentIndustry?.current as {
-          businessTypeCode?: 'STORE' | 'FREELANCER' | 'MOBILE_BIZ' | null
+          businessTypeCode?: 'STORE' | 'SHOPPING_MALL' | 'FREELANCER' | 'MOBILE_BIZ' | null
         } | undefined)?.businessTypeCode ||
         summary.businessTypeCode ||
         null

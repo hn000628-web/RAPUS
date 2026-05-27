@@ -94,6 +94,14 @@ import {
 } from '@/lib/authApi'
 
 import {
+  buildProfileStoreRoute
+} from '@/lib/profile-summary-api'
+
+import type {
+  PlaceFeedTypeCode
+} from '@/lib/profile-summary-api'
+
+import {
   useAuthGuard
 } from '@/lib/useAuthGuard'
 
@@ -172,6 +180,7 @@ type BusinessPageProfile = {
   businessTypeLabel?: string
   industryDisplay?: string
   channelCode?: string
+  placeFeedTypeCode?: PlaceFeedTypeCode | null
 }
 
 type StoredSessionShape = {
@@ -186,6 +195,7 @@ type BusinessProfileDetailResponse = {
     bio: string | null
     channelCode: string
     businessTypeCode?: string | null
+    placeFeedTypeCode?: PlaceFeedTypeCode | null
   }
   industry: {
     industry: {
@@ -282,7 +292,7 @@ const DEFAULT_BUSINESS_NAME =
   '비즈니스 프로필'
 
 const DEFAULT_BUSINESS_TYPE_LABEL =
-  '스토어'
+  '고정형마켓'
 
 const DEFAULT_SUBSCRIBER_COUNT =
   0
@@ -491,7 +501,8 @@ export default function BusinessProfilePage() {
       blocks: [],
       region: null,
       industryDisplay: undefined,
-      channelCode
+      channelCode,
+      placeFeedTypeCode: null
     }
   }
 
@@ -523,7 +534,11 @@ export default function BusinessProfilePage() {
     businessTypeCode?: string | null
   ): string | undefined {
     if (businessTypeCode === 'STORE') {
-      return '스토어'
+      return '고정형마켓'
+    }
+
+    if (businessTypeCode === 'SHOPPING_MALL') {
+      return '쇼핑몰형'
     }
 
     if (businessTypeCode === 'FREELANCER') {
@@ -649,7 +664,8 @@ export default function BusinessProfilePage() {
       region: mapRegion(detail),
       businessTypeLabel: resolveBusinessTypeLabel(detail),
       industryDisplay: buildIndustryDisplay(detail),
-      channelCode: detail.profile.channelCode
+      channelCode: detail.profile.channelCode,
+      placeFeedTypeCode: detail.profile.placeFeedTypeCode ?? null
     }
   }
 
@@ -812,15 +828,23 @@ export default function BusinessProfilePage() {
   const businessChannelShareUrl =
     useMemo(() => {
       if (profile?.channelCode) {
+        const routePath =
+          buildProfileStoreRoute(
+            profile.channelCode,
+            profile.placeFeedTypeCode
+          )
+
         if (typeof window !== 'undefined') {
-          return `${window.location.origin}/channel/${profile.channelCode}`
+          return `${window.location.origin}${routePath}`
         }
-        return `/channel/${profile.channelCode}`
+
+        return routePath
       }
 
       return DEFAULT_BUSINESS_CHANNEL_URL
     }, [
-      profile?.channelCode
+      profile?.channelCode,
+      profile?.placeFeedTypeCode
     ])
 
   const viewerImages =
@@ -1049,7 +1073,13 @@ export default function BusinessProfilePage() {
     if (!channelCode) {
       return
     }
-    router.push(`/channel/${channelCode}`)
+
+    router.push(
+      buildProfileStoreRoute(
+        channelCode,
+        profile?.placeFeedTypeCode
+      )
+    )
   }
 
   function handleOpenQrCode() {
@@ -1501,7 +1531,7 @@ export default function BusinessProfilePage() {
         className={styles.actionButton}
         onClick={handleOpenQrCode}
       >
-        QR코드
+        URL 경로(QR코드)
       </button>
     </div>
   )

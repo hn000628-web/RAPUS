@@ -22,12 +22,21 @@ import {
 
 import QRCode from 'react-qr-code'
 
+import {
+  buildProfileStoreRoute
+} from '@/lib/profile-summary-api'
+
+import type {
+  PlaceFeedTypeCode
+} from '@/lib/profile-summary-api'
+
 // SECTION 02 : TYPE
 
 type ChannelQRCodeProps = {
   channelCode: string
   channelId: string
   channelName?: string
+  placeFeedTypeCode?: PlaceFeedTypeCode | null
 }
 
 // SECTION 03 : CONSTANT
@@ -46,7 +55,8 @@ const DEFAULT_BRAND_NAME =
 export default function ChannelQRCode({
   channelCode,
   channelId,
-  channelName
+  channelName,
+  placeFeedTypeCode
 }: ChannelQRCodeProps) {
   // SECTION 05 : REF / STATE
 
@@ -72,7 +82,10 @@ export default function ChannelQRCode({
     (channelName || channelId || safeCode).trim()
 
   const publicChannelPath =
-    `/channel/${encodeURIComponent(safeCode)}`
+    buildProfileStoreRoute(
+      encodeURIComponent(safeCode),
+      placeFeedTypeCode
+    )
 
   const publicChannelUrl =
     typeof window !== 'undefined'

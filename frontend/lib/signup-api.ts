@@ -19,6 +19,7 @@ export type SignupProfileType =
 export type SignupBusinessTypeCode =
   | 'NORMAL'
   | 'STORE'
+  | 'SHOPPING_MALL'
   | 'FREELANCER'
   | 'MOBILE_BIZ'
 
@@ -104,6 +105,7 @@ function isSignupBusinessTypeCode(
   return (
     businessTypeCode === 'NORMAL'
     || businessTypeCode === 'STORE'
+    || businessTypeCode === 'SHOPPING_MALL'
     || businessTypeCode === 'FREELANCER'
     || businessTypeCode === 'MOBILE_BIZ'
   )

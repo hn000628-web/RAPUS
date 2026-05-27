@@ -12,8 +12,13 @@
 
 // SECTION 01 : TYPE
 
+import type {
+  PlaceFeedTypeCode
+} from '@/lib/profile-summary-api'
+
 export type PlaceFeedItem = {
   channelCode: string
+  placeFeedTypeCode?: PlaceFeedTypeCode | null
   displayName: string
   bio: string
   imageUrl: string | null

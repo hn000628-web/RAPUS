@@ -16,7 +16,9 @@ import {
 } from '@/lib/authApi'
 
 import {
+  buildProfileStoreRoute,
   getProfileByChannelCode,
+  type PlaceFeedTypeCode,
   type ProfileDetailPayload
 } from '@/lib/profile-summary-api'
 
@@ -35,6 +37,7 @@ type ChannelState = {
   channelCode: string
   channelName: string
   displayName: string
+  placeFeedTypeCode: PlaceFeedTypeCode | null
 }
 
 type RowProps = {
@@ -66,7 +69,8 @@ export default function BusinessChannelSettingsPage() {
     profileId: null,
     channelCode: '',
     channelName: '',
-    displayName: ''
+    displayName: '',
+    placeFeedTypeCode: null
   })
 
   const [loading, setLoading] = useState(false)
@@ -87,11 +91,20 @@ export default function BusinessChannelSettingsPage() {
     }
 
     if (typeof window !== 'undefined') {
-      return `${window.location.origin}/channel/${channel.channelCode}`
+      return `${window.location.origin}${buildProfileStoreRoute(
+        channel.channelCode,
+        channel.placeFeedTypeCode
+      )}`
     }
 
-    return `/channel/${channel.channelCode}`
-  }, [channel.channelCode])
+    return buildProfileStoreRoute(
+      channel.channelCode,
+      channel.placeFeedTypeCode
+    )
+  }, [
+    channel.channelCode,
+    channel.placeFeedTypeCode
+  ])
 
   const qrChannelId = useMemo(() => {
     return (
@@ -134,7 +147,8 @@ export default function BusinessChannelSettingsPage() {
         profileId: businessChannel.id || summary.id || null,
         channelCode: businessChannel.channelCode || summary.channelCode || currentChannelCode,
         channelName: businessChannel.channelName || summary.channelName || '',
-        displayName: summary.displayName || ''
+        displayName: summary.displayName || '',
+        placeFeedTypeCode: summary.placeFeedTypeCode ?? null
       })
 
       setInitialLoading(false)
@@ -310,6 +324,7 @@ export default function BusinessChannelSettingsPage() {
         <ChannelQRCode
           channelCode={channel.channelCode}
           channelId={qrChannelId}
+          placeFeedTypeCode={channel.placeFeedTypeCode}
         />
       </div>
 

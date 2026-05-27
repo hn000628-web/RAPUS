@@ -155,7 +155,61 @@ export class ProfileSettingsController {
     return this.service.getHeroImages(profileId)
   }
 
+  @Get(':profileId/domains')
+  @UseGuards(JwtAuthGuard)
+  getProfileCustomDomains(
+    @Param('profileId', ParseIntPipe) profileId: number,
+    @Req() req: AuthRequest
+  ) {
+    const userId = req.user?.id ?? req.user?.userId ?? 0
+    const channelCode = req.user?.channelCode ?? ''
+
+    return this.service.getProfileCustomDomains(
+      userId,
+      profileId,
+      channelCode
+    )
+  }
+
   // SECTION 05 : WRITE
+
+  @Patch(':profileId/domains')
+  @UseGuards(JwtAuthGuard)
+  connectCustomDomain(
+    @Param('profileId', ParseIntPipe) profileId: number,
+    @Req() req: AuthRequest,
+    @Body() body: {
+      customDomain?: string | null
+    }
+  ) {
+    const userId = req.user?.id ?? req.user?.userId ?? 0
+    const channelCode = req.user?.channelCode ?? ''
+
+    return this.service.connectCustomDomain(
+      userId,
+      profileId,
+      channelCode,
+      body.customDomain
+    )
+  }
+
+  @Patch(':profileId/domains/:domainId/disconnect')
+  @UseGuards(JwtAuthGuard)
+  disconnectCustomDomain(
+    @Param('profileId', ParseIntPipe) profileId: number,
+    @Param('domainId', ParseIntPipe) domainId: number,
+    @Req() req: AuthRequest
+  ) {
+    const userId = req.user?.id ?? req.user?.userId ?? 0
+    const channelCode = req.user?.channelCode ?? ''
+
+    return this.service.disconnectCustomDomain(
+      userId,
+      profileId,
+      channelCode,
+      domainId
+    )
+  }
 
   @Patch(':profileId/core')
   @UseGuards(JwtAuthGuard)
@@ -164,6 +218,9 @@ export class ProfileSettingsController {
     @Req() req: AuthRequest,
     @Body() body: {
       displayName?: string
+      customDomain?: string | null
+      enabledFulfillmentTypes?: string[] | null
+      localDeliveryRegions?: unknown
       placeFeedTypeCode?: string | null
     }
   ) {

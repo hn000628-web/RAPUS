@@ -33,7 +33,7 @@ type SignupBody = {
   password: string
   profileType: 'GENERAL' | 'BUSINESS'
   displayName?: string
-  businessTypeCode?: 'NORMAL' | 'STORE' | 'FREELANCER' | 'MOBILE_BIZ'
+  businessTypeCode?: 'NORMAL' | 'STORE' | 'SHOPPING_MALL' | 'FREELANCER' | 'MOBILE_BIZ'
 }
 
 type JwtUser = {

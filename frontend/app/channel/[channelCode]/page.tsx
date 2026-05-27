@@ -276,7 +276,11 @@ function resolveBusinessTypeLabel(
     .toUpperCase()
 
   if (raw === 'STORE') {
-    return '스토어'
+    return '고정형마켓'
+  }
+
+  if (raw === 'SHOPPING_MALL') {
+    return '쇼핑몰형'
   }
 
   if (raw === 'FREELANCER') {
@@ -287,7 +291,7 @@ function resolveBusinessTypeLabel(
     return '이동형'
   }
 
-  return '스토어'
+  return '고정형마켓'
 }
 
 function normalizePostType(

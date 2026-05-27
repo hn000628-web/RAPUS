@@ -38,9 +38,17 @@ import {
   getPlaceRepresentativeImages
 } from '@/lib/place-feed-api'
 
+import {
+  buildProfileStoreRoute
+} from '@/lib/profile-summary-api'
+
 import type {
   PlaceFeedItem
 } from '@/lib/place-feed-api'
+
+import type {
+  PlaceFeedTypeCode
+} from '@/lib/profile-summary-api'
 
 import {
   useRegion
@@ -100,6 +108,7 @@ type PlaceModalProductPreviewItem = {
 
 type PlaceStoreGroup = {
   channelCode: string
+  placeFeedTypeCode?: PlaceFeedTypeCode | null
   displayName: string
   regionName: string | null
   industryName: string | null
@@ -638,6 +647,7 @@ function PlaceFeedPageContent() {
 
     return {
       channelCode: anchor.channelCode,
+      placeFeedTypeCode: anchor.placeFeedTypeCode ?? null,
       displayName: anchor.displayName,
       regionName: anchor.regionName,
       industryName: anchor.industryName,
@@ -852,6 +862,7 @@ function buildRepresentativePreviewItems(
 
   function handleOpenPlace(
     channelCode: string,
+    placeFeedTypeCode?: PlaceFeedTypeCode | null,
     openOrder = false
   ) {
     const safeChannelCode = String(channelCode || '').trim()
@@ -859,11 +870,28 @@ function buildRepresentativePreviewItems(
       return
     }
 
+    const routePath =
+      buildProfileStoreRoute(
+        safeChannelCode,
+        placeFeedTypeCode
+      )
+
     router.push(
       openOrder
-        ? `/channel/${safeChannelCode}?openOrder=true`
-        : `/channel/${safeChannelCode}`
+        ? `${routePath}?openOrder=true`
+        : routePath
     )
+  }
+
+  function handleOpenChannelGuide(
+    channelCode: string
+  ) {
+    const safeChannelCode = String(channelCode || '').trim()
+    if (!safeChannelCode) {
+      return
+    }
+
+    router.push(`/channel/${safeChannelCode}`)
   }
 
   async function handleOpenStoreProductModal(place: PlaceFeedItem) {
@@ -873,9 +901,10 @@ function buildRepresentativePreviewItems(
       keyword.trim().length > 0
 
     const baseGroup = hasSearchKeyword
-      ? buildStoreGroupForModal(place, displayedPlaces)
-      : {
+        ? buildStoreGroupForModal(place, displayedPlaces)
+        : {
           channelCode: place.channelCode,
+          placeFeedTypeCode: place.placeFeedTypeCode ?? null,
           displayName: place.displayName,
           regionName: place.regionName,
           industryName: place.industryName,
@@ -1516,7 +1545,11 @@ function buildRepresentativePreviewItems(
               setIsStoreViewHovered(false)
             }}
             onClick={() => {
-              handleOpenPlace(selectedStoreGroup.channelCode, false)
+              handleOpenPlace(
+                selectedStoreGroup.channelCode,
+                selectedStoreGroup.placeFeedTypeCode,
+                false
+              )
             }}
           >
             매장보기
@@ -1536,10 +1569,10 @@ function buildRepresentativePreviewItems(
               setIsStoreOrderHovered(false)
             }}
             onClick={() => {
-              handleOpenPlace(selectedStoreGroup.channelCode, true)
+              handleOpenChannelGuide(selectedStoreGroup.channelCode)
             }}
           >
-            주문하기
+            매장안내
           </button>
         </div>
       </section>

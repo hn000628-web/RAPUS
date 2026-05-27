@@ -6,7 +6,7 @@
 // - BUSINESS 업종설정 전용 service 유지
 // - business_types 조회 / 현재 비즈니스 타입 조회 / 비즈니스 타입 저장 로직 추가
 // - profiles.businessTypeId / businessTypeCode 저장 구조 추가
-// - GENERAL = NULL / BUSINESS = NORMAL | STORE | FREELANCER | MOBILE_BIZ 구조 유지
+// - GENERAL = NULL / BUSINESS = NORMAL | STORE | SHOPPING_MALL | FREELANCER | MOBILE_BIZ 구조 유지
 // - profileId + channelCode + BUSINESS 컨텍스트 동시 검증 유지
 // - industries / industry_subtypes 기준 검색 / 조회 / 저장 로직 유지
 // - profiles.primaryIndustry* 칼럼 저장 구조 유지
@@ -38,7 +38,7 @@ type BusinessProfileContextRow = {
 
 type BusinessTypeRow = {
   id: number
-  code: 'NORMAL' | 'STORE' | 'FREELANCER' | 'MOBILE_BIZ'
+  code: BusinessTypeCode
   name: string
   description: string | null
   sortOrder: number | null
@@ -83,7 +83,7 @@ type CurrentBusinessIndustryPayload = {
 
 type BusinessTypeItem = {
   businessTypeId: number
-  businessTypeCode: 'NORMAL' | 'STORE' | 'FREELANCER' | 'MOBILE_BIZ'
+  businessTypeCode: BusinessTypeCode
   businessTypeName: string
   description: string | null
   sortOrder: number
@@ -166,8 +166,15 @@ type UpdateBusinessTypePayload = {
   profileId: number
   channelCode: string
   businessTypeId: number
-  businessTypeCode: 'NORMAL' | 'STORE' | 'FREELANCER' | 'MOBILE_BIZ'
+  businessTypeCode: BusinessTypeCode
 }
+
+type BusinessTypeCode =
+  | 'NORMAL'
+  | 'STORE'
+  | 'SHOPPING_MALL'
+  | 'FREELANCER'
+  | 'MOBILE_BIZ'
 
 // SECTION 03 : SERVICE
 
@@ -210,7 +217,7 @@ export class BusinessIndustryService {
 
   private normalizeRequiredBusinessTypeCode(
     businessTypeCode: string
-  ): 'NORMAL' | 'STORE' | 'FREELANCER' | 'MOBILE_BIZ' {
+  ): BusinessTypeCode {
     if (typeof businessTypeCode !== 'string') {
       throw new BadRequestException('businessTypeCode missing')
     }
@@ -221,6 +228,7 @@ export class BusinessIndustryService {
     if (
       normalizedBusinessTypeCode !== 'NORMAL' &&
       normalizedBusinessTypeCode !== 'STORE' &&
+      normalizedBusinessTypeCode !== 'SHOPPING_MALL' &&
       normalizedBusinessTypeCode !== 'FREELANCER' &&
       normalizedBusinessTypeCode !== 'MOBILE_BIZ'
     ) {

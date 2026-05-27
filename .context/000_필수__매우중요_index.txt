@@ -17,7 +17,9 @@ PRODUCT_ID_PRODUCT_CODE_SOURCE_TYPE_RULE_SNAPSHOT
 상품코드 규칙_productCode
 바코드 등록 템플릿 CSV : .context/master_barcodes/master_barcode_import_template
 
+
 ☆[Always]☆
+※사용자_계층전략_절대규칙※
 ※작업 완료 후 반드시 [000_작업지시_절대규칙.txt] 기준으로 완료보고서를 제출한다.※
 ※한글 코딩시 무조건 [UTF-8]로 코딩 강제규칙사항※
 000_POS UI 수정 기본 컨텍스트

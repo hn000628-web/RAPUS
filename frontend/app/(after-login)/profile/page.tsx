@@ -39,6 +39,7 @@ import {
 import {
   buildProfileStoreRoute,
   getProfileByChannelCode,
+  hasPlaceFeedPresetCapability,
   type PlaceFeedTypeCode
 } from '@/lib/profile-summary-api'
 import type {
@@ -107,6 +108,11 @@ const BUSINESS_MANAGEMENT_ITEMS: HubCardItem[] = [
   {
     title: '비즈니스 정보 관리',
     description: '/profile/business/account'
+  },
+  {
+    title: '도메인 관리',
+    description: '사업자 도메인 검색 및 연결 관리',
+    path: '/profile/business/domain'
   },
   {
     title: '고객 관리',
@@ -498,6 +504,12 @@ export default function ProfileHubPage() {
     router.push('/profile/business/account')
   }
 
+  const canUseProductSystem =
+    hasPlaceFeedPresetCapability(
+      businessPlaceFeedTypeCode,
+      'productSystem'
+    )
+
   // SECTION 08 : RETURN
 
   if (loadingAccount) {
@@ -528,6 +540,7 @@ export default function ProfileHubPage() {
         onMoveBusinessAccount={moveToBusinessAccountPage}
         onMoveStoreView={moveToBusinessStoreView}
         onMovePosView={moveToBusinessPosView}
+        canUseProductSystem={canUseProductSystem}
       />
     )
   }
