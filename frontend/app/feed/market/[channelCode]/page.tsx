@@ -56,6 +56,9 @@ type MarketProduct = {
   specInfo: string
   priceLabel: string
   thumbnailUrl: string | null
+  currentStock?: number
+  safeStock?: number
+  isSoldOut?: boolean
 }
 
 type MarketChannel = {
@@ -114,7 +117,10 @@ const MARKET_CHANNELS: MarketChannel[] = [
         categoryName: '식품',
         specInfo: '120g',
         priceLabel: '1,100원',
-        thumbnailUrl: null
+        thumbnailUrl: null,
+        currentStock: 0,
+        safeStock: 5,
+        isSoldOut: true
       },
       {
         id: 'rapus-002',
@@ -125,7 +131,9 @@ const MARKET_CHANNELS: MarketChannel[] = [
         categoryName: '음료',
         specInfo: '500ml',
         priceLabel: '1,500원',
-        thumbnailUrl: null
+        thumbnailUrl: null,
+        currentStock: 3,
+        safeStock: 5
       },
       {
         id: 'rapus-003',
@@ -323,6 +331,27 @@ function getChannelCodeFromParams(value: string | string[] | undefined): string 
 
 function getThumbnailLabel(product: MarketProduct): string {
   return product.categoryName.trim().slice(0, 2)
+}
+
+function isMarketProductSoldOut(product: MarketProduct): boolean {
+  return Boolean(product.isSoldOut) || Number(product.currentStock ?? 1) <= 0
+}
+
+function isMarketProductLowStock(product: MarketProduct): boolean {
+  if (isMarketProductSoldOut(product)) {
+    return false
+  }
+
+  const currentStock =
+    product.currentStock
+  const safeStock =
+    product.safeStock
+
+  if (currentStock === undefined || safeStock === undefined) {
+    return false
+  }
+
+  return currentStock > 0 && currentStock <= safeStock
 }
 
 function MarketCategoryShowcaseCard({
@@ -1086,51 +1115,80 @@ export default function MarketChannelHubPage() {
               </section>
             ) : (
               <div className={styles.cardGrid}>
-                {pagedProducts.map((product) => (
-                  <article
-                    key={product.id}
-                    className={styles.productCard}
-                  >
-                    <div className={styles.thumbnail}>
-                      <span className={styles.brandBadge}>
-                        {product.brandName}
-                      </span>
+                {pagedProducts.map((product) => {
+                  const isSoldOut =
+                    isMarketProductSoldOut(product)
+                  const isLowStock =
+                    isMarketProductLowStock(product)
 
-                      <span className={styles.badge}>
-                        행사상품
-                      </span>
+                  return (
+                    <article
+                      key={product.id}
+                      className={styles.productCard}
+                    >
+                      <div className={styles.thumbnail}>
+                        <span className={styles.brandBadge}>
+                          {product.brandName}
+                        </span>
 
-                      <span className={styles.priceBadge}>
-                        {product.priceLabel}
-                      </span>
+                        <span className={styles.badge}>
+                          행사상품
+                        </span>
 
-                      {product.thumbnailUrl ? (
-                        <Image
-                          src={product.thumbnailUrl}
-                          alt={`${product.productName} 썸네일`}
-                          className={styles.thumbnailImage}
-                          fill
-                          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className={styles.thumbnailPlaceholder}>
-                          {getThumbnailLabel(product)}
-                        </div>
-                      )}
-                    </div>
+                        <span className={styles.priceBadge}>
+                          {product.priceLabel}
+                        </span>
 
-                    <div className={styles.cardBody}>
-                      <strong className={styles.productName}>
-                        {product.productName}
-                      </strong>
+                        {isLowStock ? (
+                          <span className={styles.lowStockBadge}>
+                            재고 부족
+                          </span>
+                        ) : null}
 
-                      <p className={styles.metaText}>
-                        {product.categoryName} · {product.specInfo}
-                      </p>
-                    </div>
-                  </article>
-                ))}
+                        {product.thumbnailUrl ? (
+                          <Image
+                            src={product.thumbnailUrl}
+                            alt={`${product.productName} 썸네일`}
+                            className={[
+                              styles.thumbnailImage,
+                              isSoldOut ? styles.thumbnailImageSoldOut : ''
+                            ].filter(Boolean).join(' ')}
+                            fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                            unoptimized
+                          />
+                        ) : (
+                          <div
+                            className={[
+                              styles.thumbnailPlaceholder,
+                              isSoldOut ? styles.thumbnailPlaceholderSoldOut : ''
+                            ].filter(Boolean).join(' ')}
+                          >
+                            {getThumbnailLabel(product)}
+                          </div>
+                        )}
+
+                        {isSoldOut ? (
+                          <div className={styles.soldOutOverlay}>
+                            <span>
+                              품절
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className={styles.cardBody}>
+                        <strong className={styles.productName}>
+                          {product.productName}
+                        </strong>
+
+                        <p className={styles.metaText}>
+                          {product.categoryName} · {product.specInfo}
+                        </p>
+                      </div>
+                    </article>
+                  )
+                })}
               </div>
             )}
 

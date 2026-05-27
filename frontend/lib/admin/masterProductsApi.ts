@@ -77,6 +77,37 @@ export type UpdateMasterProductThumbnailResponse = {
   filePath: string
 }
 
+export type MasterProductThumbnailBatchIssue = {
+  fileName: string
+  reason: string
+  productCode: string | null
+  scanCodeValue: string | null
+  uploadStatus: 'SKIPPED' | 'FAILED'
+  linkedThumbnail: string | null
+  createdAt: string
+}
+
+export type MasterProductThumbnailBatchReportRow = {
+  fileName: string
+  productCode: string | null
+  scanCodeValue: string | null
+  uploadStatus: 'SUCCESS' | 'SKIPPED' | 'FAILED'
+  reason: string | null
+  linkedThumbnail: string | null
+  createdAt: string
+}
+
+export type UploadMasterProductThumbnailBatchResponse = {
+  success: true
+  totalFiles: number
+  successCount: number
+  skippedCount: number
+  failedCount: number
+  successFiles: MasterProductThumbnailBatchReportRow[]
+  skippedFiles: MasterProductThumbnailBatchIssue[]
+  failedFiles: MasterProductThumbnailBatchIssue[]
+}
+
 function resolveThumbnailUrl(thumbnailUrl: string | null): string | null {
   if (!thumbnailUrl) {
     return null
@@ -162,6 +193,26 @@ export function updateMasterProductThumbnail(params: {
     `/master-products/${params.productId}/thumbnail`,
     formData,
     'PATCH'
+  )
+}
+
+export function uploadMasterProductThumbnailBatch(params: {
+  files: File[]
+}): Promise<UploadMasterProductThumbnailBatchResponse> {
+  const formData = new FormData()
+  params.files.forEach((file) => {
+    if (file.name.toLowerCase().endsWith('.zip')) {
+      formData.append('zipFile', file)
+      return
+    }
+
+    formData.append('imageFiles', file)
+  })
+
+  return adminFileFetch<UploadMasterProductThumbnailBatchResponse>(
+    '/master-products/thumbnail-batch-upload',
+    formData,
+    'POST'
   )
 }
 

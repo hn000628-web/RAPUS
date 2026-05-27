@@ -7,9 +7,10 @@ import {
   Post,
   Query,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor, FileInterceptor } from '@nestjs/platform-express';
 import { MasterProductsService } from './master-products.service';
 
 @Controller('admin/master-products')
@@ -66,6 +67,26 @@ export class MasterProductsController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     return this.masterProductsService.updateThumbnail(productId, file);
+  }
+
+  @Post('thumbnail-batch-upload')
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'zipFile', maxCount: 1 },
+      { name: 'imageFiles', maxCount: 100 },
+    ]),
+  )
+  uploadThumbnailBatch(
+    @UploadedFiles()
+    files?: {
+      zipFile?: Express.Multer.File[];
+      imageFiles?: Express.Multer.File[];
+    },
+  ) {
+    return this.masterProductsService.uploadThumbnailBatch(
+      files?.zipFile?.[0],
+      files?.imageFiles ?? [],
+    );
   }
 
   @Post('from-barcode')

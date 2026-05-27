@@ -320,6 +320,13 @@
   white-space: nowrap;
 }
 
+.marketProductNumbers .marketProductStatusBadge {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-weight: 900;
+}
+
 .marketProductActions {
   display: flex;
   align-items: center;
@@ -712,6 +719,359 @@
   cursor: pointer;
 }
 
+.bulkImportPanel {
+  border: 1px solid #dbeafe;
+  border-radius: 18px;
+  background: #eff6ff;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.bulkImportPanel strong {
+  color: #111827;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.bulkImportPanel p {
+  margin: 4px 0 0;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.bulkImportActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fileUploadButton {
+  min-height: 42px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1d4ed8;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 950;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fileUploadButton input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.templateDownloadWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.templateDownloadMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  min-width: 190px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.16);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.templateDownloadMenu a {
+  border-radius: 10px;
+  color: #334155;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.templateDownloadMenu a:hover,
+.templateDownloadMenu a:focus-visible {
+  background: #eff6ff;
+  color: #1d4ed8;
+  outline: none;
+}
+
+.importUploadModeGroup {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.importUploadModeButton {
+  min-height: 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #334155;
+  padding: 7px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.importUploadModeButton:hover,
+.importUploadModeButton:focus-visible {
+  border-color: #93c5fd;
+  outline: none;
+}
+
+.importUploadModeButtonSelected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.importUploadModeButton strong {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.importUploadModeButton span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.importPreviewPanel {
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.importModeGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.importModeButton {
+  min-height: 76px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: inherit;
+  text-align: left;
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.importModeButton:hover,
+.importModeButton:focus-visible {
+  border-color: #93c5fd;
+  background: #ffffff;
+  outline: none;
+}
+
+.importModeButtonSelected {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.importModeButton strong {
+  color: #111827;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.importModeButton span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.importSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.importSummaryGrid span {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #64748b;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.importSummaryGrid strong {
+  color: #111827;
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.importApplySummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.importApplySummaryGrid span {
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.importApplySummaryGrid strong {
+  color: #111827;
+  font-size: 20px;
+  font-weight: 950;
+}
+
+.importTableScroller {
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.importPreviewTable {
+  width: 100%;
+  min-width: 1320px;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #111827;
+  font-size: 13px;
+}
+
+.importPreviewTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 1px solid #dbeafe;
+  background: #eff6ff;
+  color: #1e3a8a;
+  padding: 11px 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.importPreviewTable tbody td {
+  max-width: 180px;
+  border-bottom: 1px solid #eef2f7;
+  padding: 11px 12px;
+  color: #334155;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.importPreviewTable tbody tr {
+  transition: background-color 0.16s ease;
+}
+
+.importPreviewTable tbody tr:hover {
+  background: #f8fafc;
+}
+
+.importPreviewTable code {
+  color: #475569;
+  font-family: inherit;
+  font-weight: 900;
+}
+
+.importPreviewTable strong {
+  color: #111827;
+  font-weight: 950;
+}
+
+.importStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.importStatusCreate {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.importStatusUpdate {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.importStatusStock {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.importStatusError {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.importStatusIdle {
+  background: #f1f5f9;
+  color: #475569;
+}
+
 .productSearchRow {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -966,8 +1326,27 @@
   }
 
   .sectionHeading,
-  .realtimeHeader {
+  .realtimeHeader,
+  .bulkImportPanel {
     flex-direction: column;
+  }
+
+  .bulkImportPanel {
+    align-items: stretch;
+  }
+
+  .bulkImportActions {
+    justify-content: stretch;
+  }
+
+  .importUploadModeGroup {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .importUploadModeButton span {
+    white-space: normal;
   }
 
   .selectedMenuPill {
@@ -997,6 +1376,18 @@
   .productSearchRow {
     grid-template-columns: 1fr;
     flex-direction: column;
+  }
+
+  .importModeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .importSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .importApplySummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .formGrid {

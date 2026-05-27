@@ -1,11 +1,17 @@
 import { Module } from '@nestjs/common';
 
-import { MarketAdminProductsController } from './market-admin-products.controller';
+import { BarcodeParserModule } from '../barcode-parser/barcode-parser.module';
+import { MarketAdminCsvImportService } from './market-admin-csv-import.service';
+import {
+  MarketAdminDashboardController,
+  MarketAdminProductsController,
+} from './market-admin-products.controller';
 import { MarketAdminProductsService } from './market-admin-products.service';
 
 @Module({
-  controllers: [MarketAdminProductsController],
-  providers: [MarketAdminProductsService],
-  exports: [MarketAdminProductsService],
+  imports: [BarcodeParserModule],
+  controllers: [MarketAdminDashboardController, MarketAdminProductsController],
+  providers: [MarketAdminCsvImportService, MarketAdminProductsService],
+  exports: [MarketAdminCsvImportService, MarketAdminProductsService],
 })
 export class MarketAdminModule {}

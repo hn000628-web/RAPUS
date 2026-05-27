@@ -12,6 +12,7 @@ export type MarketAdminPublicProduct = {
   productName: string
   brandName: string | null
   categoryName: string | null
+  scanCodeValue: string | null
   thumbnailUrl: string | null
   isRegistered: boolean
 }
@@ -22,6 +23,7 @@ export type MarketAdminProduct = {
   channelCode: string
   sourceProductId: number
   productCode: string
+  barcode: string | null
   productNameSnapshot: string
   brandNameSnapshot: string | null
   categoryNameSnapshot: string | null
@@ -50,6 +52,14 @@ export type MarketAdminProductSummary = {
   lowStockProducts: number
   eventProducts: number
   onSaleProducts: number
+}
+
+export type MarketAdminDashboardSummary = {
+  totalProducts: number
+  soldOutProducts: number
+  lowStockProducts: number
+  eventProducts: number
+  activeProducts: number
 }
 
 export type MarketAdminPublicProductsResponse = {
@@ -124,6 +134,77 @@ export type MarketProductHistoryResponse = {
   items: MarketProductHistoryItem[]
 }
 
+export type MarketAdminImportPreviewRow = {
+  id: number
+  rowNo: number
+  productName: string | null
+  scanCodeValue: string | null
+  salePrice: number
+  eventCode: string | null
+  eventTitle: string | null
+  eventStartAt: string | null
+  eventEndAt: string | null
+  eventStatus: 'NONE' | 'SCHEDULED' | 'ACTIVE' | 'ENDED'
+  normalizedStockQuantity: number | null
+  stockNormalizeMemo:
+    | 'NEGATIVE_STOCK_NORMALIZED_TO_ZERO'
+    | 'INVALID_STOCK_VALUE'
+    | 'STOCK_UPDATE_SKIPPED'
+    | null
+  mappedProductCode: string | null
+  rowStatus: string
+  displayStatus:
+    | 'MATCHED'
+    | 'NEW_PRODUCT_REQUIRED'
+    | 'MISSING_BARCODE'
+    | 'STOCK_WARNING'
+    | 'DUPLICATE_SCAN_CODE'
+  errorMessage: string | null
+}
+
+export type MarketAdminImportPreviewResponse = {
+  batchId: number
+  summary: {
+    totalRows: number
+    matchedRows: number
+    newProductRows: number
+    errorRows: number
+    duplicateRows: number
+  }
+  rows: MarketAdminImportPreviewRow[]
+}
+
+export type MarketAdminImportConfirmMode =
+  | 'AUTO_MATCH'
+  | 'CREATE_ONLY'
+  | 'UPDATE_EXISTING'
+  | 'STOCK_ONLY'
+  | 'PRICE_ONLY'
+
+export type MarketAdminImportUploadMode =
+  | 'FULL_SYNC'
+  | 'PARTIAL_UPDATE'
+
+export type MarketAdminImportConfirmResponse = {
+  batchId: number
+  mode: MarketAdminImportConfirmMode
+  createdProducts: number
+  updatedProducts: number
+  skippedRows: number
+  failedRows: number
+}
+
+export type MarketAdminImportApplyResponse = {
+  success: true
+  uploadMode: MarketAdminImportUploadMode
+  totalCount: number
+  createdCount: number
+  updatedCount: number
+  skippedCount: number
+  soldOutCount: number
+  restoredCount: number
+}
+
 function resolveThumbnailUrl(thumbnailUrl: string | null): string | null {
   if (!thumbnailUrl) {
     return null
@@ -154,6 +235,18 @@ export function fetchMarketAdminProducts(
 
   return apiFetch<MarketAdminProductsResponse>(
     `/market-admin/products?${searchParams.toString()}`
+  )
+}
+
+export function fetchMarketAdminDashboardSummary(
+  channelCode: string
+): Promise<MarketAdminDashboardSummary> {
+  const searchParams = new URLSearchParams({
+    channelCode
+  })
+
+  return apiFetch<MarketAdminDashboardSummary>(
+    `/market-admin/dashboard-summary?${searchParams.toString()}`
   )
 }
 
@@ -247,5 +340,60 @@ export function fetchMarketAdminProductHistory(params: {
 
   return apiFetch<MarketProductHistoryResponse>(
     `/market-admin/products/${params.productId}/history?${searchParams.toString()}`
+  )
+}
+
+export function uploadMarketAdminProductImportFile(params: {
+  channelCode: string
+  file: File
+}): Promise<MarketAdminImportPreviewResponse> {
+  const formData = new FormData()
+  formData.append('channelCode', params.channelCode)
+  formData.append('file', params.file)
+
+  return apiFetch<MarketAdminImportPreviewResponse>(
+    '/market-admin/products/import-file',
+    {
+      method: 'POST',
+      body: formData,
+      isForm: true
+    }
+  )
+}
+
+export function confirmMarketAdminProductImport(params: {
+  channelCode: string
+  batchId: number
+  mode: MarketAdminImportConfirmMode
+}): Promise<MarketAdminImportConfirmResponse> {
+  return apiFetch<MarketAdminImportConfirmResponse>(
+    `/market-admin/products/import-file/${params.batchId}/confirm`,
+    {
+      method: 'POST',
+      body: {
+        channelCode: params.channelCode,
+        confirmMode: params.mode
+      }
+    }
+  )
+}
+
+export function applyMarketAdminProductImport(params: {
+  channelCode: string
+  batchId: number
+  uploadMode: MarketAdminImportUploadMode
+  previewRows: MarketAdminImportPreviewRow[]
+}): Promise<MarketAdminImportApplyResponse> {
+  return apiFetch<MarketAdminImportApplyResponse>(
+    '/market-admin/products/import-apply',
+    {
+      method: 'POST',
+      body: {
+        channelCode: params.channelCode,
+        batchId: params.batchId,
+        uploadMode: params.uploadMode,
+        previewRows: params.previewRows
+      }
+    }
   )
 }

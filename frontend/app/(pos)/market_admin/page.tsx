@@ -6,16 +6,25 @@
 'use client'
 
 // SECTION 01 : IMPORT
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { useRouter } from 'next/navigation'
 
 import {
+  applyMarketAdminProductImport,
+  confirmMarketAdminProductImport,
+  fetchMarketAdminDashboardSummary,
   fetchMarketAdminProducts,
   fetchMarketAdminPublicProducts,
   importMarketAdminProduct,
   updateMarketAdminProductPricing,
   updateMarketAdminProductStock,
   updateMarketAdminProductStatus,
+  uploadMarketAdminProductImportFile,
+  type MarketAdminImportConfirmMode,
+  type MarketAdminImportApplyResponse,
+  type MarketAdminImportPreviewResponse,
+  type MarketAdminImportUploadMode,
+  type MarketAdminDashboardSummary,
   type MarketAdminProduct,
   type MarketAdminPublicProduct
 } from '@/lib/market-admin-products-api'
@@ -42,6 +51,7 @@ type MarketAdminMenuCard = {
   title: string
   description: string
   status: MarketAdminStatus
+  route?: string
 }
 
 type MarketAdminRealtimeItem = {
@@ -72,6 +82,11 @@ type MarketProductTab = {
 
 type MarketProductTabCounts = Record<MarketProductTabId, number>
 
+type DashboardLoadStatus =
+  | 'loading'
+  | 'error'
+  | 'success'
+
 type MarketProductImportForm = {
   purchasePrice: string
   salePrice: string
@@ -82,6 +97,30 @@ type MarketProductImportForm = {
   safetyStockQuantity: string
   isOnSale: boolean
   isDisplayed: boolean
+}
+
+type ImportDisplayStatusLabel = Record<
+  MarketAdminImportPreviewResponse['rows'][number]['displayStatus'],
+  string
+>
+
+type ImportConfirmModeOption = {
+  id: MarketAdminImportConfirmMode
+  label: string
+  description: string
+}
+
+type ImportUploadModeOption = {
+  id: MarketAdminImportUploadMode
+  label: string
+  description: string
+}
+
+type TemplateDownloadOption = {
+  id: 'csv' | 'xlsx'
+  label: string
+  href: string
+  fileName: string
 }
 
 // SECTION 03 : CONSTANT
@@ -126,8 +165,157 @@ const DEFAULT_IMPORT_FORM: MarketProductImportForm = {
   isDisplayed: true
 }
 
+const IMPORT_STATUS_LABELS: ImportDisplayStatusLabel = {
+  MATCHED: '매칭완료',
+  NEW_PRODUCT_REQUIRED: '신규등록필요',
+  MISSING_BARCODE: '바코드없음',
+  STOCK_WARNING: '재고오류',
+  DUPLICATE_SCAN_CODE: '중복상품'
+}
+
+const IMPORT_CONFIRM_MODE_OPTIONS: ImportConfirmModeOption[] = [
+  {
+    id: 'AUTO_MATCH',
+    label: '자동 반영',
+    description: '신규 생성과 기존 상품 업데이트를 함께 반영'
+  },
+  {
+    id: 'CREATE_ONLY',
+    label: '신규 상품만 등록',
+    description: '매칭 실패 row만 신규 상품으로 생성'
+  },
+  {
+    id: 'UPDATE_EXISTING',
+    label: '기존 상품만 업데이트',
+    description: '이미 등록된 채널 상품만 업데이트'
+  },
+  {
+    id: 'STOCK_ONLY',
+    label: '재고만 업데이트',
+    description: '가격은 유지하고 재고만 반영'
+  },
+  {
+    id: 'PRICE_ONLY',
+    label: '판매가만 업데이트',
+    description: '재고는 유지하고 가격만 반영'
+  }
+]
+
+const IMPORT_UPLOAD_MODE_OPTIONS: ImportUploadModeOption[] = [
+  {
+    id: 'FULL_SYNC',
+    label: '전체 동기화',
+    description: '파일에 없는 상품은 재고 0 / 품절 처리'
+  },
+  {
+    id: 'PARTIAL_UPDATE',
+    label: '부분 업데이트',
+    description: '업로드된 row만 반영하고 기존 상품 유지'
+  }
+]
+
+const TEMPLATE_DOWNLOAD_OPTIONS: TemplateDownloadOption[] = [
+  {
+    id: 'csv',
+    label: 'CSV 템플릿 다운로드',
+    href: '/templates/market_product_template.csv',
+    fileName: 'market_product_template.csv'
+  },
+  {
+    id: 'xlsx',
+    label: '엑셀 템플릿 다운로드',
+    href: '/templates/market_product_template.xlsx',
+    fileName: 'market_product_template.xlsx'
+  }
+]
+
 const formatMarketNumberInput = (value: string) => {
   return value.replace(/\D/g, '')
+}
+
+const resolveImportEventStatusLabel = (
+  status: MarketAdminImportPreviewResponse['rows'][number]['eventStatus']
+) => {
+  switch (status) {
+    case 'SCHEDULED':
+      return '예정'
+    case 'ACTIVE':
+      return '진행중'
+    case 'ENDED':
+      return '종료'
+    case 'NONE':
+    default:
+      return '미참여'
+  }
+}
+
+const resolveImportEventPeriodText = (
+  row: MarketAdminImportPreviewResponse['rows'][number]
+) => {
+  if (!row.eventStartAt && !row.eventEndAt) {
+    return '-'
+  }
+
+  return `${row.eventStartAt ?? '시작일 미정'} ~ ${row.eventEndAt ?? '종료일 미정'}`
+}
+
+const resolveImportTableStatus = (
+  row: MarketAdminImportPreviewResponse['rows'][number]
+) => {
+  if (row.displayStatus === 'MISSING_BARCODE' || row.displayStatus === 'DUPLICATE_SCAN_CODE') {
+    return {
+      label: '오류',
+      className: styles.importStatusError
+    }
+  }
+
+  if (row.displayStatus === 'NEW_PRODUCT_REQUIRED') {
+    return {
+      label: '신규 생성',
+      className: styles.importStatusCreate
+    }
+  }
+
+  if (row.stockNormalizeMemo !== null) {
+    return {
+      label: '재고 변경',
+      className: styles.importStatusStock
+    }
+  }
+
+  if (row.displayStatus === 'MATCHED') {
+    return {
+      label: '기존 업데이트',
+      className: styles.importStatusUpdate
+    }
+  }
+
+  return {
+    label: '변경 없음',
+    className: styles.importStatusIdle
+  }
+}
+
+const resolveImportUpdateText = (
+  row: MarketAdminImportPreviewResponse['rows'][number]
+) => {
+  if (row.errorMessage) {
+    return row.errorMessage
+  }
+
+  if (row.displayStatus === 'NEW_PRODUCT_REQUIRED') {
+    return 'AUTO_IMPORTED'
+  }
+
+  if (row.stockNormalizeMemo) {
+    return row.stockNormalizeMemo
+  }
+
+  if (row.mappedProductCode) {
+    return '업데이트 예정'
+  }
+
+  return '대기'
 }
 
 const isMarketProductOnSale = (product: MarketAdminProduct) => {
@@ -145,12 +333,33 @@ const isMarketProductSoldOut = (product: MarketAdminProduct) => {
 const isMarketProductLowStock = (product: MarketAdminProduct) => {
   return (
     product.stockQuantity <= product.safetyStockQuantity &&
+    product.stockQuantity > 0 &&
     product.isSoldOut !== 1
   )
 }
 
 const isMarketProductEventActive = (product: MarketAdminProduct) => {
   return product.isEventActive === 1 || product.eventPrice !== null
+}
+
+const resolveMarketProductStatus = (product: MarketAdminProduct) => {
+  if (product.isSoldOut === 1 || product.stockQuantity === 0) {
+    return '품절'
+  }
+
+  if (product.isEventActive === 1) {
+    return '행사중'
+  }
+
+  if (product.isDisplayed !== 1) {
+    return '숨김'
+  }
+
+  if (product.isOnSale === 1) {
+    return '판매중'
+  }
+
+  return '숨김'
 }
 
 const SUMMARY_CARDS: MarketAdminSummaryCard[] = [
@@ -236,9 +445,10 @@ const MENU_CARDS: MarketAdminMenuCard[] = [
   {
     id: 'campaign-create',
     icon: 'SALE',
-    title: '행사등록',
-    description: '행사 상품 / 할인율 / 노출 기간 설정',
-    status: 'ACTIVE'
+    title: '행사관리',
+    description: '행사 그룹 / 행사 기간 / 행사 상품 운영 관리',
+    status: 'ACTIVE',
+    route: '/market_admin/events'
   },
   {
     id: 'stock-check',
@@ -293,6 +503,10 @@ export default function MarketAdminPage() {
   } = usePosKeyboardMode()
   const [selectedMenuId, setSelectedMenuId] = useState<string>(MENU_CARDS[0]?.id ?? '')
   const [marketProducts, setMarketProducts] = useState<MarketAdminProduct[]>([])
+  const [dashboardSummary, setDashboardSummary] =
+    useState<MarketAdminDashboardSummary | null>(null)
+  const [dashboardLoadStatus, setDashboardLoadStatus] =
+    useState<DashboardLoadStatus>('loading')
   const [selectedProductTabId, setSelectedProductTabId] =
     useState<MarketProductTabId>('ALL')
   const [publicProducts, setPublicProducts] = useState<MarketAdminPublicProduct[]>([])
@@ -304,6 +518,16 @@ export default function MarketAdminPage() {
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [isProductLoading, setIsProductLoading] = useState(false)
   const [productErrorMessage, setProductErrorMessage] = useState<string | null>(null)
+  const [importPreview, setImportPreview] =
+    useState<MarketAdminImportPreviewResponse | null>(null)
+  const [importConfirmMode, setImportConfirmMode] =
+    useState<MarketAdminImportConfirmMode>('AUTO_MATCH')
+  const [importUploadMode, setImportUploadMode] =
+    useState<MarketAdminImportUploadMode>('FULL_SYNC')
+  const [importApplySummary, setImportApplySummary] =
+    useState<MarketAdminImportApplyResponse | null>(null)
+  const [isImportApplyLoading, setIsImportApplyLoading] = useState(false)
+  const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false)
 
   // SECTION 05 : DATA
   const selectedMenu = useMemo(() => {
@@ -340,46 +564,64 @@ export default function MarketAdminPage() {
   ])
 
   const productMetricCards = useMemo<MarketProductMetricCard[]>(() => {
+    const summary = dashboardSummary ?? {
+      totalProducts: 0,
+      soldOutProducts: 0,
+      lowStockProducts: 0,
+      eventProducts: 0,
+      activeProducts: 0
+    }
+
     return [
       {
         id: 'registered-products',
         label: '총 등록 상품',
-        value: `${productTabCounts.ALL}개`,
+        value: `${summary.totalProducts}개`,
         description: '채널별 판매 상품'
       },
       {
         id: 'sold-out-products',
         label: '품절 상품',
-        value: `${productTabCounts.SOLD_OUT}개`,
+        value: `${summary.soldOutProducts}개`,
         description: '품절 상태 상품'
       },
       {
         id: 'low-stock-products',
         label: '재고 부족 상품',
-        value: `${productTabCounts.LOW_STOCK}개`,
+        value: `${summary.lowStockProducts}개`,
         description: '안전 재고 이하'
       },
       {
         id: 'event-products',
         label: '행사 진행 상품',
-        value: `${productTabCounts.EVENT}개`,
+        value: `${summary.eventProducts}개`,
         description: '행사가 적용 상품'
       },
       {
         id: 'on-sale-products',
         label: '판매중 상품',
-        value: `${productTabCounts.ON_SALE}개`,
+        value: `${summary.activeProducts}개`,
         description: '판매 상태 ON'
       }
     ]
-  }, [productTabCounts])
+  }, [dashboardSummary])
 
   const loadMarketProducts = useCallback(async () => {
     try {
       setProductErrorMessage(null)
-      const response = await fetchMarketAdminProducts(MARKET_CHANNEL_CODE)
-      setMarketProducts(response.items)
+      setDashboardLoadStatus('loading')
+      const [
+        productsResponse,
+        summaryResponse
+      ] = await Promise.all([
+        fetchMarketAdminProducts(MARKET_CHANNEL_CODE),
+        fetchMarketAdminDashboardSummary(MARKET_CHANNEL_CODE)
+      ])
+      setMarketProducts(productsResponse.items)
+      setDashboardSummary(summaryResponse)
+      setDashboardLoadStatus('success')
     } catch {
+      setDashboardLoadStatus('error')
       setProductErrorMessage('마켓 등록 상품을 불러오지 못했습니다.')
     }
   }, [])
@@ -435,6 +677,13 @@ export default function MarketAdminPage() {
   }
 
   const handleSelectMenu = (menuId: string) => {
+    const targetMenu = MENU_CARDS.find((card) => card.id === menuId)
+
+    if (targetMenu?.route) {
+      router.push(targetMenu.route)
+      return
+    }
+
     setSelectedMenuId(menuId)
   }
 
@@ -479,7 +728,93 @@ export default function MarketAdminPage() {
   const handleCloseProductModal = () => {
     setIsProductModalOpen(false)
     setSelectedPublicProduct(null)
+    setImportPreview(null)
+    setImportApplySummary(null)
+    setIsTemplateMenuOpen(false)
     setProductErrorMessage(null)
+  }
+
+  const handleToggleTemplateMenu = () => {
+    setIsTemplateMenuOpen((current) => !current)
+  }
+
+  const handleCloseTemplateMenu = () => {
+    setIsTemplateMenuOpen(false)
+  }
+
+  const handleUploadImportFile = async (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    try {
+      setIsProductLoading(true)
+      setProductErrorMessage(null)
+      const response = await uploadMarketAdminProductImportFile({
+        channelCode: MARKET_CHANNEL_CODE,
+        file
+      })
+      setImportPreview(response)
+      setImportApplySummary(null)
+    } catch {
+      setProductErrorMessage('CSV/엑셀 파일 업로드에 실패했습니다.')
+    } finally {
+      setIsProductLoading(false)
+    }
+  }
+
+  const handleConfirmImportFile = async () => {
+    if (!importPreview) {
+      setProductErrorMessage('먼저 CSV/엑셀 파일을 업로드해주세요.')
+      return
+    }
+
+    try {
+      setIsProductLoading(true)
+      setProductErrorMessage(null)
+      await confirmMarketAdminProductImport({
+        channelCode: MARKET_CHANNEL_CODE,
+        batchId: importPreview.batchId,
+        mode: importConfirmMode
+      })
+      await loadMarketProducts()
+      setImportPreview(null)
+    } catch {
+      setProductErrorMessage('CSV/엑셀 일괄 반영에 실패했습니다.')
+    } finally {
+      setIsProductLoading(false)
+    }
+  }
+
+  const handleApplyImportFile = async () => {
+    if (!importPreview || importPreview.rows.length === 0) {
+      setProductErrorMessage('반영할 CSV/엑셀 미리보기 데이터가 없습니다.')
+      return
+    }
+
+    try {
+      setIsImportApplyLoading(true)
+      setProductErrorMessage(null)
+      const response = await applyMarketAdminProductImport({
+        channelCode: MARKET_CHANNEL_CODE,
+        batchId: importPreview.batchId,
+        uploadMode: importUploadMode,
+        previewRows: importPreview.rows
+      })
+      setImportApplySummary(response)
+      await loadMarketProducts()
+      await loadPublicProducts(productSearchKeyword)
+      setImportPreview(null)
+    } catch {
+      setProductErrorMessage('업로드 데이터를 마켓 운영상품으로 반영하지 못했습니다.')
+    } finally {
+      setIsImportApplyLoading(false)
+    }
   }
 
   const handleImportMarketProduct = async () => {
@@ -600,7 +935,7 @@ export default function MarketAdminPage() {
                 공용 프로덕트 목록
               </h2>
               <p className={styles.modalDescription}>
-                공용 상품 원장의 productCode를 기준으로 이 채널의 판매 정보를 등록합니다.
+                공용 상품 원장의 상품 정보를 기준으로 이 채널의 판매 정보를 등록합니다.
               </p>
             </div>
 
@@ -613,11 +948,231 @@ export default function MarketAdminPage() {
             </button>
           </div>
 
+          <div className={styles.bulkImportPanel}>
+            <div>
+              <strong>CSV/엑셀 일괄 상품등록</strong>
+              <p>
+                POS/ERP 파일을 업로드하면 바코드 기준으로 공용 상품을 매칭하고 채널 판매정보를 미리 확인합니다.
+              </p>
+            </div>
+
+            <div className={styles.bulkImportActions}>
+              <label className={styles.fileUploadButton}>
+                CSV/엑셀 업로드
+                <input
+                  type="file"
+                  accept=".csv,.xlsx"
+                  onChange={handleUploadImportFile}
+                  disabled={isProductLoading}
+                />
+              </label>
+              <div className={styles.templateDownloadWrap}>
+                <button
+                  type="button"
+                  className={styles.secondaryActionButton}
+                  onClick={handleToggleTemplateMenu}
+                  aria-expanded={isTemplateMenuOpen}
+                >
+                  업로드 포맷 ▼
+                </button>
+
+                {isTemplateMenuOpen ? (
+                  <div className={styles.templateDownloadMenu}>
+                    {TEMPLATE_DOWNLOAD_OPTIONS.map((option) => (
+                      <a
+                        key={option.id}
+                        href={option.href}
+                        download={option.fileName}
+                        onClick={handleCloseTemplateMenu}
+                      >
+                        {option.label}
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                className={styles.primaryActionButton}
+                onClick={handleConfirmImportFile}
+                disabled={isProductLoading || isImportApplyLoading || !importPreview}
+              >
+                미리보기 반영
+              </button>
+              <div className={styles.importUploadModeGroup} aria-label="업로드 모드">
+                {IMPORT_UPLOAD_MODE_OPTIONS.map((option) => {
+                  const isSelected = option.id === importUploadMode
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={[
+                        styles.importUploadModeButton,
+                        isSelected ? styles.importUploadModeButtonSelected : ''
+                      ].filter(Boolean).join(' ')}
+                      onClick={() => setImportUploadMode(option.id)}
+                      aria-pressed={isSelected}
+                    >
+                      <strong>{option.label}</strong>
+                      <span>{option.description}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                type="button"
+                className={styles.primaryActionButton}
+                onClick={handleApplyImportFile}
+                disabled={
+                  isProductLoading ||
+                  isImportApplyLoading ||
+                  !importPreview ||
+                  importPreview.rows.length === 0
+                }
+              >
+                {isImportApplyLoading ? '업로드 반영 중...' : '업로드 반영'}
+              </button>
+            </div>
+          </div>
+
+          {importApplySummary ? (
+            <div className={styles.importApplySummaryGrid}>
+              <span>
+                생성
+                <strong>{importApplySummary.createdCount}</strong>
+              </span>
+              <span>
+                업데이트
+                <strong>{importApplySummary.updatedCount}</strong>
+              </span>
+              <span>
+                SKIPPED
+                <strong>{importApplySummary.skippedCount}</strong>
+              </span>
+              <span>
+                품절처리
+                <strong>{importApplySummary.soldOutCount}</strong>
+              </span>
+              <span>
+                재판매복구
+                <strong>{importApplySummary.restoredCount}</strong>
+              </span>
+            </div>
+          ) : null}
+
+          {importPreview ? (
+            <div className={styles.importPreviewPanel}>
+              <div className={styles.importModeGrid}>
+                {IMPORT_CONFIRM_MODE_OPTIONS.map((option) => {
+                  const isSelected = option.id === importConfirmMode
+
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={[
+                        styles.importModeButton,
+                        isSelected ? styles.importModeButtonSelected : ''
+                      ].filter(Boolean).join(' ')}
+                      onClick={() => setImportConfirmMode(option.id)}
+                    >
+                      <strong>{option.label}</strong>
+                      <span>{option.description}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className={styles.importSummaryGrid}>
+                <span>
+                  총 행
+                  <strong>{importPreview.summary.totalRows}</strong>
+                </span>
+                <span>
+                  매칭 성공
+                  <strong>{importPreview.summary.matchedRows}</strong>
+                </span>
+                <span>
+                  신규 상품
+                  <strong>{importPreview.summary.newProductRows}</strong>
+                </span>
+                <span>
+                  오류
+                  <strong>{importPreview.summary.errorRows}</strong>
+                </span>
+              </div>
+
+              <div className={styles.importTableScroller}>
+                <table className={styles.importPreviewTable}>
+                  <thead>
+                    <tr>
+                      <th>상태</th>
+                      <th>바코드</th>
+                      <th>상품명</th>
+                      <th>공급사</th>
+                      <th>매입가</th>
+                      <th>판매가</th>
+                      <th>행사가</th>
+                      <th>행사코드</th>
+                      <th>행사명</th>
+                      <th>행사기간</th>
+                      <th>행사상태</th>
+                      <th>재고</th>
+                      <th>업데이트</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importPreview.rows.map((row) => {
+                      const status = resolveImportTableStatus(row)
+
+                      return (
+                        <tr key={row.id}>
+                          <td>
+                            <span className={[
+                              styles.importStatusBadge,
+                              status.className
+                            ].join(' ')}
+                            >
+                              {status.label}
+                            </span>
+                          </td>
+                          <td>
+                            <code>{row.scanCodeValue ?? '바코드 없음'}</code>
+                          </td>
+                          <td>
+                            <strong>{row.productName ?? '상품명 미등록'}</strong>
+                          </td>
+                          <td>-</td>
+                          <td>-</td>
+                          <td>{row.salePrice.toLocaleString()}원</td>
+                          <td>-</td>
+                          <td>
+                            <code>{row.eventCode ?? '-'}</code>
+                          </td>
+                          <td>{row.eventTitle ?? '-'}</td>
+                          <td>{resolveImportEventPeriodText(row)}</td>
+                          <td>{resolveImportEventStatusLabel(row.eventStatus)}</td>
+                          <td>
+                            {row.normalizedStockQuantity === null
+                              ? '기존 유지'
+                              : row.normalizedStockQuantity.toLocaleString()}
+                          </td>
+                          <td>{resolveImportUpdateText(row)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : null}
+
           <div className={styles.productSearchRow}>
             <input
               className={styles.productSearchInput}
               value={productSearchKeyword}
-              placeholder="상품명, 브랜드, productCode 검색"
+              placeholder="상품명, 브랜드, 바코드 검색"
               onChange={(event) => setProductSearchKeyword(event.target.value)}
             />
             <button
@@ -674,7 +1229,10 @@ export default function MarketAdminPage() {
                         {product.brandName ?? '브랜드 미지정'} · {product.categoryName ?? '카테고리 미지정'}
                       </span>
                       <code>
-                        {product.productCode}
+                        바코드 {product.scanCodeValue ?? '미연결'}
+                      </code>
+                      <code>
+                        시스템 코드 {product.productCode}
                       </code>
                     </span>
 
@@ -889,7 +1447,7 @@ export default function MarketAdminPage() {
                 채널별 판매 상품
               </h2>
               <p className={styles.sectionDescription}>
-                공용 productCode를 기준으로 등록된 이 채널의 판매 가격과 재고입니다.
+                공용 상품 원장의 상품 기준으로 등록된 이 채널의 판매 가격과 재고입니다.
               </p>
             </div>
 
@@ -930,55 +1488,73 @@ export default function MarketAdminPage() {
               })}
             </div>
 
-            {filteredMarketProducts.length > 0 ? (
-              filteredMarketProducts.slice(0, 5).map((product) => (
-                <article key={product.id} className={styles.marketProductItem}>
-                  <div>
-                    <strong>
-                      {product.productNameSnapshot}
-                    </strong>
-                    <span>
-                      {product.brandNameSnapshot ?? '브랜드 미지정'} · {product.productCode}
-                    </span>
-                  </div>
-                  <div className={styles.marketProductNumbers}>
-                    <span>
-                      판매가 {product.salePrice.toLocaleString()}원
-                    </span>
-                    <span>
-                      재고 {product.stockQuantity.toLocaleString()}개
-                    </span>
-                    <span>
-                      {product.stockStatus}
-                    </span>
-                  </div>
-                  <div className={styles.marketProductActions}>
-                    <button
-                      type="button"
-                      onClick={() => handleIncreaseSalePrice(product)}
-                    >
-                      판매가 +100
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleIncreaseStock(product)}
-                    >
-                      재고 +1
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleDisplay(product)}
-                    >
-                      {product.isDisplayed === 1 ? '노출 OFF' : '노출 ON'}
-                    </button>
-                  </div>
-                </article>
-              ))
-            ) : (
+            {dashboardLoadStatus === 'loading' ? (
+              <p className={styles.emptyText}>
+                마켓 상품 통계를 불러오는 중입니다.
+              </p>
+            ) : null}
+
+            {dashboardLoadStatus === 'error' ? (
+              <p className={styles.errorMessage}>
+                마켓 등록 상품을 불러오지 못했습니다.
+              </p>
+            ) : null}
+
+            {dashboardLoadStatus === 'success' && filteredMarketProducts.length > 0 ? (
+              filteredMarketProducts.slice(0, 5).map((product) => {
+                const productStatus = resolveMarketProductStatus(product)
+
+                return (
+                  <article key={product.id} className={styles.marketProductItem}>
+                    <div>
+                      <strong>
+                        {product.productNameSnapshot}
+                      </strong>
+                      <span>
+                        {product.brandNameSnapshot ?? '브랜드 미지정'} · 바코드 {product.barcode ?? '미등록'}
+                      </span>
+                    </div>
+                    <div className={styles.marketProductNumbers}>
+                      <span>
+                        판매가 {product.salePrice.toLocaleString()}원
+                      </span>
+                      <span>
+                        재고 {product.stockQuantity.toLocaleString()}개
+                      </span>
+                      <span className={styles.marketProductStatusBadge}>
+                        {productStatus}
+                      </span>
+                    </div>
+                    <div className={styles.marketProductActions}>
+                      <button
+                        type="button"
+                        onClick={() => handleIncreaseSalePrice(product)}
+                      >
+                        판매가 +100
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleIncreaseStock(product)}
+                      >
+                        재고 +1
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleDisplay(product)}
+                      >
+                        {product.isDisplayed === 1 ? '노출 OFF' : '노출 ON'}
+                      </button>
+                    </div>
+                  </article>
+                )
+              })
+            ) : null}
+
+            {dashboardLoadStatus === 'success' && filteredMarketProducts.length === 0 ? (
               <p className={styles.emptyText}>
                 해당 조건에 맞는 마켓 판매 상품이 없습니다.
               </p>
-            )}
+            ) : null}
           </div>
         </section>
 

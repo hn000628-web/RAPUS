@@ -2,12 +2,28 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { adminFetch } from '@/lib/adminApi'
+import styles from './db-cleaner.module.css'
 
-type CleanupIssueType = 'DUPLICATE' | 'ORPHAN' | 'INACTIVE' | 'SOFT_DELETED'
+type CleanupIssueType =
+  | 'DUPLICATE'
+  | 'ORPHAN'
+  | 'INACTIVE'
+  | 'SOFT_DELETED'
+  | 'WARNING'
+  | 'INVALID'
+
+type CleanupIssueDomain =
+  | 'GENERAL'
+  | 'POS'
+  | 'IMAGE'
+  | 'PRODUCT'
+  | 'EVENT'
+  | 'SCAN_CODE'
 
 type CleanupIssueItem = {
   issueId: string
   issueType: CleanupIssueType
+  issueDomain: CleanupIssueDomain
   tableName: string
   targetId: number | string
   displayName: string | null
@@ -34,6 +50,11 @@ type CleanupIssuesSummary = {
   posOrphanOrderItemOptionCount: number
   posInvalidProductRelationCount: number
   posInvalidLocationRelationCount: number
+  orphanImageCount: number
+  orphanProductThumbnailCount: number
+  orphanEventRelationCount: number
+  orphanScanCodeCount: number
+  invalidProductImageRelationCount: number
 }
 
 type CleanupIssuesResponse = {
@@ -67,13 +88,20 @@ type FilterType =
   | 'DELETABLE'
   | 'PROTECTED'
   | CleanupIssueType
+  | CleanupIssueDomain
 
 const FILTERS: Array<{ key: FilterType; label: string }> = [
   { key: 'ALL', label: 'All' },
   { key: 'DELETABLE', label: 'Deletable' },
   { key: 'PROTECTED', label: 'Protected' },
-  { key: 'DUPLICATE', label: 'Duplicate' },
   { key: 'ORPHAN', label: 'Orphan' },
+  { key: 'INVALID', label: 'Invalid' },
+  { key: 'IMAGE', label: 'Image' },
+  { key: 'PRODUCT', label: 'Product' },
+  { key: 'EVENT', label: 'Event' },
+  { key: 'SCAN_CODE', label: 'Scan Code' },
+  { key: 'POS', label: 'POS' },
+  { key: 'DUPLICATE', label: 'Duplicate' },
   { key: 'INACTIVE', label: 'Inactive' },
   { key: 'SOFT_DELETED', label: 'Soft Deleted' }
 ]
@@ -90,7 +118,50 @@ const EMPTY_SUMMARY: CleanupIssuesSummary = {
   posOrphanOrderItemCount: 0,
   posOrphanOrderItemOptionCount: 0,
   posInvalidProductRelationCount: 0,
-  posInvalidLocationRelationCount: 0
+  posInvalidLocationRelationCount: 0,
+  orphanImageCount: 0,
+  orphanProductThumbnailCount: 0,
+  orphanEventRelationCount: 0,
+  orphanScanCodeCount: 0,
+  invalidProductImageRelationCount: 0
+}
+
+const DOMAIN_FILTERS: CleanupIssueDomain[] = [
+  'GENERAL',
+  'POS',
+  'IMAGE',
+  'PRODUCT',
+  'EVENT',
+  'SCAN_CODE'
+]
+
+const TYPE_FILTERS: CleanupIssueType[] = [
+  'DUPLICATE',
+  'ORPHAN',
+  'INACTIVE',
+  'SOFT_DELETED',
+  'WARNING',
+  'INVALID'
+]
+
+function getStatusLabel(item: CleanupIssueItem) {
+  if (!item.canHardDelete) {
+    return 'PROTECTED'
+  }
+
+  if (item.issueType === 'INVALID') {
+    return 'INVALID'
+  }
+
+  if (item.issueType === 'ORPHAN') {
+    return 'ORPHAN'
+  }
+
+  if (item.issueType === 'WARNING') {
+    return 'WARNING'
+  }
+
+  return 'DELETABLE'
 }
 
 export default function DBBlockCleanerPage() {
@@ -118,13 +189,13 @@ export default function DBBlockCleanerPage() {
       setStatusMessage('Load error')
       setSummary(EMPTY_SUMMARY)
       setIssues([])
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
-  async function cleanAllDeletableIssues() {
-    const ok = confirm('삭제 가능한 cleanup issue를 전체 정리할까요?')
+  async function runCleanup(endpoint: string, confirmMessage: string) {
+    const ok = confirm(confirmMessage)
     if (!ok) {
       return
     }
@@ -134,13 +205,13 @@ export default function DBBlockCleanerPage() {
 
     try {
       const data = await adminFetch<CleanupIssuesCleanResponse>(
-        '/db-cleaner/issues/clean',
+        endpoint,
         { method: 'POST' }
       )
 
       if (data.success) {
         setStatusMessage(
-          `Clean complete (deleted: ${data.deletedCount}, skipped: ${data.skippedCount})`
+          `Clean complete (cleaned: ${data.deletedCount}, skipped: ${data.skippedCount})`
         )
         await loadIssues()
       } else {
@@ -149,9 +220,9 @@ export default function DBBlockCleanerPage() {
     } catch (error) {
       console.error(error)
       setStatusMessage('Error')
+    } finally {
+      setCleaning(false)
     }
-
-    setCleaning(false)
   }
 
   async function clearDevPosInactiveOrders() {
@@ -180,13 +251,13 @@ export default function DBBlockCleanerPage() {
     } catch (error) {
       console.error(error)
       setStatusMessage('POS 비활성 주문 정리 중 오류가 발생했습니다.')
+    } finally {
+      setCleaning(false)
     }
-
-    setCleaning(false)
   }
 
   useEffect(() => {
-    loadIssues()
+    void loadIssues()
   }, [])
 
   const filteredIssues = useMemo(() => {
@@ -202,147 +273,171 @@ export default function DBBlockCleanerPage() {
       return issues.filter((item) => !item.canHardDelete)
     }
 
-    return issues.filter((item) => item.issueType === activeFilter)
+    if (DOMAIN_FILTERS.includes(activeFilter as CleanupIssueDomain)) {
+      return issues.filter((item) => item.issueDomain === activeFilter)
+    }
+
+    if (TYPE_FILTERS.includes(activeFilter as CleanupIssueType)) {
+      return issues.filter((item) => item.issueType === activeFilter)
+    }
+
+    return issues
   }, [activeFilter, issues])
 
+  const summaryCards = [
+    { label: 'Total Issues', value: summary.totalCount },
+    { label: 'Protected', value: summary.protectedCount },
+    { label: 'Deletable', value: summary.deletableCount },
+    { label: 'Orphan Images', value: summary.orphanImageCount },
+    { label: 'Orphan Product Thumbnails', value: summary.orphanProductThumbnailCount },
+    { label: 'Orphan Event Relations', value: summary.orphanEventRelationCount },
+    { label: 'Orphan Scan Codes', value: summary.orphanScanCodeCount },
+    { label: 'Invalid Product Images', value: summary.invalidProductImageRelationCount },
+    { label: 'POS Orphan Items', value: summary.posOrphanOrderItemCount },
+    { label: 'POS Invalid Relations', value: summary.posInvalidProductRelationCount }
+  ]
+
   return (
-    <div style={{ maxWidth: 1280 }}>
-      <h1>DB Cleanup</h1>
+    <main className={styles.page}>
+      <header className={styles.header}>
+        <div>
+          <h1>DB Cleanup</h1>
+          <p>
+            상품/이미지/행사/스캔코드 orphan relation을 진단하고 삭제가 아닌 soft cleanup 중심으로 정리합니다.
+          </p>
+        </div>
+        <button type="button" className={styles.secondaryButton} onClick={() => void loadIssues()} disabled={loading}>
+          {loading ? 'Refreshing...' : 'Refresh All'}
+        </button>
+      </header>
 
-      <p>
-        전체 DB에서 연결이 끊긴 row, inactive row, orphan relation, duplicate row를 진단하고
-        삭제 가능한 항목만 안전하게 정리합니다.
-      </p>
+      <section className={styles.summaryGrid}>
+        {summaryCards.map((card) => (
+          <article key={card.label} className={styles.summaryCard}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </article>
+        ))}
+      </section>
 
-      <div
-        style={{
-          marginTop: 16,
-          padding: 16,
-          border: '1px solid #ddd',
-          background: '#fff'
-        }}
-      >
-        <h2>Summary</h2>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-          <div>Total Issues: {summary.totalCount}</div>
-          <div>Deletable: {summary.deletableCount}</div>
-          <div>Protected: {summary.protectedCount}</div>
-          <div>Duplicate: {summary.duplicateCount}</div>
-          <div>Orphan: {summary.orphanCount}</div>
-          <div>Inactive: {summary.inactiveCount}</div>
-          <div>Soft Deleted: {summary.softDeletedCount}</div>
-          <div>POS Inactive Orders: {summary.posInactiveOrderCount}</div>
-          <div>POS Orphan Order Items: {summary.posOrphanOrderItemCount}</div>
-          <div>POS Orphan Order Item Options: {summary.posOrphanOrderItemOptionCount}</div>
-          <div>POS Invalid Product Relations: {summary.posInvalidProductRelationCount}</div>
-          <div>POS Invalid Location Relations: {summary.posInvalidLocationRelationCount}</div>
+      <section className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <div>
+            <h2>Cleanup Actions</h2>
+            <p>Protected rows are shown for diagnosis only and cannot be hard deleted.</p>
+          </div>
         </div>
 
-        <div style={{ marginTop: 12 }}>
-          <button onClick={loadIssues} disabled={loading}>
-            {loading ? 'Refreshing...' : 'Refresh All'}
-          </button>
-
+        <div className={styles.actionRow}>
           <button
-            onClick={cleanAllDeletableIssues}
+            type="button"
+            className={styles.dangerButton}
             disabled={cleaning || loading}
-            style={{
-              marginLeft: 10,
-              background: '#ff4d4f',
-              color: '#fff',
-              border: 'none',
-              padding: '6px 12px',
-              cursor: 'pointer'
-            }}
+            onClick={() => void runCleanup('/db-cleaner/issues/clean', '삭제 가능한 cleanup issue를 전체 정리할까요?')}
           >
-            {cleaning ? 'Cleaning...' : 'Clean Deletable All'}
+            Clean Deletable All
           </button>
-
           <button
-            onClick={clearDevPosInactiveOrders}
+            type="button"
+            className={styles.warningButton}
             disabled={cleaning || loading}
-            style={{
-              marginLeft: 10,
-              background: '#0f766e',
-              color: '#fff',
-              border: 'none',
-              padding: '6px 12px',
-              cursor: 'pointer'
-            }}
+            onClick={() => void runCleanup('/db-cleaner/orphan-images/clean', 'Orphan image_assets를 soft cleanup 처리할까요?')}
+          >
+            Cleanup Orphan Images
+          </button>
+          <button
+            type="button"
+            className={styles.warningButton}
+            disabled={cleaning || loading}
+            onClick={() => void runCleanup('/db-cleaner/orphan-relations/clean', 'Orphan relation을 정리할까요?')}
+          >
+            Cleanup Orphan Relations
+          </button>
+          <button
+            type="button"
+            className={styles.warningButton}
+            disabled={cleaning || loading}
+            onClick={() => void runCleanup('/db-cleaner/invalid-product-images/clean', 'Invalid product image relation을 정리할까요?')}
+          >
+            Cleanup Invalid Product Images
+          </button>
+          <button
+            type="button"
+            className={styles.tealButton}
+            disabled={cleaning || loading}
+            onClick={() => void clearDevPosInactiveOrders()}
           >
             개발용 POS 비활성 주문 정리
           </button>
         </div>
 
-        <p style={{ marginTop: 10 }}>{statusMessage}</p>
-        <p style={{ marginTop: 4 }}>
-          Protected rows are shown for diagnosis only and cannot be hard deleted.
-        </p>
-      </div>
+        {statusMessage ? <p className={styles.statusText}>{statusMessage}</p> : null}
+      </section>
 
-      <div
-        style={{
-          marginTop: 20,
-          padding: 16,
-          border: '1px solid #ddd',
-          background: '#fff'
-        }}
-      >
-        <h3>Filter</h3>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <section className={styles.panel}>
+        <h2>Filter</h2>
+        <div className={styles.filterRow}>
           {FILTERS.map((filter) => (
             <button
               key={filter.key}
+              type="button"
+              className={
+                activeFilter === filter.key
+                  ? styles.filterButtonActive
+                  : styles.filterButton
+              }
               onClick={() => setActiveFilter(filter.key)}
-              style={{
-                padding: '6px 10px',
-                border: '1px solid #bbb',
-                background: activeFilter === filter.key ? '#111827' : '#fff',
-                color: activeFilter === filter.key ? '#fff' : '#111827',
-                cursor: 'pointer'
-              }}
             >
               {filter.label}
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div
-        style={{
-          marginTop: 20,
-          border: '1px solid #eee',
-          padding: 20,
-          background: '#fff'
-        }}
-      >
-        <h3>Details</h3>
+      <section className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <div>
+            <h2>Details</h2>
+            <p>{filteredIssues.length} issue rows</p>
+          </div>
+        </div>
 
-        {loading && <p>Loading...</p>}
+        {loading ? <p className={styles.emptyState}>Loading...</p> : null}
 
-        {!loading && filteredIssues.length === 0 && <p>No cleanup issues found</p>}
+        {!loading && filteredIssues.length === 0 ? (
+          <p className={styles.emptyState}>No cleanup issues found</p>
+        ) : null}
 
-        {!loading &&
-          filteredIssues.map((item) => (
-            <div
-              key={item.issueId}
-              style={{ marginBottom: 10, paddingBottom: 10, borderBottom: '1px solid #f0f0f0' }}
-            >
-              issueType: {item.issueType} /
-              tableName: {item.tableName} /
-              targetId: {String(item.targetId)} /
-              displayName: {item.displayName ?? '-'} /
-              channelCode: {item.channelCode ?? '-'} /
-              description: {item.description} /
-              referenceCount: {item.referenceCount} /
-              canHardDelete: {item.canHardDelete ? 'true' : 'false'} /
-              protectReason: {item.protectReason ?? '-'} /
-              deletedAt: {item.deletedAt ?? '-'}
-            </div>
-          ))}
-      </div>
-    </div>
+        {!loading && filteredIssues.length > 0 ? (
+          <div className={styles.issueList}>
+            {filteredIssues.map((item) => {
+              const statusLabel = getStatusLabel(item)
+
+              return (
+                <article key={item.issueId} className={styles.issueCard}>
+                  <div className={styles.issueTop}>
+                    <div>
+                      <strong>{item.displayName ?? String(item.targetId)}</strong>
+                      <span>{item.tableName} / {String(item.targetId)}</span>
+                    </div>
+                    <span className={`${styles.statusBadge} ${styles[`status${statusLabel}`]}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                  <p>{item.description}</p>
+                  <div className={styles.issueMeta}>
+                    <span>domain: {item.issueDomain}</span>
+                    <span>type: {item.issueType}</span>
+                    <span>channel: {item.channelCode ?? '-'}</span>
+                    <span>refs: {item.referenceCount}</span>
+                    <span>protect: {item.protectReason ?? '-'}</span>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        ) : null}
+      </section>
+    </main>
   )
 }

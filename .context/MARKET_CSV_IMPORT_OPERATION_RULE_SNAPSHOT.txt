@@ -1,0 +1,316 @@
+MARKET CSV/XLSX IMPORT OPERATION RULE SNAPSHOT
+
+문서 목적:
+이 문서는 MARKET CSV/XLSX 상품 일괄 업로드와 확정 반영 정책을
+프로젝트 고정 규칙으로 기록한다.
+
+적용 범위:
+- MARKET 운영 허브 상품 일괄 등록
+- CSV/XLSX 업로드
+- market_product_import_batches
+- market_product_import_rows
+- master_products
+- master_product_scan_codes
+- market_channel_products
+- market_channel_product_history
+
+핵심 원칙:
+- 업로드 단계는 수집 전용이다.
+- 확정 반영은 confirm 단계에서만 수행한다.
+- 공용 상품 원장과 채널별 판매정보는 반드시 분리한다.
+- 외부 바코드(scanCodeValue)와 내부 상품코드(productCode)는 절대 혼용하지 않는다.
+- 재고 정규화는 Service Layer에서만 수행한다.
+
+==================================================
+SECTION 01 : UPLOAD STAGE POLICY
+==================================================
+
+업로드 단계는 수집 전용이다.
+
+CSV/XLSX 파일 업로드 시 수행할 수 있는 작업:
+1. 파일 저장
+2. import batch 생성
+3. 컬럼 alias 분석
+4. row 원본 파싱
+5. 모든 row를 market_product_import_rows에 저장
+6. scanCodeValue 기준 매칭 결과 미리보기
+7. 재고 정규화 후보값 계산
+8. preview 응답 생성
+
+업로드 단계에서 금지되는 작업:
+1. row 삭제
+2. row 제외
+3. 필터링 결과로 row 미저장
+4. market_channel_products 확정 반영
+5. master_products 가격/재고 수정
+6. productCode 프론트 생성
+7. rawStockQuantity를 판매 재고에 직접 반영
+
+==================================================
+SECTION 02 : IMPORT ROW PRESERVATION
+==================================================
+
+모든 CSV/XLSX row는 market_product_import_rows에 저장한다.
+
+필수 보존 대상:
+- 원본 상품명
+- 원본 규격
+- 원본 바코드
+- 원본 공급사
+- 원본 매입가
+- 원본 판매가
+- 원본 행사 매입가
+- 원본 행사 판매가
+- 원본 재고
+- 원본 최소재고
+- 원본 카테고리
+- 원본 설명
+- 원본 원산지
+- 원본 매대
+- 처리 상태
+- 처리 오류 메시지
+- 매핑된 productCode
+- 매핑된 scanCodeValue
+- 매핑된 masterProductId
+- 매핑된 marketProductId
+
+정책:
+- 원본 row는 추적용 기록이다.
+- 업로드 단계에서 row를 임의 삭제하거나 제외하지 않는다.
+- 오류 row도 rowStatus와 errorMessage를 기록하고 보존한다.
+
+==================================================
+SECTION 03 : CONFIRM STAGE FILTER POLICY
+==================================================
+
+필터링은 confirm 단계에서만 수행한다.
+
+confirm 단계의 역할:
+1. 사용자가 선택한 confirmMode 확인
+2. rowStatus와 매칭 상태 확인
+3. confirmMode 정책에 따라 생성/업데이트/스킵 결정
+4. market_channel_products 반영
+5. 필요 시 master_products 신규 생성
+6. 변경 이력 기록
+
+confirm 단계 전에는 판매 테이블에 확정 반영하지 않는다.
+
+==================================================
+SECTION 04 : CONFIRM MODE POLICY
+==================================================
+
+허용 confirmMode:
+- AUTO_MATCH
+- CREATE_ONLY
+- UPDATE_EXISTING
+- STOCK_ONLY
+- PRICE_ONLY
+
+AUTO_MATCH:
+- 신규 상품 생성과 기존 상품 업데이트를 함께 수행한다.
+- scanCodeValue로 기존 공용 상품이 매칭되면 기존 productCode를 사용한다.
+- 매칭되지 않은 row는 Service Layer에서 신규 master_products를 생성할 수 있다.
+- 이후 channelCode + productCode 기준으로 market_channel_products를 생성 또는 업데이트한다.
+
+CREATE_ONLY:
+- 매칭 실패 row 또는 신규 등록 대상 row만 처리한다.
+- 기존 channelCode + productCode 등록 상품은 업데이트하지 않는다.
+- 이미 등록된 상품은 스킵한다.
+
+UPDATE_EXISTING:
+- 매칭 성공 row 중 기존 channelCode + productCode 등록 상품만 업데이트한다.
+- 신규 master_products 생성은 수행하지 않는다.
+- 신규 market_channel_products 생성도 수행하지 않는다.
+
+STOCK_ONLY:
+- 기존 channelCode + productCode 등록 상품의 재고 관련 값만 업데이트한다.
+- 판매가, 행사 가격, 상품 원장 정보는 변경하지 않는다.
+- normalizedStockQuantity가 NULL이면 기존 stockQuantity를 유지한다.
+
+PRICE_ONLY:
+- 기존 channelCode + productCode 등록 상품의 가격 관련 값만 업데이트한다.
+- stockQuantity는 변경하지 않는다.
+- salePrice, eventPrice, eventPurchasePrice, eventGroupName 등 가격/행사 가격 범위만 반영한다.
+
+==================================================
+SECTION 05 : STOCK NORMALIZATION POLICY
+==================================================
+
+rawStockQuantity:
+- CSV/XLSX 원본 재고값을 그대로 보존한다.
+- 음수, 문자열, 공백도 원본 추적을 위해 보존한다.
+- 판매 테이블 반영값으로 직접 사용하지 않는다.
+
+normalizedStockQuantity:
+- 판매 반영용 정규화 재고값이다.
+- NULL 또는 0 이상만 허용한다.
+- 음수 저장 금지.
+
+정규화 규칙:
+1. 원본 재고가 숫자이고 0 이상이면:
+   - rawStockQuantity = 원본값
+   - normalizedStockQuantity = 원본값
+   - stockNormalizeMemo = NULL
+
+2. 원본 재고가 숫자이고 음수이면:
+   - rawStockQuantity = 원본값
+   - normalizedStockQuantity = 0
+   - stockNormalizeMemo = NEGATIVE_STOCK_NORMALIZED_TO_ZERO
+
+3. 원본 재고가 비어 있거나 숫자 변환 불가이면:
+   - rawStockQuantity = 원본값
+   - normalizedStockQuantity = NULL
+   - stockNormalizeMemo = INVALID_STOCK_VALUE
+
+4. 재고 업데이트 제외 옵션이 적용되면:
+   - rawStockQuantity = 원본값
+   - normalizedStockQuantity = NULL
+   - stockNormalizeMemo = STOCK_UPDATE_SKIPPED
+
+판매 테이블 반영 규칙:
+- normalizedStockQuantity IS NULL 이면 기존 market_channel_products.stockQuantity를 유지한다.
+- normalizedStockQuantity >= 0 이면 market_channel_products.stockQuantity에 반영한다.
+- rawStockQuantity를 market_channel_products.stockQuantity에 직접 반영하지 않는다.
+- market_channel_products.stockQuantity에는 음수 저장을 절대 허용하지 않는다.
+
+==================================================
+SECTION 06 : MASTER PRODUCT / CHANNEL PRODUCT SPLIT
+==================================================
+
+master_products:
+- 플랫폼 공용 상품 원장이다.
+- 상품명, 브랜드, 공급사, 규격, 카테고리, 원산지, 설명 등 공통 상품 정보를 관리한다.
+- 채널별 가격, 재고, 행사 가격, 판매 상태를 저장하지 않는다.
+
+market_channel_products:
+- channelCode 기준 채널별 판매정보 테이블이다.
+- 판매가, 매입가, 행사가, 행사 매입가, 재고, 안전재고, 매대, 노출상태, 판매상태를 관리한다.
+- 공용 상품 원장 자체를 중복 저장하거나 직접 수정하지 않는다.
+
+금지:
+- master_products 가격 수정
+- master_products 재고 수정
+- master_products를 채널별 판매정보 저장소로 사용하는 것
+- market_channel_products에 scanCodeValue를 연결 기준으로 사용하는 것
+
+==================================================
+SECTION 07 : PRODUCTCODE / SCANCODEVALUE ROLE SPLIT
+==================================================
+
+productCode:
+- RAPUS 내부 상품 식별 코드다.
+- 12자리 내부 코드 정책을 따른다.
+- Backend Service Layer에서만 생성한다.
+- Frontend에서 생성하지 않는다.
+- 외부 바코드와 혼용하지 않는다.
+
+scanCodeValue:
+- 외부 바코드 또는 스캔 가능한 외부 코드다.
+- CSV/XLSX의 바코드 값은 scanCodeValue로 저장한다.
+- 상품 매칭 입력값으로 사용한다.
+- productCode 자체가 아니다.
+
+정상 연결 흐름:
+scanCodeValue
+→ master_product_scan_codes 조회
+→ master_products.productCode 확인
+→ market_channel_products.channelCode + productCode 연결
+
+절대 금지:
+- CSV 바코드를 productCode로 저장
+- scanCodeValue와 productCode 혼용
+- productCode를 프론트에서 생성
+- scanCodeValue를 채널 판매상품의 내부 기준키로 사용
+
+==================================================
+SECTION 08 : SERVICE LAYER NORMALIZATION RULE
+==================================================
+
+CSV/XLSX 정규화는 Service Layer에서만 수행한다.
+
+Frontend 역할:
+- 파일 선택
+- 업로드 요청
+- preview 표시
+- confirmMode 선택
+- confirm 요청
+
+Frontend 금지:
+- DB 직접 접근
+- productCode 생성
+- rawStockQuantity 정규 판매 재고 직접 반영
+- scanCodeValue와 productCode 혼용
+
+Controller 역할:
+- 요청 수신
+- 파일 전달
+- Service 호출
+- 응답 반환
+
+Controller 금지:
+- DB 직접 접근
+- 정규화 비즈니스 로직 직접 처리
+- productCode 생성
+
+Service 역할:
+- CSV/XLSX 파싱
+- alias mapping
+- scanCodeValue 정규화
+- productCode 생성
+- master_products 매칭/생성
+- market_channel_products 생성/업데이트
+- rawStockQuantity 보존
+- normalizedStockQuantity 계산
+- history 기록
+
+==================================================
+SECTION 09 : ABSOLUTE FORBIDDEN RULE
+==================================================
+
+절대 금지:
+- 업로드 단계에서 row 삭제
+- 업로드 단계에서 row 제외
+- confirmMode 없이 판매 테이블 반영
+- rawStockQuantity를 판매 재고에 직접 반영
+- market_channel_products.stockQuantity에 음수 저장
+- master_products 가격/재고 수정
+- productCode 프론트 생성
+- CSV 바코드를 productCode로 사용
+- scanCodeValue와 productCode 혼용
+- Controller DB 직접 접근
+- Frontend DB 직접 접근
+- 공용 상품 원장 직접 수정
+
+==================================================
+SECTION 10 : VALIDATION CHECKLIST
+==================================================
+
+검증 기준:
+1. CSV/XLSX 업로드 시 모든 row가 market_product_import_rows에 저장된다.
+2. 업로드 단계에서 row 삭제/제외가 발생하지 않는다.
+3. confirm 단계에서만 confirmMode 기준 반영이 수행된다.
+4. rawStockQuantity는 원본값을 보존한다.
+5. normalizedStockQuantity는 NULL 또는 0 이상만 저장된다.
+6. 음수 재고는 0으로 정규화된다.
+7. 숫자 변환 불가 재고는 NULL로 정규화된다.
+8. normalizedStockQuantity가 NULL이면 기존 판매 재고를 유지한다.
+9. master_products에는 채널별 가격/재고가 저장되지 않는다.
+10. market_channel_products에는 채널별 판매정보만 저장된다.
+11. productCode는 Backend Service Layer에서만 생성된다.
+12. CSV 바코드는 scanCodeValue로 저장된다.
+13. Frontend는 productCode를 생성하지 않는다.
+14. Controller는 DB에 직접 접근하지 않는다.
+15. Service Layer에서 정규화 정책이 고정 적용된다.
+
+==================================================
+SECTION 11 : SNAPSHOT STATUS
+==================================================
+
+상태:
+고정 규칙
+
+적용 대상:
+MARKET CSV/XLSX IMPORT 정책
+
+수정 정책:
+이 문서의 정책을 변경하려면 별도 작업지시와 완료보고서가 필요하다.

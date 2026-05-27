@@ -178,7 +178,7 @@ export default function ProtectProductListPage() {
                 <input
                   value={searchDraft}
                   onChange={(event) => setSearchDraft(event.target.value)}
-                  placeholder="제품명 / 프로덕트코드 / 바코드 검색"
+                  placeholder="제품명 / 브랜드 / 바코드 검색"
                 />
               </label>
             </div>
@@ -232,7 +232,7 @@ export default function ProtectProductListPage() {
           {!errorMessage && visibleProducts.length === 0 && !isLoading ? (
             <section className={styles.emptyState}>
               <strong>검색 결과가 없습니다.</strong>
-              <p>상품명, productCode, 바코드, 제조사명으로 다시 검색해 주세요.</p>
+              <p>상품명, 브랜드, 바코드, 제조사명으로 다시 검색해 주세요.</p>
             </section>
           ) : null}
 
@@ -266,7 +266,6 @@ export default function ProtectProductListPage() {
                   <div className={styles.cardBody}>
                     <strong className={styles.productName}>{displayName}</strong>
                     <p className={styles.makerName}>{makerName}</p>
-                    <p className={styles.productCode}>{product.productCode}</p>
                     <p className={styles.barcode}>{product.gtin || '바코드 미연결'}</p>
                     <div className={styles.metaRow}>
                       <span>{product.categoryName || '카테고리 미등록'}</span>

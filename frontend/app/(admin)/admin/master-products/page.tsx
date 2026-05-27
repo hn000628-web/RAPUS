@@ -1,6 +1,6 @@
 'use client'
 
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent, DragEvent } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -12,12 +12,15 @@ import {
   fetchMissingThumbnailMasterProducts,
   fetchMasterProductsList,
   fetchMasterProductsSummary,
+  uploadMasterProductThumbnailBatch,
   updateMasterProductThumbnail,
   type MasterProductDetail,
   type MasterProductListItem,
   type MissingThumbnailMasterProduct,
   type MissingThumbnailMasterProductsResponse,
-  type MasterProductsSummaryResponse
+  type MasterProductsSummaryResponse,
+  type MasterProductThumbnailBatchReportRow,
+  type UploadMasterProductThumbnailBatchResponse
 } from '@/lib/admin/masterProductsApi'
 import styles from './master-products.module.css'
 
@@ -27,11 +30,60 @@ type StatCard = {
   description: string
 }
 
+const BATCH_THUMBNAIL_REPORT_COLUMNS = [
+  'fileName',
+  'productCode',
+  'scanCodeValue',
+  'uploadStatus',
+  'reason',
+  'linkedThumbnail',
+  'createdAt'
+] as const
+
 const MISSING_THUMBNAIL_PAGE_SIZE = 20
 const REGISTERED_THUMBNAIL_PAGE_SIZE = 20
 
+function escapeCsvValue(value: string | number | null | undefined): string {
+  const text = value === null || value === undefined ? '' : String(value)
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+function buildBatchThumbnailReportRows(
+  result: UploadMasterProductThumbnailBatchResponse
+): MasterProductThumbnailBatchReportRow[] {
+  return [
+    ...result.successFiles,
+    ...result.skippedFiles.map((item) => ({
+      fileName: item.fileName,
+      productCode: item.productCode,
+      scanCodeValue: item.scanCodeValue,
+      uploadStatus: item.uploadStatus,
+      reason: item.reason,
+      linkedThumbnail: item.linkedThumbnail,
+      createdAt: item.createdAt
+    })),
+    ...result.failedFiles.map((item) => ({
+      fileName: item.fileName,
+      productCode: item.productCode,
+      scanCodeValue: item.scanCodeValue,
+      uploadStatus: item.uploadStatus,
+      reason: item.reason,
+      linkedThumbnail: item.linkedThumbnail,
+      createdAt: item.createdAt
+    }))
+  ]
+}
+
 export default function AdminMasterProductsPage() {
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false)
+  const [isBatchThumbnailModalOpen, setIsBatchThumbnailModalOpen] = useState(false)
+  const [isSyncGuideModalOpen, setIsSyncGuideModalOpen] = useState(false)
+  const [batchThumbnailFiles, setBatchThumbnailFiles] = useState<File[]>([])
+  const [isBatchThumbnailDragging, setIsBatchThumbnailDragging] = useState(false)
+  const [batchThumbnailUploading, setBatchThumbnailUploading] = useState(false)
+  const [batchThumbnailError, setBatchThumbnailError] = useState('')
+  const [batchThumbnailResult, setBatchThumbnailResult] =
+    useState<UploadMasterProductThumbnailBatchResponse | null>(null)
   const [originType, setOriginType] = useState('국산(한국)')
   const [originCustomText, setOriginCustomText] = useState('')
   const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null)
@@ -70,8 +122,11 @@ export default function AdminMasterProductsPage() {
   })
   const thumbnailInputRef = useRef<HTMLInputElement | null>(null)
   const thumbnailEditInputRef = useRef<HTMLInputElement | null>(null)
+  const batchThumbnailInputRef = useRef<HTMLInputElement | null>(null)
   const currentObjectUrlRef = useRef<string | null>(null)
   const thumbnailUploadObjectUrlRef = useRef<string | null>(null)
+  const batchThumbnailFileCount = batchThumbnailFiles.length
+  const isBatchThumbnailCountOverLimit = batchThumbnailFileCount > 100
 
   const clearThumbnailPreview = () => {
     if (currentObjectUrlRef.current) {
@@ -101,6 +156,158 @@ export default function AdminMasterProductsPage() {
     setOriginType('국산(한국)')
     setOriginCustomText('')
     setIsRegisterModalOpen(false)
+  }
+
+  const openBatchThumbnailModal = () => {
+    setIsBatchThumbnailModalOpen(true)
+  }
+
+  const openSyncGuideModal = () => {
+    setIsSyncGuideModalOpen(true)
+  }
+
+  const closeSyncGuideModal = () => {
+    setIsSyncGuideModalOpen(false)
+  }
+
+  const closeBatchThumbnailModal = () => {
+    if (batchThumbnailUploading) {
+      return
+    }
+    setBatchThumbnailFiles([])
+    setIsBatchThumbnailDragging(false)
+    setBatchThumbnailError('')
+    setBatchThumbnailResult(null)
+    if (batchThumbnailInputRef.current) {
+      batchThumbnailInputRef.current.value = ''
+    }
+    setIsBatchThumbnailModalOpen(false)
+  }
+
+  const selectBatchThumbnailFiles = (files: File[]) => {
+    setBatchThumbnailResult(null)
+    setBatchThumbnailError('')
+    setIsBatchThumbnailDragging(false)
+
+    if (files.length === 0) {
+      setBatchThumbnailFiles([])
+      return
+    }
+
+    if (files.length > 100) {
+      setBatchThumbnailError('이미지 파일은 최대 100개까지 선택할 수 있습니다.')
+      setBatchThumbnailFiles(files)
+      if (batchThumbnailInputRef.current) {
+        batchThumbnailInputRef.current.value = ''
+      }
+      return
+    }
+
+    const allowedExtensions = ['.zip', '.jpg', '.jpeg', '.png', '.webp']
+    const invalidFile = files.find((file) => {
+      const lowerFileName = file.name.toLowerCase()
+      return !allowedExtensions.some((extension) => lowerFileName.endsWith(extension))
+    })
+
+    if (invalidFile) {
+      setBatchThumbnailError('ZIP 또는 이미지 파일만 업로드할 수 있습니다.')
+      setBatchThumbnailFiles([])
+      if (batchThumbnailInputRef.current) {
+        batchThumbnailInputRef.current.value = ''
+      }
+      return
+    }
+
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0)
+
+    if (totalSize > 50 * 1024 * 1024) {
+      setBatchThumbnailError('업로드 파일은 합산 50MB 이하만 업로드할 수 있습니다.')
+      setBatchThumbnailFiles([])
+      if (batchThumbnailInputRef.current) {
+        batchThumbnailInputRef.current.value = ''
+      }
+      return
+    }
+
+    setBatchThumbnailFiles(files)
+  }
+
+  const handleBatchThumbnailFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    selectBatchThumbnailFiles(Array.from(event.target.files ?? []))
+  }
+
+  const handleBatchThumbnailDragOver = (event: DragEvent<HTMLLabelElement>) => {
+    event.preventDefault()
+    if (!batchThumbnailUploading) {
+      setIsBatchThumbnailDragging(true)
+    }
+  }
+
+  const handleBatchThumbnailDragLeave = (event: DragEvent<HTMLLabelElement>) => {
+    event.preventDefault()
+    setIsBatchThumbnailDragging(false)
+  }
+
+  const handleBatchThumbnailDrop = (event: DragEvent<HTMLLabelElement>) => {
+    event.preventDefault()
+    if (batchThumbnailUploading) {
+      return
+    }
+    selectBatchThumbnailFiles(Array.from(event.dataTransfer.files ?? []))
+  }
+
+  const handleBatchThumbnailUpload = async () => {
+    if (batchThumbnailFiles.length === 0 || batchThumbnailUploading) {
+      return
+    }
+
+    setBatchThumbnailUploading(true)
+    setBatchThumbnailError('')
+    setBatchThumbnailResult(null)
+
+    try {
+      const result = await uploadMasterProductThumbnailBatch({
+        files: batchThumbnailFiles
+      })
+      setBatchThumbnailResult(result)
+      setBatchThumbnailFiles([])
+      if (batchThumbnailInputRef.current) {
+        batchThumbnailInputRef.current.value = ''
+      }
+      await loadSummary()
+    } catch {
+      setBatchThumbnailError('썸네일 ZIP 업로드 반영에 실패했습니다.')
+    } finally {
+      setBatchThumbnailUploading(false)
+    }
+  }
+
+  const handleBatchThumbnailReportDownload = () => {
+    if (!batchThumbnailResult) {
+      return
+    }
+
+    const rows = buildBatchThumbnailReportRows(batchThumbnailResult)
+    const csvLines = [
+      BATCH_THUMBNAIL_REPORT_COLUMNS.join(','),
+      ...rows.map((row) =>
+        BATCH_THUMBNAIL_REPORT_COLUMNS.map((column) => escapeCsvValue(row[column])).join(',')
+      )
+    ]
+    const csvContent = `\uFEFF${csvLines.join('\r\n')}`
+    const blob = new Blob([csvContent], {
+      type: 'text/csv;charset=utf-8'
+    })
+    const downloadUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+
+    link.href = downloadUrl
+    link.download = `master_product_thumbnail_upload_result_${timestamp}.csv`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(downloadUrl)
   }
 
   const handleThumbnailChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -368,6 +575,20 @@ export default function AdminMasterProductsPage() {
           </Link>
           <button
             type="button"
+            className={styles.secondaryButton}
+            onClick={openSyncGuideModal}
+          >
+            동기화 안내
+          </button>
+          <button
+            type="button"
+            className={styles.secondaryButton}
+            onClick={openBatchThumbnailModal}
+          >
+            썸네일 이미지 등록
+          </button>
+          <button
+            type="button"
             className={styles.primaryButton}
             disabled={connectLoading}
             onClick={() => void handleConnectProducts()}
@@ -379,6 +600,264 @@ export default function AdminMasterProductsPage() {
 
       {connectMessage ? <p className={styles.connectStatus}>{connectMessage}</p> : null}
       {connectError ? <p className={styles.connectError}>{connectError}</p> : null}
+
+      {typeof document !== 'undefined' && isSyncGuideModalOpen
+        ? createPortal(
+            <div className={styles.registerModalOverlay} role="presentation">
+              <section
+                className={styles.syncGuideModal}
+                role="dialog"
+                aria-modal="true"
+                aria-label="동기화 안내 모달"
+              >
+                <div className={styles.registerModalHeader}>
+                  <div className={styles.registerModalTitleGroup}>
+                    <h2>동기화 안내</h2>
+                    <p className={styles.registerModalDescription}>
+                      POS/ERP 업로드 전 칼럼 구조와 SKIPPED 정책을 확인합니다.
+                    </p>
+                  </div>
+                  <button type="button" className={styles.modalCloseButton} onClick={closeSyncGuideModal}>
+                    닫기
+                  </button>
+                </div>
+
+                <div className={styles.syncGuideHero}>
+                  <span className={styles.syncGuideIcon}>SYNC</span>
+                  <div>
+                    <strong>투게더포스 기준 동기화</strong>
+                    <p>
+                      라푸스 마켓관리자는 POS 프로그램 &quot;투게더포스&quot;의 DB 칼럼 구조를
+                      기준으로 동기화됩니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div className={styles.syncGuideTextBlock}>
+                  <p>
+                    다른 POS/ERP 사용 시 칼럼 구조 차이로 인해 일부 데이터가 정상 반영되지
+                    않을 수 있습니다.
+                  </p>
+                  <p>
+                    CSV/엑셀 업로드 시 칼럼명이 다른 경우 일부 항목은 SKIPPED 처리될 수
+                    있습니다.
+                  </p>
+                  <p>
+                    업로드 오류 또는 동기화 실패 파일은 고객지원으로 전달해 주세요.
+                  </p>
+                </div>
+
+                <div className={styles.syncGuideSupportList}>
+                  <strong>현재 지원 기준</strong>
+                  <ul>
+                    <li>투게더포스 CSV 구조</li>
+                    <li>바코드 기반 재고 동기화</li>
+                    <li>행사/재고/판매가 batch sync</li>
+                  </ul>
+                </div>
+
+                <div className={styles.registerModalFooter}>
+                  <button
+                    type="button"
+                    className={styles.primaryButton}
+                    onClick={closeSyncGuideModal}
+                  >
+                    확인
+                  </button>
+                </div>
+              </section>
+            </div>,
+            document.body
+          )
+        : null}
+
+      {typeof document !== 'undefined' && isBatchThumbnailModalOpen
+        ? createPortal(
+            <div className={styles.registerModalOverlay} role="presentation">
+              <section
+                className={styles.batchThumbnailModal}
+                role="dialog"
+                aria-modal="true"
+                aria-label="썸네일 이미지 등록 규칙 모달"
+              >
+                <div className={styles.registerModalHeader}>
+                  <div className={styles.registerModalTitleGroup}>
+                    <h2>썸네일 이미지 등록</h2>
+                    <p className={styles.registerModalDescription}>
+                      바코드(scanCodeValue) 기준으로 공용 프로덕트 원장 대표 이미지를 일괄 연결합니다.
+                    </p>
+                  </div>
+                  <button type="button" className={styles.modalCloseButton} onClick={closeBatchThumbnailModal}>
+                    닫기
+                  </button>
+                </div>
+
+                <div className={styles.batchRulePanel}>
+                  <span className={styles.batchRuleLabel}>파일명 규칙</span>
+                  <code>[barcode].[ext]</code>
+                  <p>바코드(scanCodeValue) 기준으로 상품 대표 이미지를 연결합니다.</p>
+                </div>
+
+                <div className={styles.batchExampleGrid}>
+                  <code>8801234567890.jpg</code>
+                  <code>8801234567890.jpeg</code>
+                  <code>8801234567890.webp</code>
+                  <code>8801234567890.png</code>
+                </div>
+
+                <div className={styles.batchPolicyGrid}>
+                  <article>
+                    <strong>대표 이미지</strong>
+                    <p>바코드 1개당 대표 썸네일 1개를 연결합니다.</p>
+                  </article>
+                  <article>
+                    <strong>매칭 기준</strong>
+                    <p>scanCodeValue 조회 후 내부 productCode를 확인해 원장 상품에 연결합니다.</p>
+                  </article>
+                  <article>
+                    <strong>업로드 제한</strong>
+                    <p>현재 기준 최대 100개 이미지, ZIP 50MB 이하로 준비합니다.</p>
+                  </article>
+                  <article>
+                    <strong>저장 구조</strong>
+                    <p>image_assets가 파일 경로를 보유하고 master_product_thumbnails가 relation만 연결합니다.</p>
+                  </article>
+                </div>
+
+                <label
+                  className={`${styles.batchUploadArea} ${
+                    batchThumbnailFiles.length > 0 || isBatchThumbnailDragging ? styles.batchUploadAreaActive : ''
+                  }`}
+                  onDragOver={handleBatchThumbnailDragOver}
+                  onDragLeave={handleBatchThumbnailDragLeave}
+                  onDrop={handleBatchThumbnailDrop}
+                >
+                  <input
+                    ref={batchThumbnailInputRef}
+                    type="file"
+                    accept=".zip,.jpg,.jpeg,.png,.webp"
+                    multiple
+                    disabled={batchThumbnailUploading}
+                    onChange={handleBatchThumbnailFileChange}
+                  />
+                  <span
+                    className={`${styles.batchUploadCount} ${
+                      isBatchThumbnailCountOverLimit ? styles.batchUploadCountWarning : ''
+                    }`}
+                  >
+                    현재 업로드 파일 {batchThumbnailFileCount} / 100
+                  </span>
+                  <strong>ZIP 또는 이미지 파일을 드래그하거나 클릭하여 업로드하세요.</strong>
+                  <span>지원 형식: .zip, .jpg, .jpeg, .png, .webp</span>
+                  <span>최대 100개 이미지 / 50MB 이하</span>
+                  {batchThumbnailFiles.length > 0 ? (
+                    <div className={styles.batchSelectedFileList}>
+                      <span>선택한 파일</span>
+                      <ul>
+                        {batchThumbnailFiles.map((file) => (
+                          <li key={`${file.name}-${file.size}`}>{file.name}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </label>
+
+                {batchThumbnailResult ? (
+                  <>
+                    <div className={styles.batchResultGrid}>
+                      <article>
+                        <span>전체</span>
+                        <strong>{batchThumbnailResult.totalFiles}</strong>
+                      </article>
+                      <article>
+                        <span>성공</span>
+                        <strong>{batchThumbnailResult.successCount}</strong>
+                      </article>
+                      <article>
+                        <span>SKIPPED</span>
+                        <strong>{batchThumbnailResult.skippedCount}</strong>
+                      </article>
+                      <article>
+                        <span>실패</span>
+                        <strong>{batchThumbnailResult.failedCount}</strong>
+                      </article>
+                    </div>
+
+                    <div className={styles.batchReportActions}>
+                      <div>
+                        <strong>업로드 결과 리포트</strong>
+                        <span>SUCCESS / SKIPPED / FAILED 파일 단위 결과를 CSV로 내려받습니다.</span>
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.secondaryButton}
+                        onClick={handleBatchThumbnailReportDownload}
+                      >
+                        결과 CSV 다운로드
+                      </button>
+                    </div>
+
+                    {batchThumbnailResult.skippedFiles.length > 0 ? (
+                      <div className={styles.batchIssueList}>
+                        <strong>SKIPPED 상세</strong>
+                        <ul>
+                          {batchThumbnailResult.skippedFiles.map((item) => (
+                            <li key={`${item.fileName}-${item.reason}`}>
+                              <span>{item.fileName}</span>
+                              <em>{item.reason}</em>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {batchThumbnailResult.failedFiles.length > 0 ? (
+                      <div className={styles.batchIssueList}>
+                        <strong>실패 상세</strong>
+                        <ul>
+                          {batchThumbnailResult.failedFiles.map((item) => (
+                            <li key={`${item.fileName}-${item.reason}`}>
+                              <span>{item.fileName}</span>
+                              <em>{item.reason}</em>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </>
+                ) : null}
+
+                {batchThumbnailError ? (
+                  <p className={styles.batchErrorText}>{batchThumbnailError}</p>
+                ) : null}
+
+                <div className={styles.registerModalFooter}>
+                  <button
+                    type="button"
+                    className={styles.secondaryButton}
+                    disabled={batchThumbnailUploading}
+                    onClick={closeBatchThumbnailModal}
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.primaryButton}
+                    disabled={
+                      batchThumbnailFiles.length === 0 ||
+                      batchThumbnailUploading ||
+                      isBatchThumbnailCountOverLimit
+                    }
+                    onClick={() => void handleBatchThumbnailUpload()}
+                  >
+                    {batchThumbnailUploading ? '업로드 중...' : '업로드 시작'}
+                  </button>
+                </div>
+              </section>
+            </div>,
+            document.body
+          )
+        : null}
 
       <section className={styles.statsGrid}>
         {statCards.map((card) => {

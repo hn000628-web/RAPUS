@@ -46,6 +46,8 @@ type OrphanImageAssetItem = {
   galleryRefCount: number
   postRefCount: number
   placeThumbRefCount: number
+  masterProductThumbnailRefCount: number
+  marketEventBannerRefCount: number
 }
 
 type OrphanImageAssetsResponse = {
@@ -98,10 +100,21 @@ type CleanupIssueType =
   | 'ORPHAN'
   | 'INACTIVE'
   | 'SOFT_DELETED'
+  | 'WARNING'
+  | 'INVALID'
+
+type CleanupIssueDomain =
+  | 'GENERAL'
+  | 'POS'
+  | 'IMAGE'
+  | 'PRODUCT'
+  | 'EVENT'
+  | 'SCAN_CODE'
 
 type CleanupIssueItem = {
   issueId: string
   issueType: CleanupIssueType
+  issueDomain: CleanupIssueDomain
   tableName: string
   targetId: number | string
   displayName: string | null
@@ -128,6 +141,11 @@ type CleanupIssuesSummary = {
   posOrphanOrderItemOptionCount: number
   posInvalidProductRelationCount: number
   posInvalidLocationRelationCount: number
+  orphanImageCount: number
+  orphanProductThumbnailCount: number
+  orphanEventRelationCount: number
+  orphanScanCodeCount: number
+  invalidProductImageRelationCount: number
 }
 
 type CleanupIssuesResponse = {
@@ -336,6 +354,10 @@ export class AdminService {
   async findOrphanImageAssets(): Promise<OrphanImageAssetsResponse> {
     const hasPlaceThumbnailsTable =
       this.tableExists('profile_place_thumbnails')
+    const hasMasterProductThumbnailsTable =
+      this.tableExists('master_product_thumbnails')
+    const hasMarketEventMastersTable =
+      this.tableExists('market_event_masters')
 
     const placeThumbSelectSql =
       hasPlaceThumbnailsTable
@@ -353,6 +375,46 @@ export class AdminService {
           SELECT 1
           FROM profile_place_thumbnails ppt
           WHERE ppt.imageAssetId = ia.id
+        )`
+        : ''
+
+    const masterProductThumbSelectSql =
+      hasMasterProductThumbnailsTable
+        ? `(
+          SELECT COUNT(*)
+          FROM master_product_thumbnails mpt
+          WHERE mpt.imageAssetId = ia.id
+            AND COALESCE(mpt.isActive, 1) = 1
+        ) AS masterProductThumbnailRefCount`
+        : '0 AS masterProductThumbnailRefCount'
+
+    const masterProductThumbWhereSql =
+      hasMasterProductThumbnailsTable
+        ? `
+        AND NOT EXISTS (
+          SELECT 1
+          FROM master_product_thumbnails mpt
+          WHERE mpt.imageAssetId = ia.id
+            AND COALESCE(mpt.isActive, 1) = 1
+        )`
+        : ''
+
+    const marketEventBannerSelectSql =
+      hasMarketEventMastersTable
+        ? `(
+          SELECT COUNT(*)
+          FROM market_event_masters mem
+          WHERE mem.bannerImageAssetId = ia.id
+        ) AS marketEventBannerRefCount`
+        : '0 AS marketEventBannerRefCount'
+
+    const marketEventBannerWhereSql =
+      hasMarketEventMastersTable
+        ? `
+        AND NOT EXISTS (
+          SELECT 1
+          FROM market_event_masters mem
+          WHERE mem.bannerImageAssetId = ia.id
         )`
         : ''
 
@@ -387,7 +449,9 @@ export class AdminService {
           FROM post_images pi
           WHERE pi.imageAssetId = ia.id
         ) AS postRefCount,
-        ${placeThumbSelectSql}
+        ${placeThumbSelectSql},
+        ${masterProductThumbSelectSql},
+        ${marketEventBannerSelectSql}
       FROM image_assets ia
       WHERE NOT EXISTS (
           SELECT 1
@@ -410,6 +474,8 @@ export class AdminService {
           WHERE pi.imageAssetId = ia.id
         )
         ${placeThumbWhereSql}
+        ${masterProductThumbWhereSql}
+        ${marketEventBannerWhereSql}
       ORDER BY ia.createdAt DESC, ia.id DESC
     `).all() as OrphanImageAssetItem[]
 
@@ -530,6 +596,18 @@ export class AdminService {
     const orphanAssetIssues =
       await this.findOrphanImageAssetIssues()
 
+    const orphanProductThumbnailIssues =
+      await this.findOrphanMasterProductThumbnailIssues()
+
+    const orphanEventRelationIssues =
+      await this.findOrphanMarketEventRelationIssues()
+
+    const orphanScanCodeIssues =
+      await this.findOrphanScanCodeIssues()
+
+    const invalidProductImageRelationIssues =
+      await this.findInvalidProductImageRelationIssues()
+
     const inactiveIssues =
       await this.findInactiveRowIssues()
 
@@ -555,6 +633,10 @@ export class AdminService {
       ...duplicateIssues,
       ...deletedPosIssues,
       ...orphanAssetIssues,
+      ...orphanProductThumbnailIssues,
+      ...orphanEventRelationIssues,
+      ...orphanScanCodeIssues,
+      ...invalidProductImageRelationIssues,
       ...inactiveIssues,
       ...posInactiveOrderIssues,
       ...posOrphanOrderItemIssues,
@@ -588,7 +670,12 @@ export class AdminService {
       posOrphanOrderItemCount: posOrphanOrderItemIssues.length,
       posOrphanOrderItemOptionCount: posOrphanOrderItemOptionIssues.length,
       posInvalidProductRelationCount: posInvalidProductRelationIssues.length,
-      posInvalidLocationRelationCount: posInvalidLocationRelationIssues.length
+      posInvalidLocationRelationCount: posInvalidLocationRelationIssues.length,
+      orphanImageCount: orphanAssetIssues.length,
+      orphanProductThumbnailCount: orphanProductThumbnailIssues.length,
+      orphanEventRelationCount: orphanEventRelationIssues.length,
+      orphanScanCodeCount: orphanScanCodeIssues.length,
+      invalidProductImageRelationCount: invalidProductImageRelationIssues.length
     }
 
     return {
@@ -686,6 +773,34 @@ export class AdminService {
 
   }
 
+  async cleanupOrphanImages(): Promise<CleanupIssuesCleanResponse> {
+    return this.cleanIssuesByDomainAndTables(
+      'IMAGE',
+      ['image_assets'],
+      ['ORPHAN']
+    )
+  }
+
+  async cleanupOrphanRelations(): Promise<CleanupIssuesCleanResponse> {
+    return this.cleanIssuesByDomainAndTables(
+      null,
+      [
+        'master_product_thumbnails',
+        'market_products',
+        'master_product_scan_codes'
+      ],
+      ['ORPHAN']
+    )
+  }
+
+  async cleanupInvalidProductImages(): Promise<CleanupIssuesCleanResponse> {
+    return this.cleanIssuesByDomainAndTables(
+      'IMAGE',
+      ['master_product_thumbnails'],
+      ['INVALID']
+    )
+  }
+
   async clearDevPosInactiveOrders(): Promise<ClearDevPosInactiveOrdersResponse> {
     const clearTransaction = this.db.transaction(() => {
       const inactiveOrders = this.db.prepare(`
@@ -769,6 +884,7 @@ export class AdminService {
     return duplicateGroups.map((group) => ({
       issueId: `DUPLICATE:profile_blocks:${group.profileId}:${group.sortOrder}`,
       issueType: 'DUPLICATE',
+      issueDomain: 'GENERAL',
       tableName: 'profile_blocks',
       targetId: `${group.profileId}:${group.sortOrder}`,
       displayName: `profileId=${group.profileId}, slot=${group.sortOrder}`,
@@ -804,6 +920,7 @@ export class AdminService {
       return {
         issueId: `${issueType}:pos_locations:${item.id}`,
         issueType,
+        issueDomain: 'POS',
         tableName: 'pos_locations',
         targetId: item.id,
         displayName: item.locationName,
@@ -825,16 +942,275 @@ export class AdminService {
     return scanned.items.map((item) => ({
       issueId: `ORPHAN:image_assets:${item.id}`,
       issueType: 'ORPHAN',
+      issueDomain: 'IMAGE',
       tableName: 'image_assets',
       targetId: item.id,
       displayName: item.fileName,
       channelCode: item.channelCode,
       description: `orphan media asset (${item.usageType})`,
       referenceCount: 0,
-      canHardDelete: false,
-      protectReason: 'media file cleanup requires separate media cleanup policy',
+      canHardDelete: true,
+      protectReason: null,
       createdAt: item.createdAt,
       updatedAt: null,
+      deletedAt: null
+    }))
+  }
+
+  private async findOrphanMasterProductThumbnailIssues(): Promise<CleanupIssueItem[]> {
+    if (!this.tableExists('master_product_thumbnails')) {
+      return []
+    }
+
+    const rows = this.db.prepare(`
+      SELECT
+        mpt.id,
+        mpt.masterProductId,
+        mpt.imageAssetId,
+        mpt.sortOrder,
+        mpt.isPrimary,
+        mpt.isActive,
+        mpt.createdAt,
+        mpt.updatedAt
+      FROM master_product_thumbnails mpt
+      LEFT JOIN master_products mp
+        ON mp.id = mpt.masterProductId
+      LEFT JOIN image_assets ia
+        ON ia.id = mpt.imageAssetId
+      WHERE mp.id IS NULL
+        OR ia.id IS NULL
+      ORDER BY mpt.id DESC
+    `).all() as Array<{
+      id: number
+      masterProductId: number | null
+      imageAssetId: number | null
+      sortOrder: number | null
+      isPrimary: number | null
+      isActive: number | null
+      createdAt: string | null
+      updatedAt: string | null
+    }>
+
+    return rows.map((row) => ({
+      issueId: `ORPHAN:master_product_thumbnails:${row.id}`,
+      issueType: 'ORPHAN',
+      issueDomain: 'PRODUCT',
+      tableName: 'master_product_thumbnails',
+      targetId: row.id,
+      displayName: `masterProductId=${row.masterProductId ?? '-'} / imageAssetId=${row.imageAssetId ?? '-'}`,
+      channelCode: null,
+      description: '연결된 master_products 또는 image_assets가 없는 대표 썸네일 relation입니다.',
+      referenceCount: 0,
+      canHardDelete: true,
+      protectReason: null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      deletedAt: null
+    }))
+  }
+
+  private async findOrphanMarketEventRelationIssues(): Promise<CleanupIssueItem[]> {
+    if (!this.tableExists('market_products') || !this.tableExists('market_event_masters')) {
+      return []
+    }
+
+    const rows = this.db.prepare(`
+      SELECT
+        mp.id,
+        mp.channelCode,
+        mp.productCode,
+        mp.productName,
+        mp.eventCode,
+        mp.eventStatus,
+        mp.isActive,
+        mp.isDeleted,
+        mp.createdAt,
+        mp.updatedAt,
+        EXISTS (
+          SELECT 1
+          FROM pos_order_items poi
+          WHERE poi.posProductId = mp.id
+        ) AS orderRefCount
+      FROM market_products mp
+      LEFT JOIN market_event_masters mem
+        ON mem.eventCode = mp.eventCode
+        AND mem.channelCode = mp.channelCode
+      WHERE mp.eventCode IS NOT NULL
+        AND TRIM(mp.eventCode) <> ''
+        AND mem.id IS NULL
+      ORDER BY mp.id DESC
+    `).all() as Array<{
+      id: number
+      channelCode: string | null
+      productCode: string | null
+      productName: string | null
+      eventCode: string | null
+      eventStatus: string | null
+      isActive: number | null
+      isDeleted: number | null
+      createdAt: string | null
+      updatedAt: string | null
+      orderRefCount: number | null
+    }>
+
+    return rows.map((row) => {
+      const protectedByActiveEvent =
+        row.eventStatus === 'ACTIVE'
+      const protectedByOrder =
+        Number(row.orderRefCount ?? 0) > 0
+
+      return {
+        issueId: `ORPHAN:market_products:${row.id}:eventCode`,
+        issueType: 'ORPHAN' as const,
+        issueDomain: 'EVENT' as const,
+        tableName: 'market_products',
+        targetId: row.id,
+        displayName: row.productName ?? row.productCode ?? `market_product:${row.id}`,
+        channelCode: row.channelCode,
+        description: `market_event_masters에 없는 eventCode(${row.eventCode})가 연결되어 있습니다.`,
+        referenceCount: Number(row.orderRefCount ?? 0),
+        canHardDelete: !protectedByActiveEvent && !protectedByOrder,
+        protectReason: protectedByActiveEvent
+          ? 'ACTIVE event product relation is protected'
+          : protectedByOrder
+            ? 'order-linked product relation is protected'
+            : null,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        deletedAt: null
+      }
+    })
+  }
+
+  private async findOrphanScanCodeIssues(): Promise<CleanupIssueItem[]> {
+    if (!this.tableExists('master_product_scan_codes')) {
+      return []
+    }
+
+    const rows = this.db.prepare(`
+      SELECT
+        mpsc.id,
+        mpsc.masterProductId,
+        mpsc.productCode,
+        mpsc.scanCodeValue,
+        mpsc.scanCodeType,
+        mpsc.isActive,
+        mpsc.createdAt,
+        mpsc.updatedAt,
+        mpsc.deletedAt
+      FROM master_product_scan_codes mpsc
+      LEFT JOIN master_products mpById
+        ON mpById.id = mpsc.masterProductId
+      LEFT JOIN master_products mpByCode
+        ON mpByCode.productCode = mpsc.productCode
+      WHERE mpById.id IS NULL
+        AND mpByCode.id IS NULL
+      ORDER BY mpsc.id DESC
+    `).all() as Array<{
+      id: number
+      masterProductId: number | null
+      productCode: string | null
+      scanCodeValue: string | null
+      scanCodeType: string | null
+      isActive: number | null
+      createdAt: string | null
+      updatedAt: string | null
+      deletedAt: string | null
+    }>
+
+    return rows.map((row) => ({
+      issueId: `ORPHAN:master_product_scan_codes:${row.id}`,
+      issueType: 'ORPHAN',
+      issueDomain: 'SCAN_CODE',
+      tableName: 'master_product_scan_codes',
+      targetId: row.id,
+      displayName: row.scanCodeValue ?? row.productCode ?? `scan_code:${row.id}`,
+      channelCode: null,
+      description: '연결된 master_products가 없는 scanCodeValue relation입니다.',
+      referenceCount: 0,
+      canHardDelete: Number(row.isActive ?? 1) === 0 || row.deletedAt !== null,
+      protectReason:
+        Number(row.isActive ?? 1) === 1 && row.deletedAt === null
+          ? 'active scan code relation requires manual review'
+          : null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      deletedAt: row.deletedAt
+    }))
+  }
+
+  private async findInvalidProductImageRelationIssues(): Promise<CleanupIssueItem[]> {
+    if (!this.tableExists('master_product_thumbnails')) {
+      return []
+    }
+
+    const rows = this.db.prepare(`
+      SELECT
+        mpt.id,
+        mpt.masterProductId,
+        mpt.imageAssetId,
+        mp.productCode,
+        mp.productName,
+        mpt.sortOrder,
+        mpt.isPrimary,
+        mpt.isActive,
+        mpt.createdAt,
+        mpt.updatedAt,
+        (
+          SELECT COUNT(*)
+          FROM master_product_thumbnails dup
+          WHERE dup.masterProductId = mpt.masterProductId
+            AND dup.isPrimary = 1
+            AND dup.isActive = 1
+        ) AS activePrimaryCount
+      FROM master_product_thumbnails mpt
+      INNER JOIN master_products mp
+        ON mp.id = mpt.masterProductId
+      WHERE mpt.isPrimary = 1
+        AND mpt.isActive = 1
+        AND mpt.id <> (
+          SELECT MAX(keep.id)
+          FROM master_product_thumbnails keep
+          WHERE keep.masterProductId = mpt.masterProductId
+            AND keep.isPrimary = 1
+            AND keep.isActive = 1
+        )
+        AND (
+          SELECT COUNT(*)
+          FROM master_product_thumbnails dup
+          WHERE dup.masterProductId = mpt.masterProductId
+            AND dup.isPrimary = 1
+            AND dup.isActive = 1
+        ) > 1
+      ORDER BY mpt.masterProductId ASC, mpt.id DESC
+    `).all() as Array<{
+      id: number
+      masterProductId: number
+      imageAssetId: number
+      productCode: string | null
+      productName: string | null
+      sortOrder: number | null
+      isPrimary: number | null
+      isActive: number | null
+      createdAt: string | null
+      updatedAt: string | null
+      activePrimaryCount: number | null
+    }>
+
+    return rows.map((row) => ({
+      issueId: `INVALID:master_product_thumbnails:${row.id}:duplicate_primary`,
+      issueType: 'INVALID',
+      issueDomain: 'IMAGE',
+      tableName: 'master_product_thumbnails',
+      targetId: row.id,
+      displayName: row.productName ?? row.productCode ?? `master_product:${row.masterProductId}`,
+      channelCode: null,
+      description: `대표 썸네일이 중복 활성화되어 있습니다. activePrimaryCount=${Number(row.activePrimaryCount ?? 0)}`,
+      referenceCount: Number(row.activePrimaryCount ?? 0),
+      canHardDelete: true,
+      protectReason: null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
       deletedAt: null
     }))
   }
@@ -852,6 +1228,7 @@ export class AdminService {
         issues.push({
           issueId: `INACTIVE:${group.tableName}:${item.id}`,
           issueType: 'INACTIVE',
+          issueDomain: group.tableName === 'image_assets' ? 'IMAGE' : 'GENERAL',
           tableName: group.tableName,
           targetId: item.id,
           displayName: item.displayName,
@@ -892,6 +1269,7 @@ export class AdminService {
     return rows.map((row) => ({
       issueId: `INACTIVE:pos_orders:${row.id}`,
       issueType: 'INACTIVE',
+      issueDomain: 'POS',
       tableName: 'pos_orders',
       targetId: row.id,
       displayName: row.orderCode ?? `order:${row.id}`,
@@ -928,6 +1306,7 @@ export class AdminService {
     return rows.map((row) => ({
       issueId: `ORPHAN:pos_order_items:${row.id}`,
       issueType: 'ORPHAN',
+      issueDomain: 'POS',
       tableName: 'pos_order_items',
       targetId: row.id,
       displayName: row.orderCode ?? `order_item:${row.id}`,
@@ -962,6 +1341,7 @@ export class AdminService {
     return rows.map((row) => ({
       issueId: `ORPHAN:pos_order_item_options:${row.id}`,
       issueType: 'ORPHAN',
+      issueDomain: 'POS',
       tableName: 'pos_order_item_options',
       targetId: row.id,
       displayName: `order_item_option:${row.id}`,
@@ -1001,6 +1381,7 @@ export class AdminService {
     return rows.map((row) => ({
       issueId: `ORPHAN:pos_products:${row.id}`,
       issueType: 'ORPHAN',
+      issueDomain: 'POS',
       tableName: 'pos_products',
       targetId: row.id,
       displayName: row.productName ?? `product:${row.id}`,
@@ -1041,6 +1422,7 @@ export class AdminService {
     return rows.map((row) => ({
       issueId: `ORPHAN:pos_locations:${row.id}:invalid_profile`,
       issueType: 'ORPHAN',
+      issueDomain: 'POS',
       tableName: 'pos_locations',
       targetId: row.id,
       displayName: row.locationName ?? `location:${row.id}`,
@@ -1122,6 +1504,7 @@ export class AdminService {
       return {
         issueId: `SOFT_DELETED:profile_delivery_addresses:${row.id}`,
         issueType: 'SOFT_DELETED' as const,
+        issueDomain: 'GENERAL',
         tableName: 'profile_delivery_addresses',
         targetId: row.id,
         displayName,
@@ -1149,6 +1532,13 @@ export class AdminService {
     }
 
     if (issue.tableName === 'image_assets') {
+      if (issue.issueType === 'ORPHAN') {
+        return {
+          canHardDelete: true,
+          protectReason: null
+        }
+      }
+
       return {
         canHardDelete: false,
         protectReason: 'media file cleanup requires separate media cleanup policy'
@@ -1206,9 +1596,163 @@ export class AdminService {
     }
   }
 
+  private async cleanIssuesByDomainAndTables(
+    issueDomain: CleanupIssueDomain | null,
+    tableNames: string[],
+    issueTypes: CleanupIssueType[]
+  ): Promise<CleanupIssuesCleanResponse> {
+    const scanned =
+      await this.findCleanupIssues()
+
+    const targets =
+      scanned.issues.filter((issue) => {
+        return (
+          (issueDomain === null || issue.issueDomain === issueDomain) &&
+          tableNames.includes(issue.tableName) &&
+          issueTypes.includes(issue.issueType)
+        )
+      })
+
+    const results: CleanupIssuesCleanResult[] = []
+    let deletedCount = 0
+    let skippedCount = 0
+
+    for (const issue of targets) {
+      const decision =
+        this.canHardDeleteIssue(issue)
+
+      if (!decision.canHardDelete) {
+        skippedCount += 1
+        results.push({
+          issueType: issue.issueType,
+          tableName: issue.tableName,
+          targetId: issue.targetId,
+          deleted: false,
+          skipped: true,
+          reason: decision.protectReason ?? issue.protectReason ?? 'protected'
+        })
+        continue
+      }
+
+      const deleted =
+        this.deleteIssue(issue)
+
+      if (deleted) {
+        deletedCount += 1
+      } else {
+        skippedCount += 1
+      }
+
+      results.push({
+        issueType: issue.issueType,
+        tableName: issue.tableName,
+        targetId: issue.targetId,
+        deleted,
+        skipped: !deleted,
+        reason: deleted ? null : 'cleanup skipped'
+      })
+    }
+
+    return {
+      success: true,
+      deletedCount,
+      skippedCount,
+      results
+    }
+  }
+
   private deleteIssue(issue: CleanupIssueItem): boolean {
     if (typeof issue.targetId !== 'number') {
       return false
+    }
+
+    if (issue.tableName === 'image_assets' && issue.issueType === 'ORPHAN') {
+      const result = this.db.prepare(`
+        UPDATE image_assets
+        SET
+          isActive = 0
+        WHERE id = ?
+          AND NOT EXISTS (
+            SELECT 1 FROM profile_avatars pa WHERE pa.imageAssetId = image_assets.id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM profile_gallery_images pgi WHERE pgi.imageAssetId = image_assets.id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM profile_hero_images phi WHERE phi.imageAssetId = image_assets.id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM post_images pi WHERE pi.imageAssetId = image_assets.id
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM master_product_thumbnails mpt
+            WHERE mpt.imageAssetId = image_assets.id
+              AND COALESCE(mpt.isActive, 1) = 1
+          )
+          AND NOT EXISTS (
+            SELECT 1 FROM market_event_masters mem
+            WHERE mem.bannerImageAssetId = image_assets.id
+          )
+      `).run(issue.targetId)
+
+      return Number(result.changes || 0) > 0
+    }
+
+    if (issue.tableName === 'master_product_thumbnails') {
+      const result = this.db.prepare(`
+        UPDATE master_product_thumbnails
+        SET
+          isActive = 0,
+          updatedAt = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(issue.targetId)
+
+      return Number(result.changes || 0) > 0
+    }
+
+    if (issue.tableName === 'master_product_scan_codes') {
+      const result = this.db.prepare(`
+        UPDATE master_product_scan_codes
+        SET
+          isActive = 0,
+          deletedAt = COALESCE(deletedAt, CURRENT_TIMESTAMP),
+          updatedAt = CURRENT_TIMESTAMP
+        WHERE id = ?
+          AND NOT EXISTS (
+            SELECT 1
+            FROM master_products mp
+            WHERE mp.id = master_product_scan_codes.masterProductId
+               OR mp.productCode = master_product_scan_codes.productCode
+          )
+      `).run(issue.targetId)
+
+      return Number(result.changes || 0) > 0
+    }
+
+    if (issue.tableName === 'market_products' && issue.issueDomain === 'EVENT') {
+      const result = this.db.prepare(`
+        UPDATE market_products
+        SET
+          eventCode = NULL,
+          eventTitle = NULL,
+          eventStartAt = NULL,
+          eventEndAt = NULL,
+          eventStatus = 'NONE',
+          displayStatus = CASE
+            WHEN displayStatus = 'EVENT_ONLY' THEN 'VISIBLE'
+            ELSE displayStatus
+          END,
+          updatedAt = CURRENT_TIMESTAMP
+        WHERE id = ?
+          AND COALESCE(eventStatus, 'NONE') <> 'ACTIVE'
+          AND NOT EXISTS (
+            SELECT 1
+            FROM pos_order_items poi
+            WHERE poi.posProductId = market_products.id
+          )
+      `).run(issue.targetId)
+
+      return Number(result.changes || 0) > 0
     }
 
     if (issue.tableName === 'pos_locations') {

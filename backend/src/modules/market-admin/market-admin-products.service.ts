@@ -49,6 +49,7 @@ type MasterProductRow = {
   productName: string;
   brandName: string | null;
   categoryName: string | null;
+  scanCodeValue: string | null;
   thumbnailUrl: string | null;
 };
 
@@ -66,6 +67,7 @@ type MarketProductRow = {
   channelCode: string;
   sourceProductId: number;
   productCode: string;
+  barcode: string | null;
   productNameSnapshot: string;
   brandNameSnapshot: string | null;
   categoryNameSnapshot: string | null;
@@ -163,6 +165,14 @@ type MarketProductSummary = {
   onSaleProducts: number;
 };
 
+type MarketDashboardSummary = {
+  totalProducts: number;
+  soldOutProducts: number;
+  lowStockProducts: number;
+  eventProducts: number;
+  activeProducts: number;
+};
+
 type MarketProductListResponse = {
   items: MarketProductRow[];
   summary: MarketProductSummary;
@@ -170,6 +180,20 @@ type MarketProductListResponse = {
 
 @Injectable()
 export class MarketAdminProductsService {
+  getDashboardSummary(query: MarketProductQuery): MarketDashboardSummary {
+    const channelCode = this.normalizeChannelCode(query.channelCode);
+    this.getBusinessProfileByChannelCode(channelCode);
+    const summary = this.getMarketProductSummary(channelCode);
+
+    return {
+      totalProducts: summary.totalProducts,
+      soldOutProducts: summary.soldOutProducts,
+      lowStockProducts: summary.lowStockProducts,
+      eventProducts: summary.eventProducts,
+      activeProducts: summary.onSaleProducts,
+    };
+  }
+
   getPublicProducts(query: PublicProductQuery): PublicProductListResponse {
     const channelCode = this.normalizeChannelCode(query.channelCode);
     const page = this.normalizePage(query.page);
@@ -195,6 +219,24 @@ export class MarketAdminProductsService {
           mp.productName AS productName,
           mp.brandName AS brandName,
           mp.categoryName AS categoryName,
+          COALESCE(
+            (
+              SELECT mpsc.scanCodeValue
+              FROM master_product_scan_codes mpsc
+              WHERE mpsc.masterProductId = mp.id
+                AND mpsc.isActive = 1
+                AND mpsc.deletedAt IS NULL
+              ORDER BY mpsc.isPrimary DESC, mpsc.id ASC
+              LIMIT 1
+            ),
+            (
+              SELECT mpb.gtin
+              FROM master_product_barcodes mpb
+              WHERE mpb.masterProductId = mp.id
+              ORDER BY mpb.isPrimary DESC, mpb.id ASC
+              LIMIT 1
+            )
+          ) AS scanCodeValue,
           CASE
             WHEN ia.filePath IS NOT NULL AND ia.filePath LIKE '/%' THEN ia.filePath
             WHEN ia.filePath IS NOT NULL THEN '/media/' || ia.filePath
@@ -208,9 +250,10 @@ export class MarketAdminProductsService {
         LEFT JOIN image_assets ia
           ON ia.id = mp.thumbnailImageAssetId
           AND ia.isActive = 1
-        LEFT JOIN market_channel_products mcp
+        LEFT JOIN market_products mcp
           ON mcp.channelCode = ?
           AND mcp.productCode = mp.productCode
+          AND mcp.isDeleted = 0
           AND mcp.deletedAt IS NULL
         ${filters.where}
         ORDER BY mp.id DESC
@@ -243,30 +286,36 @@ export class MarketAdminProductsService {
           id,
           profileId,
           channelCode,
-          sourceProductId,
+          COALESCE(masterProductId, 0) AS sourceProductId,
           productCode,
-          productNameSnapshot,
-          brandNameSnapshot,
-          categoryNameSnapshot,
-          purchasePrice,
+          barcode,
+          productName AS productNameSnapshot,
+          supplierName AS brandNameSnapshot,
+          NULL AS categoryNameSnapshot,
+          0 AS purchasePrice,
           salePrice,
-          eventPrice,
-          eventStartAt,
-          eventEndAt,
-          stockQuantity,
-          safetyStockQuantity,
-          stockStatus,
-          isOnSale,
-          isDisplayed,
-          isEventActive,
+          NULL AS eventPrice,
+          NULL AS eventStartAt,
+          NULL AS eventEndAt,
+          currentStock AS stockQuantity,
+          COALESCE(safeStock, 0) AS safetyStockQuantity,
+          CASE
+            WHEN isSoldOut = 1 OR currentStock = 0 THEN 'SOLD_OUT'
+            WHEN currentStock <= COALESCE(safeStock, 0) THEN 'LOW_STOCK'
+            ELSE 'IN_STOCK'
+          END AS stockStatus,
+          isActive AS isOnSale,
+          CASE WHEN isHidden = 1 THEN 0 ELSE 1 END AS isDisplayed,
+          CASE WHEN displayStatus = 'EVENT_ONLY' THEN 1 ELSE 0 END AS isEventActive,
           isSoldOut,
-          lastSyncedAt,
-          priceUpdatedAt,
-          stockUpdatedAt,
+          updatedAt AS lastSyncedAt,
+          updatedAt AS priceUpdatedAt,
+          updatedAt AS stockUpdatedAt,
           createdAt,
           updatedAt
-        FROM market_channel_products
+        FROM market_products
         WHERE channelCode = ?
+          AND isDeleted = 0
           AND deletedAt IS NULL
         ORDER BY updatedAt DESC, id DESC
         `,
@@ -289,9 +338,10 @@ export class MarketAdminProductsService {
       .prepare(
         `
         SELECT id
-        FROM market_channel_products
+        FROM market_products
         WHERE channelCode = ?
           AND productCode = ?
+          AND isDeleted = 0
           AND deletedAt IS NULL
         LIMIT 1
         `,
@@ -302,7 +352,6 @@ export class MarketAdminProductsService {
       throw new ConflictException('이미 이 채널에 등록된 상품입니다.');
     }
 
-    const purchasePrice = this.normalizeMoney(input.purchasePrice, 0, 'purchasePrice');
     const salePrice = this.normalizeMoney(input.salePrice, 0, 'salePrice');
     const eventPrice = this.normalizeNullableMoney(input.eventPrice, 'eventPrice');
     const stockQuantity = this.normalizeQuantity(input.stockQuantity, 0, 'stockQuantity');
@@ -312,39 +361,31 @@ export class MarketAdminProductsService {
       'safetyStockQuantity',
     );
     const isSoldOut = stockQuantity === 0 ? 1 : 0;
-    const stockStatus = this.resolveStockStatus(stockQuantity, safetyStockQuantity, isSoldOut);
     const now = this.now();
 
     const result = db
       .prepare(
         `
-        INSERT INTO market_channel_products(
+        INSERT INTO market_products(
           profileId,
           channelCode,
-          sourceProductId,
+          masterProductId,
           productCode,
-          productNameSnapshot,
-          brandNameSnapshot,
-          categoryNameSnapshot,
-          purchasePrice,
+          barcode,
+          productName,
+          supplierName,
           salePrice,
-          eventPrice,
-          eventStartAt,
-          eventEndAt,
-          stockQuantity,
-          safetyStockQuantity,
-          stockStatus,
-          isOnSale,
-          isDisplayed,
-          isEventActive,
+          currentStock,
+          safeStock,
+          isActive,
+          isHidden,
           isSoldOut,
-          lastSyncedAt,
-          priceUpdatedAt,
-          stockUpdatedAt,
+          displayStatus,
+          approvalStatus,
           updatedAt
         )
         VALUES(
-          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
         `,
       )
@@ -353,24 +394,17 @@ export class MarketAdminProductsService {
         channelCode,
         masterProduct.id,
         productCode,
+        masterProduct.scanCodeValue,
         masterProduct.productName,
         masterProduct.brandName,
-        masterProduct.categoryName,
-        purchasePrice,
         salePrice,
-        eventPrice,
-        this.normalizeNullableString(input.eventStartAt),
-        this.normalizeNullableString(input.eventEndAt),
         stockQuantity,
         safetyStockQuantity,
-        stockStatus,
         this.normalizeBoolean(input.isOnSale, true),
-        this.normalizeBoolean(input.isDisplayed, true),
-        eventPrice === null ? 0 : 1,
+        this.normalizeBoolean(input.isDisplayed, true) === 1 ? 0 : 1,
         isSoldOut,
-        now,
-        now,
-        now,
+        eventPrice === null ? 'VISIBLE' : 'EVENT_ONLY',
+        masterProduct.scanCodeValue ? 'MATCHED' : 'MANUAL',
         now,
       );
 
@@ -379,78 +413,34 @@ export class MarketAdminProductsService {
       channelCode,
     );
 
-    this.insertHistory({
-      marketProduct: created,
-      changeType: 'SYNC',
-      beforeValue: null,
-      afterValue: this.stringifyHistoryValue({
-        productCode,
-        sourceProductId: masterProduct.id,
-        salePrice,
-        stockQuantity,
-      }),
-      changedByProfileId: this.normalizeNullableId(input.changedByProfileId),
-      changeMemo: input.changeMemo ?? '공용 프로덕트 목록에서 등록',
-    });
-
     return created;
   }
 
   updatePricing(id: string, input: UpdatePricingInput): MarketProductRow {
     const channelCode = this.normalizeChannelCode(input.channelCode);
     const current = this.getMarketProductById(id, channelCode);
-    const purchasePrice = this.normalizeMoney(
-      input.purchasePrice,
-      current.purchasePrice,
-      'purchasePrice',
-    );
     const salePrice = this.normalizeMoney(input.salePrice, current.salePrice, 'salePrice');
-    const eventPrice = this.normalizeNullableMoney(input.eventPrice, 'eventPrice');
-    const isEventActive = this.normalizeBoolean(
-      input.isEventActive,
-      eventPrice !== null,
-    );
     const now = this.now();
 
     db.prepare(
       `
-      UPDATE market_channel_products
+      UPDATE market_products
       SET
-        purchasePrice = ?,
         salePrice = ?,
-        eventPrice = ?,
-        eventStartAt = ?,
-        eventEndAt = ?,
-        isEventActive = ?,
-        priceUpdatedAt = ?,
         updatedAt = ?
       WHERE id = ?
         AND channelCode = ?
+        AND isDeleted = 0
         AND deletedAt IS NULL
       `,
     ).run(
-      purchasePrice,
       salePrice,
-      eventPrice,
-      this.normalizeNullableString(input.eventStartAt),
-      this.normalizeNullableString(input.eventEndAt),
-      isEventActive,
-      now,
       now,
       current.id,
       channelCode,
     );
 
     const updated = this.getMarketProductById(id, channelCode);
-    this.insertHistory({
-      marketProduct: updated,
-      changeType: 'PRICE',
-      beforeValue: this.stringifyPricing(current),
-      afterValue: this.stringifyPricing(updated),
-      changedByProfileId: this.normalizeNullableId(input.changedByProfileId),
-      changeMemo: input.changeMemo ?? null,
-    });
-
     return updated;
   }
 
@@ -471,48 +461,31 @@ export class MarketAdminProductsService {
       input.isSoldOut,
       stockQuantity === 0,
     );
-    const stockStatus = this.resolveStockStatus(
-      stockQuantity,
-      safetyStockQuantity,
-      isSoldOut,
-    );
     const now = this.now();
 
     db.prepare(
       `
-      UPDATE market_channel_products
+      UPDATE market_products
       SET
-        stockQuantity = ?,
-        safetyStockQuantity = ?,
-        stockStatus = ?,
+        currentStock = ?,
+        safeStock = ?,
         isSoldOut = ?,
-        stockUpdatedAt = ?,
         updatedAt = ?
       WHERE id = ?
         AND channelCode = ?
+        AND isDeleted = 0
         AND deletedAt IS NULL
       `,
     ).run(
       stockQuantity,
       safetyStockQuantity,
-      stockStatus,
       isSoldOut,
-      now,
       now,
       current.id,
       channelCode,
     );
 
     const updated = this.getMarketProductById(id, channelCode);
-    this.insertHistory({
-      marketProduct: updated,
-      changeType: 'STOCK',
-      beforeValue: this.stringifyStock(current),
-      afterValue: this.stringifyStock(updated),
-      changedByProfileId: this.normalizeNullableId(input.changedByProfileId),
-      changeMemo: input.changeMemo ?? null,
-    });
-
     return updated;
   }
 
@@ -525,46 +498,31 @@ export class MarketAdminProductsService {
       current.isDisplayed === 1,
     );
     const isSoldOut = this.normalizeBoolean(input.isSoldOut, current.isSoldOut === 1);
-    const stockStatus = this.resolveStockStatus(
-      current.stockQuantity,
-      current.safetyStockQuantity,
-      isSoldOut,
-    );
     const now = this.now();
 
     db.prepare(
       `
-      UPDATE market_channel_products
+      UPDATE market_products
       SET
-        isOnSale = ?,
-        isDisplayed = ?,
+        isActive = ?,
+        isHidden = ?,
         isSoldOut = ?,
-        stockStatus = ?,
         updatedAt = ?
       WHERE id = ?
         AND channelCode = ?
+        AND isDeleted = 0
         AND deletedAt IS NULL
       `,
     ).run(
       isOnSale,
-      isDisplayed,
+      isDisplayed === 1 ? 0 : 1,
       isSoldOut,
-      stockStatus,
       now,
       current.id,
       channelCode,
     );
 
     const updated = this.getMarketProductById(id, channelCode);
-    this.insertHistory({
-      marketProduct: updated,
-      changeType: 'STATUS',
-      beforeValue: this.stringifyStatus(current),
-      afterValue: this.stringifyStatus(updated),
-      changedByProfileId: this.normalizeNullableId(input.changedByProfileId),
-      changeMemo: input.changeMemo ?? null,
-    });
-
     return updated;
   }
 
@@ -626,10 +584,12 @@ export class MarketAdminProductsService {
           productName,
           brandName,
           categoryName,
+          NULL AS scanCodeValue,
           NULL AS thumbnailUrl
         FROM master_products
         WHERE productCode = ?
           AND isActive = 1
+          AND deletedAt IS NULL
         LIMIT 1
         `,
       )
@@ -651,31 +611,37 @@ export class MarketAdminProductsService {
           id,
           profileId,
           channelCode,
-          sourceProductId,
+          COALESCE(masterProductId, 0) AS sourceProductId,
           productCode,
-          productNameSnapshot,
-          brandNameSnapshot,
-          categoryNameSnapshot,
-          purchasePrice,
+          barcode,
+          productName AS productNameSnapshot,
+          supplierName AS brandNameSnapshot,
+          NULL AS categoryNameSnapshot,
+          0 AS purchasePrice,
           salePrice,
-          eventPrice,
-          eventStartAt,
-          eventEndAt,
-          stockQuantity,
-          safetyStockQuantity,
-          stockStatus,
-          isOnSale,
-          isDisplayed,
-          isEventActive,
+          NULL AS eventPrice,
+          NULL AS eventStartAt,
+          NULL AS eventEndAt,
+          currentStock AS stockQuantity,
+          COALESCE(safeStock, 0) AS safetyStockQuantity,
+          CASE
+            WHEN isSoldOut = 1 OR currentStock = 0 THEN 'SOLD_OUT'
+            WHEN currentStock <= COALESCE(safeStock, 0) THEN 'LOW_STOCK'
+            ELSE 'IN_STOCK'
+          END AS stockStatus,
+          isActive AS isOnSale,
+          CASE WHEN isHidden = 1 THEN 0 ELSE 1 END AS isDisplayed,
+          CASE WHEN displayStatus = 'EVENT_ONLY' THEN 1 ELSE 0 END AS isEventActive,
           isSoldOut,
-          lastSyncedAt,
-          priceUpdatedAt,
-          stockUpdatedAt,
+          updatedAt AS lastSyncedAt,
+          updatedAt AS priceUpdatedAt,
+          updatedAt AS stockUpdatedAt,
           createdAt,
           updatedAt
-        FROM market_channel_products
+        FROM market_products
         WHERE id = ?
           AND channelCode = ?
+          AND isDeleted = 0
           AND deletedAt IS NULL
         LIMIT 1
         `,
@@ -696,11 +662,12 @@ export class MarketAdminProductsService {
         SELECT
           COUNT(*) AS totalProducts,
           SUM(CASE WHEN isSoldOut = 1 THEN 1 ELSE 0 END) AS soldOutProducts,
-          SUM(CASE WHEN stockStatus = 'LOW_STOCK' THEN 1 ELSE 0 END) AS lowStockProducts,
-          SUM(CASE WHEN isEventActive = 1 THEN 1 ELSE 0 END) AS eventProducts,
-          SUM(CASE WHEN isOnSale = 1 THEN 1 ELSE 0 END) AS onSaleProducts
-        FROM market_channel_products
+          SUM(CASE WHEN currentStock <= COALESCE(safeStock, 0) AND currentStock > 0 THEN 1 ELSE 0 END) AS lowStockProducts,
+          SUM(CASE WHEN displayStatus = 'EVENT_ONLY' THEN 1 ELSE 0 END) AS eventProducts,
+          SUM(CASE WHEN isActive = 1 AND isHidden = 0 AND isSoldOut = 0 THEN 1 ELSE 0 END) AS onSaleProducts
+        FROM market_products
         WHERE channelCode = ?
+          AND isDeleted = 0
           AND deletedAt IS NULL
         `,
       )
@@ -759,16 +726,33 @@ export class MarketAdminProductsService {
     where: string;
     values: string[];
   } {
-    const clauses = ['mp.isActive = 1'];
+    const clauses = ['mp.isActive = 1', 'mp.deletedAt IS NULL'];
     const values: string[] = [];
     const keyword = this.normalizeNullableString(query.keyword);
     const category = this.normalizeNullableString(query.category);
 
     if (keyword) {
       clauses.push(
-        `(mp.productName LIKE ? OR mp.productCode LIKE ? OR COALESCE(mp.brandName, '') LIKE ?)`,
+        `(
+          mp.productName LIKE ?
+          OR COALESCE(mp.brandName, '') LIKE ?
+          OR EXISTS (
+            SELECT 1
+            FROM master_product_scan_codes mpsc
+            WHERE mpsc.masterProductId = mp.id
+              AND mpsc.isActive = 1
+              AND mpsc.deletedAt IS NULL
+              AND mpsc.scanCodeValue LIKE ?
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM master_product_barcodes mpb
+            WHERE mpb.masterProductId = mp.id
+              AND mpb.gtin LIKE ?
+          )
+        )`,
       );
-      values.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
+      values.push(`%${keyword}%`, `%${keyword}%`, `%${keyword}%`, `%${keyword}%`);
     }
 
     if (category && category !== '전체') {
@@ -800,7 +784,7 @@ export class MarketAdminProductsService {
   private normalizeProductCode(value: string | undefined): string {
     const normalized = this.normalizeNullableString(value);
 
-    if (!normalized || !/^[A-Z0-9]{12}$/.test(normalized)) {
+    if (!normalized || !/^RPB\d{13}$|^RPN[A-Z]{2}\d{9}$/.test(normalized)) {
       throw new BadRequestException('productCode is invalid');
     }
 

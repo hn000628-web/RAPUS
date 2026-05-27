@@ -387,14 +387,6 @@
   white-space: nowrap;
 }
 
-.productCode {
-  margin: 0;
-  color: #111827;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 15px;
-  font-weight: 700;
-}
-
 .barcode {
   margin: 0;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;

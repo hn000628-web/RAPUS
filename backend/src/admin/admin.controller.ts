@@ -177,6 +177,33 @@ return this.adminService
 
 }
 
+@Post('db-cleaner/orphan-images/clean')
+
+cleanupOrphanImages(){
+
+return this.adminService
+.cleanupOrphanImages()
+
+}
+
+@Post('db-cleaner/orphan-relations/clean')
+
+cleanupOrphanRelations(){
+
+return this.adminService
+.cleanupOrphanRelations()
+
+}
+
+@Post('db-cleaner/invalid-product-images/clean')
+
+cleanupInvalidProductImages(){
+
+return this.adminService
+.cleanupInvalidProductImages()
+
+}
+
 /* ==================================================
 SECTION 12 : DEV POS INACTIVE ORDERS CLEAR
 POST /api/admin/db-cleaner/pos/inactive-orders/clear

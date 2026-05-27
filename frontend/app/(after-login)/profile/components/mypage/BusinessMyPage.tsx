@@ -70,8 +70,7 @@ export default function BusinessMyPage({
   managementItems,
   onSwitchProfile,
   onMoveStoreView,
-  onMovePosView,
-  canUseProductSystem
+  onMovePosView
 }: BusinessMyPageProps) {
   const router = useRouter()
 
@@ -95,15 +94,6 @@ export default function BusinessMyPage({
       onClick: onMovePosView
     }
   ]
-
-  if (canUseProductSystem) {
-    businessActionItems.push({
-      key: 'product-info-system',
-      label: '상품정보시스템',
-      description: 'RAPUS 등록 상품 리스트 조회',
-      href: '/protect'
-    })
-  }
 
   // SECTION 05 : UI BLOCK
 

@@ -6,8 +6,12 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 
+import { MarketAdminCsvImportService } from './market-admin-csv-import.service';
 import { MarketAdminProductsService } from './market-admin-products.service';
 
 type MarketAdminProductQuery = {
@@ -64,9 +68,29 @@ type UpdateStatusBody = {
   changeMemo?: string | null;
 };
 
+type ApplyImportPreviewBody = {
+  channelCode?: string;
+  batchId?: number | string;
+  uploadMode?: string;
+  previewRows?: unknown[];
+};
+
+@Controller('market-admin')
+export class MarketAdminDashboardController {
+  constructor(
+    private readonly marketAdminProductsService: MarketAdminProductsService,
+  ) {}
+
+  @Get('dashboard-summary')
+  getDashboardSummary(@Query() query: MarketAdminProductQuery) {
+    return this.marketAdminProductsService.getDashboardSummary(query);
+  }
+}
+
 @Controller('market-admin/products')
 export class MarketAdminProductsController {
   constructor(
+    private readonly marketAdminCsvImportService: MarketAdminCsvImportService,
     private readonly marketAdminProductsService: MarketAdminProductsService,
   ) {}
 
@@ -83,6 +107,37 @@ export class MarketAdminProductsController {
   @Post('import')
   importProduct(@Body() body: ImportMarketProductBody) {
     return this.marketAdminProductsService.importProduct(body);
+  }
+
+  @Post('import-file')
+  @UseInterceptors(FileInterceptor('file'))
+  importProductFile(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body('channelCode') channelCode: string | undefined,
+  ) {
+    return this.marketAdminCsvImportService.previewImportFile({
+      channelCode,
+      file,
+    });
+  }
+
+  @Post('import-file/:batchId/confirm')
+  confirmImportProductFile(
+    @Param('batchId') batchId: string,
+    @Body('channelCode') channelCode: string | undefined,
+    @Body('confirmMode') confirmMode: string | undefined,
+    @Body('mode') mode: string | undefined,
+  ) {
+    return this.marketAdminCsvImportService.confirmImportBatch({
+      batchId,
+      channelCode,
+      mode: confirmMode ?? mode,
+    });
+  }
+
+  @Post('import-apply')
+  applyImportPreview(@Body() body: ApplyImportPreviewBody) {
+    return this.marketAdminCsvImportService.applyImportPreviewToMarketProducts(body);
   }
 
   @Patch(':id/pricing')
