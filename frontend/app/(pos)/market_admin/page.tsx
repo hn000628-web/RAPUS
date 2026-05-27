@@ -17,7 +17,6 @@ import {
   updateMarketAdminProductStock,
   updateMarketAdminProductStatus,
   type MarketAdminProduct,
-  type MarketAdminProductSummary,
   type MarketAdminPublicProduct
 } from '@/lib/market-admin-products-api'
 import { usePosKeyboardMode } from '../pos/components/PosKeyboardModeContext'
@@ -59,6 +58,20 @@ type MarketProductMetricCard = {
   description: string
 }
 
+type MarketProductTabId =
+  | 'ALL'
+  | 'ON_SALE'
+  | 'SOLD_OUT'
+  | 'LOW_STOCK'
+  | 'EVENT'
+
+type MarketProductTab = {
+  id: MarketProductTabId
+  label: string
+}
+
+type MarketProductTabCounts = Record<MarketProductTabId, number>
+
 type MarketProductImportForm = {
   purchasePrice: string
   salePrice: string
@@ -78,13 +91,28 @@ const MARKET_ADMIN_STATUS: MarketAdminStatus = 'ACTIVE'
 const MOCK_CURRENT_TIME = '14:35'
 const PUBLIC_PRODUCT_PAGE_SIZE = 6
 
-const EMPTY_PRODUCT_SUMMARY: MarketAdminProductSummary = {
-  totalProducts: 0,
-  soldOutProducts: 0,
-  lowStockProducts: 0,
-  eventProducts: 0,
-  onSaleProducts: 0
-}
+const MARKET_PRODUCT_TABS: MarketProductTab[] = [
+  {
+    id: 'ALL',
+    label: '전체'
+  },
+  {
+    id: 'ON_SALE',
+    label: '판매중'
+  },
+  {
+    id: 'SOLD_OUT',
+    label: '품절'
+  },
+  {
+    id: 'LOW_STOCK',
+    label: '재고부족'
+  },
+  {
+    id: 'EVENT',
+    label: '행사중'
+  }
+]
 
 const DEFAULT_IMPORT_FORM: MarketProductImportForm = {
   purchasePrice: '0',
@@ -100,6 +128,29 @@ const DEFAULT_IMPORT_FORM: MarketProductImportForm = {
 
 const formatMarketNumberInput = (value: string) => {
   return value.replace(/\D/g, '')
+}
+
+const isMarketProductOnSale = (product: MarketAdminProduct) => {
+  return (
+    product.isOnSale === 1 &&
+    product.isDisplayed === 1 &&
+    product.isSoldOut !== 1
+  )
+}
+
+const isMarketProductSoldOut = (product: MarketAdminProduct) => {
+  return product.isSoldOut === 1 || product.stockQuantity === 0
+}
+
+const isMarketProductLowStock = (product: MarketAdminProduct) => {
+  return (
+    product.stockQuantity <= product.safetyStockQuantity &&
+    product.isSoldOut !== 1
+  )
+}
+
+const isMarketProductEventActive = (product: MarketAdminProduct) => {
+  return product.isEventActive === 1 || product.eventPrice !== null
 }
 
 const SUMMARY_CARDS: MarketAdminSummaryCard[] = [
@@ -242,9 +293,8 @@ export default function MarketAdminPage() {
   } = usePosKeyboardMode()
   const [selectedMenuId, setSelectedMenuId] = useState<string>(MENU_CARDS[0]?.id ?? '')
   const [marketProducts, setMarketProducts] = useState<MarketAdminProduct[]>([])
-  const [productSummary, setProductSummary] = useState<MarketAdminProductSummary>(
-    EMPTY_PRODUCT_SUMMARY
-  )
+  const [selectedProductTabId, setSelectedProductTabId] =
+    useState<MarketProductTabId>('ALL')
   const [publicProducts, setPublicProducts] = useState<MarketAdminPublicProduct[]>([])
   const [productSearchKeyword, setProductSearchKeyword] = useState('')
   const [selectedPublicProduct, setSelectedPublicProduct] =
@@ -260,47 +310,75 @@ export default function MarketAdminPage() {
     return MENU_CARDS.find((card) => card.id === selectedMenuId) ?? MENU_CARDS[0]
   }, [selectedMenuId])
 
+  const productTabCounts = useMemo<MarketProductTabCounts>(() => {
+    return {
+      ALL: marketProducts.length,
+      ON_SALE: marketProducts.filter(isMarketProductOnSale).length,
+      SOLD_OUT: marketProducts.filter(isMarketProductSoldOut).length,
+      LOW_STOCK: marketProducts.filter(isMarketProductLowStock).length,
+      EVENT: marketProducts.filter(isMarketProductEventActive).length
+    }
+  }, [marketProducts])
+
+  const filteredMarketProducts = useMemo(() => {
+    switch (selectedProductTabId) {
+      case 'ON_SALE':
+        return marketProducts.filter(isMarketProductOnSale)
+      case 'SOLD_OUT':
+        return marketProducts.filter(isMarketProductSoldOut)
+      case 'LOW_STOCK':
+        return marketProducts.filter(isMarketProductLowStock)
+      case 'EVENT':
+        return marketProducts.filter(isMarketProductEventActive)
+      case 'ALL':
+      default:
+        return marketProducts
+    }
+  }, [
+    marketProducts,
+    selectedProductTabId
+  ])
+
   const productMetricCards = useMemo<MarketProductMetricCard[]>(() => {
     return [
       {
         id: 'registered-products',
         label: '총 등록 상품',
-        value: `${productSummary.totalProducts}개`,
+        value: `${productTabCounts.ALL}개`,
         description: '채널별 판매 상품'
       },
       {
         id: 'sold-out-products',
         label: '품절 상품',
-        value: `${productSummary.soldOutProducts}개`,
+        value: `${productTabCounts.SOLD_OUT}개`,
         description: '품절 상태 상품'
       },
       {
         id: 'low-stock-products',
         label: '재고 부족 상품',
-        value: `${productSummary.lowStockProducts}개`,
+        value: `${productTabCounts.LOW_STOCK}개`,
         description: '안전 재고 이하'
       },
       {
         id: 'event-products',
         label: '행사 진행 상품',
-        value: `${productSummary.eventProducts}개`,
+        value: `${productTabCounts.EVENT}개`,
         description: '행사가 적용 상품'
       },
       {
         id: 'on-sale-products',
         label: '판매중 상품',
-        value: `${productSummary.onSaleProducts}개`,
+        value: `${productTabCounts.ON_SALE}개`,
         description: '판매 상태 ON'
       }
     ]
-  }, [productSummary])
+  }, [productTabCounts])
 
   const loadMarketProducts = useCallback(async () => {
     try {
       setProductErrorMessage(null)
       const response = await fetchMarketAdminProducts(MARKET_CHANNEL_CODE)
       setMarketProducts(response.items)
-      setProductSummary(response.summary)
     } catch {
       setProductErrorMessage('마켓 등록 상품을 불러오지 못했습니다.')
     }
@@ -358,6 +436,10 @@ export default function MarketAdminPage() {
 
   const handleSelectMenu = (menuId: string) => {
     setSelectedMenuId(menuId)
+  }
+
+  const handleSelectProductTab = (tabId: MarketProductTabId) => {
+    setSelectedProductTabId(tabId)
   }
 
   const handleSearchPublicProducts = () => {
@@ -821,8 +903,35 @@ export default function MarketAdminPage() {
           </div>
 
           <div className={styles.marketProductList}>
-            {marketProducts.length > 0 ? (
-              marketProducts.slice(0, 5).map((product) => (
+            <div className={styles.productTabList} aria-label="상품 목록 필터">
+              {MARKET_PRODUCT_TABS.map((tab) => {
+                const isSelected = selectedProductTabId === tab.id
+                const tabClassName = [
+                  styles.productTabButton,
+                  isSelected ? styles.productTabButtonActive : ''
+                ].filter(Boolean).join(' ')
+
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className={tabClassName}
+                    onClick={() => handleSelectProductTab(tab.id)}
+                    aria-pressed={isSelected}
+                  >
+                    <span>
+                      {tab.label}
+                    </span>
+                    <strong>
+                      {productTabCounts[tab.id]}
+                    </strong>
+                  </button>
+                )
+              })}
+            </div>
+
+            {filteredMarketProducts.length > 0 ? (
+              filteredMarketProducts.slice(0, 5).map((product) => (
                 <article key={product.id} className={styles.marketProductItem}>
                   <div>
                     <strong>
@@ -867,7 +976,7 @@ export default function MarketAdminPage() {
               ))
             ) : (
               <p className={styles.emptyText}>
-                아직 등록된 마켓 판매 상품이 없습니다.
+                해당 조건에 맞는 마켓 판매 상품이 없습니다.
               </p>
             )}
           </div>
