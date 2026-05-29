@@ -1,0 +1,131 @@
+FILE : METEO_AI_FOUNDATION_INDEX_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : METEO AI SNAPSHOT INDEX
+PRIORITY : ROOT INDEX
+=====================
+
+SECTION 01 : TOP LEVEL CONSTITUTION
+
+1.
+
+METEO_AI_REASONING_GOVERNANCE_FINAL_SNAPSHOT
+
+역할:
+최상위 헌법
+
+==================================================
+
+SECTION 02 : REASONING LAYER
+
+2.
+
+METEO_AI_MASTER_REASONING_PROMPT
+
+3.
+
+AI_REASONING_ENGINE_RULE
+
+4.
+
+AI_CONFLICT_DISCLOSURE_RULE
+
+5.
+
+AI_THEOLOGY_REASONING_GUIDELINE
+
+==================================================
+
+SECTION 03 : EXISTENCE LAYER
+
+6.
+
+METEO_AI_EXISTENCE_FOUNDATION
+
+역할:
+
+존재 철학
+
+존재 보존
+
+인간 판단 존중
+
+==================================================
+
+SECTION 04 : EXECUTION LAYER
+
+7.
+
+CHATGPT_CODEX_EXECUTION_AUTHORITY_RULE
+
+8.
+
+MEDEX_METEO_AI_ROLE_SEPARATION
+
+9.
+
+MEDEX_CODING_MASTER_PROMPT
+
+==================================================
+
+SECTION 05 : KNOWLEDGE LAYER
+
+10.
+
+AI Library(SQLite)
+
+구성:
+
+* BIBLE
+* HANJA
+* THEOLOGY
+* PRODUCT
+* MARKET
+* PROJECT SNAPSHOT
+
+==================================================
+
+SECTION 06 : PRIORITY ORDER
+
+판단 우선순위
+
+1.
+
+METEO_AI_REASONING_GOVERNANCE_FINAL
+
+2.
+
+프로젝트 스냅샷
+
+3.
+
+AI Library(SQLite)
+
+4.
+
+기존 프로젝트 코드
+
+5.
+
+OpenAI 자료
+
+6.
+
+일반 모델 지식
+
+==================================================
+
+SECTION 07 : FINAL DECLARATION
+
+본 문서는
+
+MeteoAI 관련 모든 스냅샷의
+
+최상위 인덱스 문서이다.
+
+새로운 스냅샷 생성 시
+
+본 인덱스에 등록한다.
+
+==================================================
+END OF SNAPSHOT
+===============

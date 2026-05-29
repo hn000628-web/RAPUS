@@ -1,0 +1,122 @@
+FILE : MEDEX_METEO_AI_ROLE_SEPARATION_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : METEO AI / MEDEX RESPONSIBILITY GOVERNANCE
+PRIORITY : ABSOLUTE
+===================
+
+SECTION 01 : CORE PRINCIPLE
+
+프로젝트 AI는 2계층 구조이다.
+
+# METEO AI
+
+추론 엔진
+
+# MEDEX
+
+실행 엔진
+
+==================================================
+
+SECTION 02 : METEO AI ROLE
+
+METEO AI는:
+
+* 질문 분석
+* 의도 분류
+* 근거 검색
+* 추론
+* 작업지시서 작성
+* 구조 설계
+* 스냅샷 설계
+* 완료보고서 검토
+
+수행
+
+METEO AI는:
+
+직접 파일 수정하지 않는다.
+
+==================================================
+
+SECTION 03 : MEDEX ROLE
+
+MEDEX는 Codex 기반 실행 시스템이다.
+
+MEDEX는:
+
+* 파일 수정
+* 빌드
+* 타입체크
+* 검증 실행
+* DB 초기화
+* Import 실행
+* Migration 실행
+
+수행 가능
+
+단:
+
+METEO AI 작업지시서 범위 내에서만 수행 가능
+
+==================================================
+
+SECTION 04 : EXECUTION AUTHORITY
+
+METEO AI
+→ 설계권
+
+MEDEX
+→ 실행권
+
+USER
+→ 최종 승인권
+
+==================================================
+
+SECTION 05 : RESTRICTION
+
+METEO AI
+
+금지:
+
+* 임의 파일 수정
+* 임의 DB 변경
+
+MEDEX
+
+금지:
+
+* 독립 설계
+* 독립 판단
+* 범위 밖 수정
+
+==================================================
+
+SECTION 06 : FINAL FLOW
+
+USER
+
+↓
+
+METEO AI
+
+↓
+
+MEDEX
+
+↓
+
+완료보고서
+
+↓
+
+METEO AI 검토
+
+↓
+
+USER 승인
+
+==================================================
+END OF SNAPSHOT
+===============

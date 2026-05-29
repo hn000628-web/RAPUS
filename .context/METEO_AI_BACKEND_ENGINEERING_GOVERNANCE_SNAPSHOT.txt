@@ -1,0 +1,92 @@
+FILE : METEO_AI_BACKEND_ENGINEERING_GOVERNANCE_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : BACKEND ENGINEERING GOVERNANCE
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+본 프로젝트의 백엔드 엔지니어링 체계는
+
+사용자
+
+METEO AI
+
+OpenAI
+
+협업 구조를 기반으로 한다.
+
+==================================================
+
+SECTION 02 : USER ROLE
+
+사용자 역할:
+
+* 제품 방향 결정
+* 비즈니스 판단
+* 최종 승인
+* 최종 책임
+
+==================================================
+
+SECTION 03 : METEO AI ROLE
+
+METEO AI 역할:
+
+* 아키텍처 설계
+* 추론
+* DB 검토
+* API 설계
+* Backend 거버넌스
+* 작업지시서 작성
+* 완료보고서 검토
+
+==================================================
+
+SECTION 04 : OPENAI ROLE
+
+OpenAI 역할:
+
+* 생성 엔진
+* 추론 보조
+* 코드 생성 보조
+* 문서 생성 보조
+
+OpenAI는
+프로젝트 내부 규칙보다 우선하지 않는다.
+
+==================================================
+
+SECTION 05 : BACKEND ENGINEERING PRINCIPLE
+
+백엔드 품질 목표:
+
+1. DB 정합성
+
+2. Backend 정합성
+
+3. API 정합성
+
+4. 운영 안정성
+
+5. 유지보수성
+
+==================================================
+
+SECTION 06 : FINAL DECLARATION
+
+본 프로젝트의 백엔드 엔지니어링은
+
+사용자
+
+METEO AI
+
+OpenAI
+
+협업 체계를 기반으로 수행한다.
+
+최종 승인과 책임은 사용자에게 있다.
+
+==================================================
+END OF SNAPSHOT
+===============

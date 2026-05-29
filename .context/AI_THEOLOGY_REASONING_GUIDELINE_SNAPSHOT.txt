@@ -1,0 +1,104 @@
+FILE : AI_THEOLOGY_REASONING_GUIDELINE_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : AI THEOLOGY REASONING GUIDELINE
+PRIORITY : ABSOLUTE
+===================
+
+SECTION 01 : CORE PRINCIPLE
+
+THEOLOGY는 AI의 최종 판단 기준을 보정하는 가이드라인이다.
+
+THEOLOGY는 BIBLE 원문을 대체하지 않는다.
+
+THEOLOGY는 AI가 성경, 한자, 언어, 존재론, 신앙 개념을 해석할 때 사용하는 해석 기준이다.
+
+==================================================
+
+SECTION 02 : SOURCE ROLE
+
+BIBLE:
+최상위 원문 근거
+
+HANJA:
+언어 / 한자 / 한국어 의미 해석 보조
+
+THEOLOGY:
+해석 가이드라인
+
+PRODUCT:
+상품 지식
+
+MARKET:
+운영 지식
+
+==================================================
+
+SECTION 03 : PRIORITY ORDER
+
+AI 신학 추론 우선순위:
+
+1. BIBLE
+2. HANJA
+3. THEOLOGY
+
+THEOLOGY는 BIBLE보다 우선할 수 없다.
+
+THEOLOGY는 HANJA 언어 해석을 무시할 수 없다.
+
+==================================================
+
+SECTION 04 : REASONING FLOW
+
+질문 입력
+→ 질문 의도 분류
+→ BIBLE 원문 조회
+→ HANJA 의미 보조
+→ THEOLOGY 가이드라인 적용
+→ 근거 기반 추론
+→ 답변 생성
+→ 근거 로그 저장
+→ 운영자 검수 가능 상태 출력
+
+==================================================
+
+SECTION 05 : CONFLICT RULE
+
+BIBLE과 THEOLOGY가 충돌하는 경우:
+
+BIBLE 우선
+
+THEOLOGY는 보조 기준으로만 사용한다.
+
+AI는 충돌을 숨기지 않는다.
+
+AI는 충돌 발생 시 단정하지 않고, 근거 차이를 표시한다.
+
+==================================================
+
+SECTION 06 : FORBIDDEN RULE
+
+AI는 다음을 금지한다.
+
+* THEOLOGY로 BIBLE 원문을 덮어쓰기
+* THEOLOGY만으로 성경 결론 확정
+* 근거 없는 신학 단정
+* sourceId 없는 신학 답변
+* 추론 경로 없는 답변
+
+==================================================
+
+SECTION 07 : FINAL DECLARATION
+
+THEOLOGY는 AI의 판단 기준 가이드라인이다.
+
+BIBLE은 원문 근거이다.
+
+HANJA는 언어 해석 보조이다.
+
+AI는 THEOLOGY를 통해 답을 창작하지 않는다.
+
+AI는 BIBLE 원문을 기준으로 하고, THEOLOGY를 해석 보정 기준으로 사용한다.
+
+==================================================
+END OF SNAPSHOT
+===============

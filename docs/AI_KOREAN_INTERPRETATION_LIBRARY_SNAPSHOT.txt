@@ -1,0 +1,142 @@
+AI KOREAN INTERPRETATION LIBRARY SNAPSHOT
+
+==================================================
+SECTION 01 : CORE CONCEPT
+==================================================
+
+AI 한국어 해석 전용 라이브러리는
+성경/한자/국어사전/신학/존재론 자료를 통합 관리한다.
+
+핵심 원칙:
+- 일반 서비스 DB와 분리된 AI 지식 원장
+- sourceType 기반 통합 구조
+- 원문/용어/링크/임베딩키 분리 저장
+
+==================================================
+SECTION 02 : PRIMARY SOURCE RULE
+==================================================
+
+우선순위:
+1) 사용자 제공 자료
+2) 성경 KO/KH/KJV 병렬 데이터
+3) 한자사전 데이터
+4) 신학/존재론 스냅샷
+
+ai_library_sources.sourceType:
+- BIBLE_KO
+- BIBLE_KH
+- BIBLE_KJV
+- HANJA_DICT
+- KOREAN_THEOLOGY
+- KOREAN_ONTOLOGY
+- KOREAN_DICTIONARY
+
+==================================================
+SECTION 03 : BIBLE KO/KH/KJV RULE
+==================================================
+
+ai_bible_verses:
+- sourceId + verseKey 유니크
+- bookCode/chapter/verse 인덱스
+- 언어/버전별 병렬 저장
+
+==================================================
+SECTION 04 : HANJA DICTIONARY RULE
+==================================================
+
+ai_hanja_dictionary:
+- hanjaWord
+- koReading
+- definitionKo
+- radical/strokeCount/totalStrokeCount
+
+한자어 의미 보강 기준 테이블로 사용한다.
+
+==================================================
+SECTION 05 : KOREAN INTERPRETATION TERM RULE
+==================================================
+
+ai_korean_interpretation_terms.termType:
+- BIBLE_TERM
+- HANJA_TERM
+- THEOLOGY_TERM
+- ONTOLOGY_TERM
+- DICTIONARY_TERM
+- KEYWORD
+
+AI 한국어 해석은 normalizedTerm 검색을 우선한다.
+
+==================================================
+SECTION 06 : THEOLOGY SNAPSHOT RULE
+==================================================
+
+ai_theology_snapshots.doctrineType:
+- GOSPEL
+- WORSHIP
+- FAITH
+- ONTOLOGY
+- THEISM
+- PROSPERITY_THEOLOGY
+- FUNCTIONAL_ATHEISM
+
+stanceType:
+- PRIMARY_STANDARD
+- WARNING
+- REFERENCE
+- USER_DEFINED
+
+==================================================
+SECTION 07 : ONTOLOGY SNAPSHOT RULE
+==================================================
+
+존재론/유신론/기능적 무신론 자료는
+ai_theology_snapshots + ai_korean_interpretation_terms 조합으로 관리한다.
+
+==================================================
+SECTION 08 : INTERPRETATION LINK RULE
+==================================================
+
+ai_interpretation_links.relationType:
+- SAME_VERSE
+- TRANSLATION_PAIR
+- HANJA_EXPLANATION
+- TERM_DEFINITION
+- THEOLOGY_REFERENCE
+- CONTRAST
+- WARNING
+
+구절/용어/신학 개념 간 연결을 가중치(weight)로 저장한다.
+
+==================================================
+SECTION 09 : EMBEDDING KEY RULE
+==================================================
+
+ai_library_embeddings:
+- vector binary 저장 금지
+- embeddingKey만 저장
+- targetType + targetId 인덱스
+
+PostgreSQL 전환 시 pgvector 확장 가능한 구조를 유지한다.
+
+==================================================
+SECTION 10 : AI USAGE RULE
+==================================================
+
+AI 해석 기준:
+- 한국어 해석: ai_korean_interpretation_terms 우선
+- 성경 구절: ai_bible_verses 우선
+- 한자어 보강: ai_hanja_dictionary 참조
+- 신학 판단: ai_theology_snapshots 참조
+- 번영신학: WARNING / CONTRAST 분류 기준 반영
+
+Frontend 직접 DB 접근 금지.
+DB 접근은 Service Layer만 허용.
+
+==================================================
+SECTION 11 : FINAL DECLARATION
+==================================================
+
+AI KOREAN INTERPRETATION LIBRARY SYSTEM은
+한국어 문장/성경어휘/한자어/신학/존재론 해석 정확도 향상을 위한
+공식 데이터 원장 구조이다.
+

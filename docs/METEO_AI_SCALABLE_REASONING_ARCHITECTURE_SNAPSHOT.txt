@@ -1,0 +1,327 @@
+FILE : METEO_AI_SCALABLE_REASONING_ARCHITECTURE_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : SCALABLE REASONING ARCHITECTURE
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+MeteoAI는 모든 스냅샷을 읽고 추론하지 않는다.
+
+MeteoAI는:
+
+질문
+
+↓
+
+의도 분석
+
+↓
+
+관련 영역 선택
+
+↓
+
+관련 스냅샷만 로드
+
+↓
+
+추론
+
+방식으로 동작한다.
+
+==================================================
+
+SECTION 02 : SCALABLE STRUCTURE
+
+METEO AI CONSTITUTION
+
+↓
+
+ROOT INDEX
+
+↓
+
+CATEGORY INDEX
+
+↓
+
+RULE TAG SYSTEM
+
+↓
+
+SNAPSHOT
+
+↓
+
+AI Library(SQLite)
+
+↓
+
+Reasoning
+
+==================================================
+
+SECTION 03 : ROOT INDEX
+
+ROOT INDEX는 최상위 분류 체계이다.
+
+예시:
+
+REASONING
+
+EXECUTION
+
+EXISTENCE
+
+DATABASE
+
+BACKEND
+
+FRONTEND
+
+PRODUCT
+
+MARKET
+
+BIBLE
+
+HANJA
+
+THEOLOGY
+
+SECURITY
+
+AUTH
+
+MEDIA
+
+==================================================
+
+SECTION 04 : CATEGORY INDEX
+
+CATEGORY는 세부 분류이다.
+
+예시:
+
+BIBLE
+
+├─ OLD_TESTAMENT
+
+├─ NEW_TESTAMENT
+
+├─ INTERPRETATION
+
+├─ CROSS_REFERENCE
+
+THEOLOGY
+
+├─ ONTOLOGY
+
+├─ GOSPEL
+
+├─ WORSHIP
+
+├─ FAITH
+
+==================================================
+
+SECTION 05 : RULE TAG SYSTEM
+
+모든 스냅샷은 TAG를 가진다.
+
+예시:
+
+CATEGORY:
+REASONING
+
+TAGS:
+BIBLE
+THEOLOGY
+HANJA
+
+---
+
+CATEGORY:
+DATABASE
+
+TAGS:
+POSTGRESQL
+SQLITE
+SCHEMA
+
+==================================================
+
+SECTION 06 : REASONING ROUTER
+
+질문 입력
+
+↓
+
+Intent Detection
+
+↓
+
+Tag Detection
+
+↓
+
+Category Detection
+
+↓
+
+Relevant Snapshot Search
+
+↓
+
+Evidence Selection
+
+↓
+
+Reasoning
+
+↓
+
+Answer
+
+==================================================
+
+SECTION 07 : SNAPSHOT LOADING RULE
+
+금지:
+
+모든 스냅샷 로딩
+
+허용:
+
+관련 스냅샷만 로딩
+
+예시:
+
+질문:
+창세기 1:1
+
+↓
+
+BIBLE
+
+HANJA
+
+THEOLOGY
+
+관련 스냅샷만 로딩
+
+==================================================
+
+SECTION 08 : AI LIBRARY INTEGRATION
+
+AI Library(SQLite)는
+
+근거 저장소이다.
+
+구성:
+
+* BIBLE
+* HANJA
+* THEOLOGY
+* PRODUCT
+* MARKET
+* PROJECT SNAPSHOT
+
+MeteoAI는 필요한 영역만 조회한다.
+
+==================================================
+
+SECTION 09 : SCALE RULE
+
+100개 스냅샷
+
+1000개 스냅샷
+
+10000개 스냅샷
+
+이 존재하더라도
+
+MeteoAI는:
+
+Intent
+
+Category
+
+Tag
+
+기반으로 필요한 규칙만 조회한다.
+
+==================================================
+
+SECTION 10 : KNOWLEDGE PRIORITY
+
+판단 우선순위:
+
+1. METEO_AI_REASONING_GOVERNANCE_FINAL
+
+2. ROOT INDEX
+
+3. CATEGORY INDEX
+
+4. RULE TAG SYSTEM
+
+5. 프로젝트 스냅샷
+
+6. AI Library(SQLite)
+
+7. 기존 코드
+
+8. OpenAI 자료
+
+9. 일반 모델 지식
+
+==================================================
+
+SECTION 11 : PERFORMANCE RULE
+
+MeteoAI는:
+
+전체 지식을 매번 읽지 않는다.
+
+필요한 지식만 읽는다.
+
+이것을
+
+Selective Reasoning
+
+이라고 정의한다.
+
+==================================================
+
+SECTION 12 : FINAL DECLARATION
+
+MeteoAI는
+
+스냅샷 수가 증가해도
+
+ROOT INDEX
+
+CATEGORY INDEX
+
+RULE TAG
+
+구조를 통해
+
+확장 가능한 추론을 수행한다.
+
+목표:
+
+100개
+
+1000개
+
+10000개
+
+이상의 규칙도
+
+효율적으로 추론 가능하게 하는 것이다.
+
+==================================================
+END OF SNAPSHOT
+===============

@@ -1,0 +1,332 @@
+FILE : METEO_AI_SNAPSHOT_INDEX_FINAL_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : METEO AI ROOT INDEX
+PRIORITY : TOP LEVEL INDEX
+==========================
+
+SECTION 01 : CORE PRINCIPLE
+
+본 문서는
+
+METEO AI 추론 체계의
+
+최상위 인덱스 문서이다.
+
+METEO AI는
+
+모든 스냅샷을 읽지 않는다.
+
+본 인덱스를 통해
+
+필요한 스냅샷만 선택한다.
+
+==================================================
+
+SECTION 02 : CONSTITUTION LAYER
+
+CATEGORY:
+CONSTITUTION
+
+PRIORITY:
+HIGHEST
+
+SNAPSHOT:
+
+* METEO_AI_REASONING_GOVERNANCE_FINAL_SNAPSHOT
+
+ROLE:
+
+최상위 헌법
+
+==================================================
+
+SECTION 03 : REASONING LAYER
+
+CATEGORY:
+REASONING
+
+SNAPSHOT:
+
+* METEO_AI_MASTER_REASONING_PROMPT_SNAPSHOT
+* AI_REASONING_ENGINE_RULE_SNAPSHOT
+* AI_CONFLICT_DISCLOSURE_RULE_SNAPSHOT
+* AI_THEOLOGY_REASONING_GUIDELINE_SNAPSHOT
+* METEO_AI_SCALABLE_REASONING_ARCHITECTURE_SNAPSHOT
+
+ROLE:
+
+추론
+
+근거 선택
+
+충돌 공개
+
+지식 선택
+
+==================================================
+
+SECTION 04 : EXISTENCE LAYER
+
+CATEGORY:
+EXISTENCE
+
+SNAPSHOT:
+
+* METEO_AI_EXISTENCE_FOUNDATION_SNAPSHOT
+* METEO_AI_EXISTENCE_ALIGNMENT_ABSOLUTE_RULE_SNAPSHOT
+* METEO_AI_CODE_INTEGRITY_ABSOLUTE_RULE_SNAPSHOT
+
+ROLE:
+
+존재 철학
+
+존재 보존
+
+정합성
+
+==================================================
+
+SECTION 05 : EXECUTION LAYER
+
+CATEGORY:
+EXECUTION
+
+SNAPSHOT:
+
+* CHATGPT_CODEX_EXECUTION_AUTHORITY_RULE_SNAPSHOT
+* MEDEX_METEO_AI_ROLE_SEPARATION_SNAPSHOT
+* MEDEX_CODING_MASTER_PROMPT_v1.2
+
+ROLE:
+
+실행
+
+검증
+
+수정
+
+==================================================
+
+SECTION 06 : DEVELOPMENT LAYER
+
+CATEGORY:
+DEVELOPMENT
+
+SNAPSHOT:
+
+* PLATFORM_DEVELOPMENT_WORKFLOW_ABSOLUTE_RULE_SNAPSHOT
+* FRONTEND_EDITOR_FIRST_ABSOLUTE_RULE_SNAPSHOT
+
+ROLE:
+
+개발 순서
+
+UI 우선
+
+DB 우선
+
+Backend 우선
+
+==================================================
+
+SECTION 07 : DESIGN LAYER
+
+CATEGORY:
+DESIGN
+
+SNAPSHOT:
+
+* METEO_AI_DESIGN_REASONING_GOVERNANCE_SNAPSHOT
+
+ROLE:
+
+RAPUS 기준
+
+Gemini 분석
+
+OpenAI 분석
+
+UI/UX 추론
+
+==================================================
+
+SECTION 08 : KNOWLEDGE LAYER
+
+CATEGORY:
+KNOWLEDGE
+
+SOURCE:
+
+AI Library(SQLite)
+
+구성:
+
+* BIBLE
+* HANJA
+* THEOLOGY
+* PRODUCT
+* MARKET
+* PROJECT SNAPSHOT
+
+ROLE:
+
+근거 저장소
+
+==================================================
+
+SECTION 09 : MULTI AI LAYER
+
+CATEGORY:
+MULTI_AI
+
+SNAPSHOT:
+
+* METEO_AI_MULTI_AI_ROLE_GOVERNANCE_SNAPSHOT
+
+ROLE:
+
+OpenAI
+
+Gemini
+
+METEO AI
+
+MEDEX
+
+역할 정의
+
+==================================================
+
+SECTION 10 : ROUTING RULE
+
+질문
+
+↓
+
+Intent
+
+↓
+
+Category
+
+↓
+
+Tag
+
+↓
+
+Index Search
+
+↓
+
+Snapshot Search
+
+↓
+
+AI Library Search
+
+↓
+
+Reasoning
+
+↓
+
+Answer
+
+==================================================
+
+SECTION 11 : KNOWLEDGE PRIORITY
+
+1.
+
+METEO_AI_REASONING_GOVERNANCE_FINAL
+
+2.
+
+프로젝트 스냅샷
+
+3.
+
+AI Library(SQLite)
+
+4.
+
+기존 코드
+
+5.
+
+OpenAI 자료
+
+6.
+
+일반 모델 지식
+
+==================================================
+
+SECTION 12 : TAG SYSTEM
+
+예시:
+
+BIBLE
+
+THEOLOGY
+
+HANJA
+
+PRODUCT
+
+MARKET
+
+DATABASE
+
+BACKEND
+
+FRONTEND
+
+SECURITY
+
+AUTH
+
+MEDIA
+
+EXECUTION
+
+DESIGN
+
+EXISTENCE
+
+==================================================
+
+SECTION 13 : SNAPSHOT REGISTRATION RULE
+
+새로운 스냅샷 생성 시
+
+반드시
+
+본 인덱스에 등록한다.
+
+등록 없는 스냅샷은
+
+비공식 스냅샷으로 간주한다.
+
+==================================================
+
+SECTION 14 : FINAL DECLARATION
+
+본 문서는
+
+METEO AI 전체 추론 체계의
+
+최상위 인덱스이다.
+
+METEO AI는
+
+본 인덱스를 기준으로
+
+필요한 규칙만 선택하여
+
+추론한다.
+
+==================================================
+END OF SNAPSHOT
+===============

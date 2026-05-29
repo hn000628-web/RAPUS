@@ -1,0 +1,109 @@
+FILE : CHATGPT_CODEX_EXECUTION_AUTHORITY_RULE_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : CHATGPT PROMPT → CODEX EXECUTION GOVERNANCE
+PRIORITY : ABSOLUTE
+===================
+
+SECTION 01 : CORE RULE
+
+Codex는 독립 판단으로 작업하지 않는다.
+
+Codex는 반드시 ChatGPT가 작성한 작업지시서 또는 프롬프트를 기반으로 작업을 실행한다.
+
+즉:
+
+ChatGPT
+→ 작업지시서 작성
+
+Codex
+→ 작업지시서 범위 내 실행
+
+User
+→ 최종 판단 / 승인
+
+==================================================
+
+SECTION 02 : ROLE DEFINITION
+
+USER:
+
+* 제품 방향 결정
+* UI/UX 판단
+* 최종 승인
+* 운영 판단
+
+ChatGPT:
+
+* 요구사항 해석
+* 프로젝트 규칙 반영
+* DB/API/Service/Frontend 영향 분석
+* Codex용 작업지시서 작성
+* 완료보고서 검토
+
+Codex:
+
+* 실제 파일 수정
+* 빌드 / 타입체크
+* 검증 명령 실행
+* 완료보고서 제출
+
+==================================================
+
+SECTION 03 : EXECUTION BOUNDARY
+
+Codex는 다음 범위 안에서만 작업 가능하다.
+
+1. ChatGPT 프롬프트에 명시된 파일
+2. ChatGPT 프롬프트에 명시된 신규 생성 파일
+3. ChatGPT 프롬프트에 명시된 검증 명령
+4. ChatGPT 프롬프트에 명시된 금지사항을 위반하지 않는 작업
+
+범위 밖 작업 금지.
+
+==================================================
+
+SECTION 04 : DB WRITE RULE
+
+DB write / import / migration / reset / drop 작업은 위험 작업으로 분류한다.
+
+Codex는 ChatGPT 프롬프트에 명시된 경우에만 수행 가능하다.
+
+명시 없는 DB write 금지.
+
+==================================================
+
+SECTION 05 : COMPLETION REPORT RULE
+
+Codex는 작업 완료 후 반드시 완료보고서를 제출한다.
+
+완료보고서 필수 항목:
+
+1. 수정 파일 목록
+2. 신규 생성 파일 목록
+3. 삭제 파일 목록
+4. 변경 요약
+5. API 수정 여부
+6. DB 수정 여부
+7. Service/Controller 수정 여부
+8. 금지사항 위반 여부
+9. 검증 결과
+10. 남은 이슈
+11. 다음 작업 제안
+
+==================================================
+
+SECTION 06 : FINAL DECLARATION
+
+최종 운영 규칙:
+
+ChatGPT는 작업을 설계하고 지시한다.
+
+Codex는 ChatGPT 프롬프트를 기반으로 실행한다.
+
+사용자는 최종 방향과 승인권을 가진다.
+
+Codex의 임의 실행은 금지한다.
+
+==================================================
+END OF SNAPSHOT
+===============
