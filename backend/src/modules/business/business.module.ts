@@ -35,6 +35,9 @@ import { BusinessPostsModule } from './posts/business-posts.module'
 // BUSINESS PROFILE SETTINGS
 import { ProfileSettingsModule } from './profile-settings/profile-settings.module'
 
+// BUSINESS SECURITY
+import { BusinessSecurityModule } from './security/business-security.module'
+
 // BUSINESS PROFILE AVATAR
 import { ProfileAvatarModule } from './avatar/profile-avatar.module'
 
@@ -84,6 +87,7 @@ import { ChannelProfileUtilModule } from '../../utils/channel-profile-util.modul
 
     // SETTINGS
     ProfileSettingsModule,
+    BusinessSecurityModule,
     ProfileAvatarModule,
     ProfileHeroModule,
     ProfilePlaceThumbnailModule,
@@ -126,6 +130,7 @@ import { ChannelProfileUtilModule } from '../../utils/channel-profile-util.modul
     BusinessMediaModule,
     BusinessPostsModule,
     ProfileSettingsModule,
+    BusinessSecurityModule,
     ProfileAvatarModule,
     ProfileHeroModule,
     ProfilePlaceThumbnailModule,

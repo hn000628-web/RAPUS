@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
@@ -166,7 +167,15 @@ export default function ProtectProductListPage() {
       <header className={styles.header}>
         <div className={styles.headerTop}>
           <div>
-            <h1 className={styles.title}>공용 프로덕트 목록</h1>
+            <div className={styles.titleRow}>
+              <h1 className={styles.title}>공용 프로덕트 목록</h1>
+              <Link
+                href="/market_admin"
+                className={styles.operationCenterLink}
+              >
+                운영센터
+              </Link>
+            </div>
             <p className={styles.description}>RAPUS 표준 상품 원장 / 판매자 검색 기준 데이터</p>
           </div>
 

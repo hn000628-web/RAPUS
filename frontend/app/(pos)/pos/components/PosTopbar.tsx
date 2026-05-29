@@ -12,7 +12,8 @@
 import {
   useEffect,
   useState,
-  type CSSProperties
+  type CSSProperties,
+  type ReactNode
 } from 'react'
 
 type KeyboardMode =
@@ -30,10 +31,12 @@ type PosTopbarProps = {
   onHomeClick: () => void
   onMyPageClick: () => void
   onSettingsClick: () => void
+  onStoreClick?: () => void
   homeShortcutLabel?: string
   keyboardMode?: KeyboardMode
   onToggleKeyboardMode?: () => void
   syncStatus?: SyncStatus
+  titleAction?: ReactNode
 }
 
 // ==================================================
@@ -44,10 +47,12 @@ export default function PosTopbar({
   onHomeClick,
   onMyPageClick,
   onSettingsClick,
+  onStoreClick,
   homeShortcutLabel,
   keyboardMode,
   onToggleKeyboardMode,
-  syncStatus
+  syncStatus,
+  titleAction
 }: PosTopbarProps) {
   const effectiveSyncStatus: SyncStatus = syncStatus ?? 'ONLINE'
   const effectiveKeyboardMode: KeyboardMode = keyboardMode ?? 'POS'
@@ -82,6 +87,11 @@ export default function PosTopbar({
     <header style={topbarStyle}>
       <div style={leftStyle}>
         <strong style={titleStyle}>{title}</strong>
+        {titleAction ? (
+          <div style={titleActionStyle}>
+            {titleAction}
+          </div>
+        ) : null}
       </div>
 
       <div style={rightStyle}>
@@ -139,6 +149,11 @@ export default function PosTopbar({
         <button type="button" style={buttonStyle} onClick={onSettingsClick}>
           설정
         </button>
+        {onStoreClick ? (
+          <button type="button" style={buttonStyle} onClick={onStoreClick}>
+            스토어
+          </button>
+        ) : null}
         <button type="button" style={buttonStyle} onClick={onMyPageClick}>
           마이페이지
         </button>
@@ -204,6 +219,7 @@ const topbarStyle: CSSProperties = {
 const leftStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
+  gap: '12px',
   flexShrink: 0
 }
 
@@ -220,6 +236,12 @@ const rightStyle: CSSProperties = {
 const titleStyle: CSSProperties = {
   fontSize: '20px',
   fontWeight: 900
+}
+
+const titleActionStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  flexShrink: 0
 }
 
 const buttonStyle: CSSProperties = {

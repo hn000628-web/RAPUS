@@ -534,11 +534,11 @@ export default function BusinessProfilePage() {
     businessTypeCode?: string | null
   ): string | undefined {
     if (businessTypeCode === 'STORE') {
-      return '고정형마켓'
+      return '오프라인스토어'
     }
 
     if (businessTypeCode === 'SHOPPING_MALL') {
-      return '쇼핑몰형'
+      return '온라인스토어'
     }
 
     if (businessTypeCode === 'FREELANCER') {
@@ -913,14 +913,6 @@ export default function BusinessProfilePage() {
 
       const stored =
         getStoredSession()
-
-      if (
-        stored.profileType &&
-        stored.profileType !== 'BUSINESS'
-      ) {
-        router.replace('/profile')
-        return
-      }
 
       const me =
         await getMe()

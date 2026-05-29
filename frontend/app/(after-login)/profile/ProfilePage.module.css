@@ -79,6 +79,28 @@
   font-weight: 800;
 }
 
+.sectionHeadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.accountOpenButton {
+  border: 1px solid #2563eb;
+  background: #ffffff;
+  color: #2563eb;
+  border-radius: 10px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.accountOpenButton:hover {
+  background: #eff6ff;
+}
+
 .card {
   min-width: 0;
   border: 1px solid #e5e7eb;
@@ -92,6 +114,28 @@
   border-radius: 14px;
   background: #f8fafc;
   overflow: hidden;
+}
+
+.accountInfoActionRow {
+  padding: 12px 12px 14px;
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.accountInfoBusinessButton {
+  width: 100%;
+  border: 1px solid #1d4ed8;
+  background: #2563eb;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.accountInfoBusinessButton:hover {
+  background: #1d4ed8;
 }
 
 .infoRow {
@@ -127,6 +171,105 @@
 
 .infoValueLong {
   line-height: 1.5;
+}
+
+.infoValueWrap {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.copyValueButton {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.copyValueButton:hover {
+  background: #f8fafc;
+}
+
+.accountModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 24px;
+  z-index: 60;
+}
+
+.accountModal {
+  width: 100%;
+  max-width: 360px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.22);
+}
+
+.accountModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.accountModalTitle {
+  margin: 0;
+  color: #111827;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.accountModalCloseButton {
+  border: none;
+  background: transparent;
+  color: #0f172a;
+  font-size: 30px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.accountModalFooter {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.accountModalGhostButton {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.accountModalPrimaryButton {
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .statusSafe {
@@ -398,6 +541,16 @@
 
   .pageTitle {
     font-size: 24px;
+  }
+
+  .accountModalOverlay {
+    align-items: flex-end;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .accountModal {
+    max-width: 100%;
   }
 
   .card,

@@ -67,6 +67,7 @@ export type PlaceFeedTypeCode =
   | 'NORMAL'
   | 'CLASSIC'
   | 'MARKET'
+  | 'ONLINE_SHOP'
   | 'FOOD'
   | 'BEAUTY'
   | 'CULTURE'
@@ -125,6 +126,14 @@ export const PLACE_FEED_PRESET_REGISTRY: Record<PlaceFeedTypeCode, PlaceFeedPres
     capabilities: EMPTY_PLACE_FEED_PRESET_CAPABILITIES
   },
   MARKET: {
+    landing: '/market/{channelCode}',
+    feed: '/market/{channelCode}',
+    pos: '/market_admin',
+    admin: '/market_admin',
+    enabled: true,
+    capabilities: MARKET_PLACE_FEED_PRESET_CAPABILITIES
+  },
+  ONLINE_SHOP: {
     landing: '/market/{channelCode}',
     feed: '/market/{channelCode}',
     pos: '/market_admin',

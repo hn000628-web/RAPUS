@@ -1,0 +1,62 @@
+ADDRESS CODE ABSOLUTE RULE SNAPSHOT
+===================================
+
+SECTION 01 : CORE CONCEPT
+AddressCode는 채널코드와 별개의 플랫폼 절대 주소 식별체계이다.
+
+SECTION 02 : ADDRESS STRUCTURE
+AddressMainCode
+- 길이 12
+- 권역 식별자
+- 예: KRGWJSGUGHD / KRGWJSGUPAD / KRGWJNAMBSD
+
+AddressSubCode
+- 길이 12
+- 건물 식별자
+- 예: A00000000001 / A00000000002 / A00000000003
+
+AddressCode24
+- 길이 24
+- 구성: AddressMainCode + AddressSubCode
+- 예: KRGWJSGUGHDA00000000001
+
+SECTION 03 : ROLE
+AddressMainCode = AREA
+- 생활권
+- 상권
+- 배달권역
+- 광고권역
+- 피드권역
+
+AddressSubCode = PLACE
+- 건물
+- 상가
+- 매장
+- 창고
+- 사무실
+- 아파트
+
+AddressCode24 = WHERE
+- 최종 주소 식별자
+
+SECTION 04 : ABSOLUTE RULE
+AddressCode24는 계산용 값이 아니다.
+실제 저장값이다.
+DB 컬럼으로 유지한다.
+
+SECTION 05 : CHANNEL RELATION
+channelCode = WHO
+AddressCode24 = WHERE
+
+SECTION 06 : IMMUTABLE RULE
+AddressMainCode 변경 금지
+AddressSubCode 변경 금지
+AddressCode24 변경 금지
+주소 변경 시 새 AddressCode24 생성
+기존 주소 이력 보존
+
+SECTION 07 : GLOBAL RULE
+roadAddress 추가 필수
+- 대한민국 광주광역시 서구 금호동
+- 대한민국 서울특별시 강남구 역삼동
+- Google Maps / Apple Maps / Naver Maps / Global Address 대응

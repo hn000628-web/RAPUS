@@ -35,6 +35,11 @@ export type AuthUserContext = {
   displayName: string
   email: string
   baseCode: string
+  corporationGrade?: number | null
+  providerGrade?: number | null
+  genesisGrade?: number | null
+  userGrade?: number | null
+  meteoAiGrade?: number | null
   activityRegionId?: number | null
   activityRegionName?: string | null
 }
@@ -65,13 +70,73 @@ export type SwitchProfileResponse = {
   displayName: string
   email: string
   baseCode: string
+  corporationGrade?: number | null
+  providerGrade?: number | null
+  genesisGrade?: number | null
+  userGrade?: number | null
   activityRegionId?: number | null
   activityRegionName?: string | null
+}
+
+export type BusinessSignupRequest = {
+  displayName?: string
+  businessTypeCode?: 'NORMAL' | 'STORE' | 'SHOPPING_MALL' | 'FREELANCER' | 'MOBILE_BIZ'
+}
+
+export type BusinessSignupResponse = {
+  ok: boolean
+  alreadyExists?: boolean
+  accessToken: string
+  user: AuthUserContext & {
+    id?: number
+    channelURL?: string | null
+  }
+}
+
+export type BusinessTrialApplyResponse = {
+  ok: boolean
+  user: Pick<
+    AuthUserContext,
+    | 'userId'
+    | 'email'
+    | 'userGrade'
+    | 'providerGrade'
+    | 'corporationGrade'
+  >
 }
 
 // SECTION 03 : CONSTANT
 
 const AUTH_BASE = '/auth'
+const AUTH_COOKIE_KEYS = [
+  'accessToken',
+  'refreshToken',
+  'rememberToken',
+  'rememberMe',
+  'autoLogin',
+  'profileSession',
+  'profileSessionId',
+  'sessionId'
+] as const
+const AUTH_STORAGE_KEYS = [
+  'accessToken',
+  'refreshToken',
+  'rememberToken',
+  'rememberMe',
+  'autoLogin',
+  'profileSession',
+  'profileSessionId',
+  'sessionId',
+  'userId',
+  'profileType',
+  'activeProfileType',
+  'profileId',
+  'activeProfileId',
+  'generalProfileId',
+  'businessProfileId',
+  'channelCode',
+  'displayName'
+] as const
 
 // SECTION 04 : TOKEN HELPER
 
@@ -91,10 +156,23 @@ function removeToken() {
     return
   }
 
-  localStorage.removeItem('accessToken')
+  clearClientAuthState()
+}
 
-  document.cookie =
-    'accessToken=; Max-Age=0; path=/'
+export function clearClientAuthState() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  AUTH_STORAGE_KEYS.forEach((key) => {
+    localStorage.removeItem(key)
+    sessionStorage.removeItem(key)
+  })
+
+  AUTH_COOKIE_KEYS.forEach((key) => {
+    document.cookie =
+      `${key}=; Max-Age=0; path=/; SameSite=Lax`
+  })
 }
 
 export function getToken() {
@@ -160,11 +238,13 @@ export async function logout() {
         }
       )
 
-    removeToken()
+    clearClientAuthState()
+    window.dispatchEvent(new Event('auth-change'))
 
     return res
   } catch (error) {
-    removeToken()
+    clearClientAuthState()
+    window.dispatchEvent(new Event('auth-change'))
     throw error
   }
 }
@@ -209,6 +289,49 @@ export async function switchProfile(
   }
 
   return res
+}
+
+export async function signupBusinessProfile(
+  data: BusinessSignupRequest
+): Promise<BusinessSignupResponse> {
+  const res =
+    await apiFetch<BusinessSignupResponse>(
+      `${AUTH_BASE}/business-signup`,
+      {
+        method: 'POST',
+        body: data
+      }
+    )
+
+  if (res?.accessToken) {
+    setToken(res.accessToken)
+  }
+
+  return res
+}
+
+export async function applyBusinessTrial(): Promise<BusinessTrialApplyResponse> {
+  return apiFetch<BusinessTrialApplyResponse>(
+    `${AUTH_BASE}/business-trial-apply`,
+    {
+      method: 'POST'
+    }
+  )
+}
+
+export async function adminHeartbeat(): Promise<{
+  ok: boolean
+  lastSeenAt?: string
+}> {
+  return apiFetch<{
+    ok: boolean
+    lastSeenAt?: string
+  }>(
+    `${AUTH_BASE}/admin-heartbeat`,
+    {
+      method: 'POST'
+    }
+  )
 }
 
 // SECTION 06 : EXPORT

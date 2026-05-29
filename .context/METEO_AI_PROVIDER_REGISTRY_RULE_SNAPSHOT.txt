@@ -1,0 +1,134 @@
+SECTION 01 : CORE PRINCIPLE
+===========================
+MeteoAI는
+단일 AI 구조가 아니다.
+다중 AI 공급자 구조를 사용한다.
+
+SECTION 02 : PROVIDER CONCEPT
+=============================
+Provider
+=
+AI 공급자
+
+예
+OpenAI
+Google
+Claude
+Grok
+DeepSeek
+Custom
+
+SECTION 03 : SUPPORTED PROVIDERS
+================================
+OPENAI
+GOOGLE
+CLAUDE
+GROK
+DEEPSEEK
+CUSTOM
+
+SECTION 04 : PROVIDER STATUS
+============================
+ACTIVE
+DISABLED
+DEPRECATED
+
+SECTION 05 : PROVIDER TYPE
+==========================
+CHAT
+IMAGE
+VIDEO
+ANALYTICS
+STRATEGY
+
+SECTION 06 : OPENAI
+===================
+CHAT
+GPT
+IMAGE
+GPT IMAGE
+
+SECTION 07 : GOOGLE
+===================
+CHAT
+GEMINI
+IMAGE
+IMAGEN
+
+SECTION 08 : CLAUDE
+===================
+CHAT
+CLAUDE
+
+SECTION 09 : GROK
+=================
+CHAT
+GROK
+
+SECTION 10 : DEEPSEEK
+=====================
+CHAT
+DEEPSEEK
+
+SECTION 11 : CUSTOM
+===================
+사내 모델
+전용 모델
+연구 모델
+
+SECTION 12 : EXECUTION MODE
+===========================
+SINGLE
+FAILOVER
+PARALLEL
+
+SECTION 13 : SINGLE
+===================
+한 개 Provider 사용
+
+SECTION 14 : FAILOVER
+=====================
+1차 실패
+↓
+2차 Provider
+
+SECTION 15 : PARALLEL
+=====================
+동시 실행
+결과 비교
+결과 병합
+
+SECTION 16 : GOVERNANCE
+=======================
+Provider 등록
+Provider 수정
+Provider 삭제
+↓
+meteoAiGrade 24
+최고 운영자
+
+SECTION 17 : FUTURE PROVIDERS
+=============================
+Alibaba
+Qwen
+Meta
+Llama
+Amazon
+기타 공급자
+
+SECTION FINAL
+=============
+MeteoAI
+=
+AI Router
+AI Provider Registry
+Multi AI Platform
+
+OpenAI
+Google
+Claude
+Grok
+DeepSeek
+Custom
+
+통합 운영 구조

@@ -1,217 +1,216 @@
 'use client'
 
-import{
-createContext,
-useContext,
-useEffect,
-useState,
-useMemo
-}from'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState
+} from 'react'
 
-import{
-getMyProfile
-}from'@/lib/profileApi'
+import {
+  clearClientAuthState,
+  getMe,
+  logout as requestLogout
+} from '@/lib/authApi'
 
 /* ==================================================
 SECTION 02 TYPES
 ================================================== */
 
-// 🔥 내부 상태 타입
 type Profile = {
-  userId?:number
-  profileId?:number
-  profileType?:'GENERAL'|'BUSINESS'
-  channelCode?:string
-  displayName?:string
+  userId?: number
+  profileId?: number
+  profileType?: 'GENERAL' | 'BUSINESS'
+  channelCode?: string
+  displayName?: string
+  email?: string
 }
 
-type AuthType={
-  loading:boolean
-  isLogin:boolean
-  profile:Profile|null
-  logout:()=>void
+type AuthType = {
+  loading: boolean
+  isLogin: boolean
+  profile: Profile | null
+  logout: () => Promise<void>
 }
 
 /* ==================================================
 SECTION 03 CONTEXT
 ================================================== */
 
-const AuthContext=
-createContext<AuthType>({
-  loading:true,
-  isLogin:false,
-  profile:null,
-  logout:()=>{}
+const AuthContext = createContext<AuthType>({
+  loading: true,
+  isLogin: false,
+  profile: null,
+  logout: async () => {}
 })
+
+function normalizeProfileFromMe(user: Record<string, any> | null | undefined): Profile {
+  if (!user || typeof user !== 'object') {
+    return {}
+  }
+
+  return {
+    userId: user.userId,
+    profileId: user.profileId,
+    profileType: user.profileType,
+    channelCode: user.channelCode,
+    displayName: user.displayName ?? undefined,
+    email: user.email
+  }
+}
 
 /* ==================================================
 SECTION 04 PROVIDER
 ================================================== */
 
 export function AuthProvider({
-children
-}:{children:React.ReactNode}){
+  children
+}: {
+  children: React.ReactNode
+}) {
+  const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [isLogin, setIsLogin] = useState(false)
 
-const[loading,setLoading]=useState(true)
-const[profile,setProfile]=useState<Profile|null>(null)
-const[isLogin,setIsLogin]=useState(false)
+  const refreshProfile = async (
+    mounted: boolean,
+    expectedAccessToken?: string | null
+  ): Promise<void> => {
+    const token = localStorage.getItem('accessToken')
+    const resolvedToken = expectedAccessToken ?? token
 
-/* =========================
-LOAD AUTH
-========================= */
+    if (!resolvedToken) {
+      if (!mounted) {
+        return
+      }
 
-useEffect(()=>{
+      clearClientAuthState()
+      setProfile(null)
+      setIsLogin(false)
+      setLoading(false)
+      return
+    }
 
-let mounted=true
+    if (!mounted) {
+      return
+    }
 
-async function load(){
+    setLoading(true)
+    setProfile(null)
 
-const token=
-localStorage.getItem('accessToken')
+    try {
+      const data = await getMe()
+      const currentToken = localStorage.getItem('accessToken')
 
-if(!token){
+      if (currentToken !== resolvedToken) {
+        return
+      }
 
-if(!mounted)return
+      if (!mounted) {
+        return
+      }
 
-setProfile(null)
-setIsLogin(false)
-setLoading(false)
+      setProfile(normalizeProfileFromMe(data?.user as Record<string, any> | undefined))
+      setIsLogin(true)
+    } catch {
+      if (!mounted) {
+        return
+      }
 
-return
-}
+      const currentToken = localStorage.getItem('accessToken')
 
-try{
+      if (currentToken && currentToken !== resolvedToken) {
+        return
+      }
 
-const data=await getMyProfile()
+      clearClientAuthState()
+      setProfile(null)
+      setIsLogin(false)
+    } finally {
+      if (mounted) {
+        setLoading(false)
+      }
+    }
+  }
 
-if(!mounted)return
+  /* =========================
+  LOAD AUTH
+  ========================= */
 
-// 🔥 타입 분리 (핵심)
-const p:any = data?.profile
+  useEffect(() => {
+    let mounted = true
 
-const safeProfile:Profile={
-  userId:p?.userId,
-  profileId:p?.id, // API id → 내부 profileId
-  profileType:p?.profileType,
-  channelCode:p?.channelCode,
-  displayName:p?.displayName ?? undefined // 🔥 null → undefined
-}
+    async function load() {
+      const token = localStorage.getItem('accessToken')
+      await refreshProfile(mounted, token)
+    }
 
-setProfile(safeProfile)
-setIsLogin(true)
+    load()
 
-}catch{
+    return () => {
+      mounted = false
+    }
+  }, [])
 
-if(!mounted)return
+  /* =========================
+  AUTH CHANGE SYNC
+  ========================= */
 
-setProfile(null)
-setIsLogin(false)
+  useEffect(() => {
+    let mounted = true
 
-}finally{
+    async function onAuthChange() {
+      const token = localStorage.getItem('accessToken')
+      await refreshProfile(mounted, token)
+    }
 
-if(mounted){
-setLoading(false)
-}
+    window.addEventListener('auth-change', onAuthChange)
 
-}
+    return () => {
+      mounted = false
+      window.removeEventListener('auth-change', onAuthChange)
+    }
+  }, [])
 
-}
+  /* =========================
+  LOGOUT
+  ========================= */
 
-load()
+  const logout = async () => {
+    try {
+      await requestLogout()
+    } catch {
+      clearClientAuthState()
+    }
 
-return()=>{
-mounted=false
-}
+    setProfile(null)
+    setIsLogin(false)
+    window.dispatchEvent(new Event('auth-change'))
+  }
 
-},[])
+  /* =========================
+  CONTEXT VALUE
+  ========================= */
 
-/* =========================
-AUTH CHANGE SYNC
-========================= */
+  const value = useMemo(() => ({
+    loading,
+    isLogin,
+    profile,
+    logout
+  }), [loading, isLogin, profile])
 
-useEffect(()=>{
-
-async function onAuthChange(){
-
-const token=
-localStorage.getItem('accessToken')
-
-if(!token){
-setProfile(null)
-setIsLogin(false)
-return
-}
-
-try{
-
-const data=await getMyProfile()
-
-const p:any = data?.profile
-
-const safeProfile:Profile={
-  userId:p?.userId,
-  profileId:p?.id,
-  profileType:p?.profileType,
-  channelCode:p?.channelCode,
-  displayName:p?.displayName ?? undefined
-}
-
-setProfile(safeProfile)
-setIsLogin(true)
-
-}catch{
-setProfile(null)
-setIsLogin(false)
-}
-
-}
-
-window.addEventListener('auth-change',onAuthChange)
-
-return()=>{
-window.removeEventListener('auth-change',onAuthChange)
-}
-
-},[])
-
-/* =========================
-LOGOUT
-========================= */
-
-const logout=()=>{
-
-localStorage.removeItem('accessToken')
-
-setProfile(null)
-setIsLogin(false)
-
-window.dispatchEvent(new Event('auth-change'))
-
-}
-
-/* =========================
-CONTEXT VALUE
-========================= */
-
-const value=useMemo(()=>({
-loading,
-isLogin,
-profile,
-logout
-}),[loading,isLogin,profile])
-
-return(
-<AuthContext.Provider value={value}>
-{children}
-</AuthContext.Provider>
-)
-
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 /* ==================================================
 SECTION 05 HOOK
 ================================================== */
 
-export function useAuth(){
-return useContext(AuthContext)
+export function useAuth() {
+  return useContext(AuthContext)
 }

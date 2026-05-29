@@ -16,6 +16,7 @@ import Image from 'next/image'
 
 import ServiceMenu from './ServiceMenu'
 import ProfileMenu from './ProfileMenu'
+import { useAuth } from '@/contexts/AuthContext'
 
 type TopMenuZoneProps = {
   showDevViewportSize?: boolean
@@ -27,6 +28,7 @@ export default function TopMenuZone({
 
   const router = useRouter()
   const pathname = usePathname()
+  const { profile, loading: authLoading, isLogin: authLoggedIn } = useAuth()
   const isHomePage = pathname === '/'
   const isPlacePage = pathname === '/place'
 
@@ -40,24 +42,11 @@ export default function TopMenuZone({
   const serviceMenuRef = useRef<HTMLDivElement | null>(null)
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
 
-  const [isLogin,setIsLogin] = useState(false)
-
-  useEffect(()=>{
-
-    function checkAuth(){
-      const token =
-        typeof window !== 'undefined' &&
-        localStorage.getItem('accessToken')
-
-      setIsLogin(!!token)
-    }
-
-    checkAuth()
-
-    window.addEventListener('auth-change',checkAuth)
-    return()=>window.removeEventListener('auth-change',checkAuth)
-
-  },[])
+  const isLogin = Boolean(
+    authLoggedIn &&
+    !authLoading &&
+    profile?.userId
+  )
   useEffect(() => {
     function syncViewportSize() {
       setViewportWidth(window.innerWidth)
@@ -71,6 +60,16 @@ export default function TopMenuZone({
   }, [])
 
   useEffect(() => {
+    if (!isLogin) {
+      setProfileOpen(false)
+    }
+  }, [isLogin])
+
+  useEffect(() => {
+    if (!serviceOpen) {
+      return
+    }
+
     if (!profileOpen) {
       return
     }

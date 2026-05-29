@@ -26,6 +26,19 @@ export class BarcodeParserService {
 
   parseScanCodeValue(scanCodeValueRaw: string): BarcodeParserResult {
     const scanCodeValue = this.normalizeScanCodeValue(scanCodeValueRaw);
+    const existing = this.findExistingProductResult(scanCodeValue);
+
+    if (existing) {
+      const cached = this.findCachedResult(scanCodeValue);
+
+      if (cached?.productCode === existing.productCode) {
+        return cached;
+      }
+
+      this.saveParseCache(existing);
+      return existing;
+    }
+
     const cached = this.findCachedResult(scanCodeValue);
 
     if (cached) {
@@ -142,6 +155,95 @@ export class BarcodeParserService {
       .get(prefixCode, itemCode) as { count?: number } | undefined;
 
     return String(Number(row?.count ?? 0) + 1).padStart(6, '0');
+  }
+
+  private findExistingProductResult(scanCodeValue: string): BarcodeParserResult | null {
+    const row = db
+      .prepare(
+        `
+        SELECT
+          mp.productCode AS productCode,
+          mp.semanticProductCode AS semanticProductCode,
+          mp.semanticTypePrefix AS semanticTypePrefix,
+          mp.semanticItemCode AS semanticItemCode,
+          mp.barcodeParserType AS barcodeParserType,
+          mp.barcodeParserVersion AS barcodeParserVersion
+        FROM master_products mp
+        LEFT JOIN master_product_scan_codes mpsc
+          ON mpsc.masterProductId = mp.id
+          AND mpsc.deletedAt IS NULL
+        WHERE mp.deletedAt IS NULL
+          AND (
+            mpsc.scanCodeValue = ?
+            OR mp.primaryScanCodeValue = ?
+          )
+        ORDER BY
+          CASE WHEN mpsc.scanCodeValue = ? THEN 0 ELSE 1 END,
+          mp.id ASC
+        LIMIT 1
+        `,
+      )
+      .get(scanCodeValue, scanCodeValue, scanCodeValue) as
+      | {
+          productCode: string;
+          semanticProductCode: string | null;
+          semanticTypePrefix: string | null;
+          semanticItemCode: string | null;
+          barcodeParserType: BarcodeParserResult['parserType'] | null;
+          barcodeParserVersion: string | null;
+        }
+      | undefined;
+
+    if (!row || !this.isRapusProductCode(row.productCode)) {
+      return null;
+    }
+
+    const parserType = this.resolveExistingParserType(
+      row.productCode,
+      row.semanticProductCode,
+      row.barcodeParserType,
+    );
+
+    return {
+      scanCodeValue,
+      productCode: row.productCode,
+      semanticProductCode: row.semanticProductCode,
+      semanticTypePrefix: row.semanticTypePrefix,
+      semanticItemCode: row.semanticItemCode,
+      parserType,
+      parserVersion: row.barcodeParserVersion || BARCODE_PARSER_VERSION,
+      parsedMetadata: {
+        scanCodeValue,
+        productCode: row.productCode,
+        semanticTypePrefix: row.semanticTypePrefix,
+        semanticItemCode: row.semanticItemCode,
+        source: 'EXISTING_MASTER_PRODUCT',
+      },
+    };
+  }
+
+  private resolveExistingParserType(
+    productCode: string,
+    semanticProductCode: string | null,
+    parserType: BarcodeParserResult['parserType'] | null,
+  ): BarcodeParserResult['parserType'] {
+    if (
+      parserType === 'EAN13_BARCODE' ||
+      parserType === 'SEMANTIC_BARCODE' ||
+      parserType === 'RAW_UNKNOWN'
+    ) {
+      return parserType;
+    }
+
+    if (productCode.startsWith('RPB')) {
+      return 'EAN13_BARCODE';
+    }
+
+    if (semanticProductCode?.startsWith('RAW_UNKNOWN_')) {
+      return 'RAW_UNKNOWN';
+    }
+
+    return 'SEMANTIC_BARCODE';
   }
 
   private findCachedResult(scanCodeValue: string): BarcodeParserResult | null {

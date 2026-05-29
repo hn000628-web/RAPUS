@@ -143,6 +143,7 @@ export type PlaceFeedTypeCode =
   | 'NORMAL'
   | 'CLASSIC'
   | 'MARKET'
+  | 'ONLINE_SHOP'
   | 'FOOD'
   | 'BEAUTY'
   | 'CULTURE'

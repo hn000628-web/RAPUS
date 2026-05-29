@@ -8,8 +8,14 @@ PRIORITY : ABSOLUTE
 SECTION 01 : CORE PRINCIPLE
 ==================================================
 
+users.corporationGrade
+= 회사 직급권한 정규 기준
+
+users.genesisGrade
+= 플랫폼 최상위 보안등급 / Genesis 보호 계층
+
 users.userGrade
-= 계정 레벨 등급
+= legacy / deprecated account grade marker
 
 profiles.operationGrade
 = 프로필/채널 운영 capability
@@ -23,25 +29,48 @@ profiles.governanceMetadata
 symbolic governance layer는 절대 혼합하지 않는다.
 
 ==================================================
-SECTION 02 : USERS USER GRADE
+SECTION 02 : USERS GRADE / CORPORATION GRADE / GENESIS GRADE
 ==================================================
+
+users.corporationGrade:
+
+0 = 수습사원
+1 = 팀원
+2 = 대리
+3 = 팀장
+4 = 과장
+5 = 상무
+6~11 = 확장 직급권한
+12 = 최종 OWNER_ACCOUNT / 최고직급권한
 
 users.userGrade:
 
-0 = NORMAL_USER
-1 = VERIFIED_USER
-2 = PREMIUM_USER
-3 = MASTER_ACCOUNT
-4 = OWNER_ACCOUNT
+0~11 = 실제 계정 권한 등급
+12 = 최종 OWNER_ACCOUNT
+
+users.genesisGrade:
+
+0 = NONE
+1~11 = RESERVED
+12 = GENESIS_OWNER
 
 DB:
 
 userGrade INTEGER NOT NULL DEFAULT 0
-CHECK(userGrade IN(0,1,2,3,4))
+CHECK(userGrade BETWEEN 0 AND 12)
+
+corporationGrade INTEGER NOT NULL DEFAULT 0
+CHECK(corporationGrade BETWEEN 0 AND 12)
+
+genesisGrade INTEGER NOT NULL DEFAULT 0
+CHECK(genesisGrade BETWEEN 0 AND 12)
 
 주의:
 
-11 / 12는 users.userGrade에 사용하지 않는다.
+users.userGrade는 즉시 삭제하지 않고 deprecated로 유지한다.
+users.genesisGrade는 corporationGrade보다 상위의 플랫폼 최상위 보호 계층이다.
+실제 계정/회사/보호/운영 기준은 users.userGrade / users.corporationGrade / users.genesisGrade / profiles.operationGrade를 구분해 사용한다.
+profiles.governanceTier의 12는 symbolic layer 값이며 auth/security/payment 권한으로 연결하지 않는다.
 
 ==================================================
 SECTION 03 : PROFILE OPERATION GRADE
@@ -98,7 +127,13 @@ baseCode:
 012712392766
 
 userGrade:
-4
+12
+
+corporationGrade:
+12
+
+genesisGrade:
+12
 
 GENERAL channelCode:
 A012712392766
@@ -149,7 +184,7 @@ governanceSymbol = GOD_SYMBOLIC_TIER
 주의:
 
 GENERAL profile에는 적용하지 않는다.
-users.userGrade에는 11 / 12를 넣지 않는다.
+users.userGrade / users.corporationGrade / users.genesisGrade에는 실제 권한 등급 0~12만 넣는다.
 OWNER_ACCOUNT hn0628@naver.com 로직은 변경하지 않는다.
 
 ==================================================
@@ -162,6 +197,7 @@ SECTION 08 : SECURITY ABSOLUTE RULE
 - publicMasterSymbol 기반 복구
 - creatorHandle 기반 권한 부여
 - governanceTier 기반 auth 처리
+- genesisGrade 기반 JWT bypass
 - governanceSymbol 기반 권한 처리
 - JWT bypass
 - hardcoded admin login
@@ -171,6 +207,8 @@ SECTION 08 : SECURITY ABSOLUTE RULE
 실제 권한 기준:
 
 users.userGrade
+users.corporationGrade
+users.genesisGrade
 profiles.operationGrade
 
 symbolic governance는 표시/기록/철학용이다.
@@ -185,13 +223,15 @@ backend/src/init/init-db.ts
 
 필수 처리:
 
-1. users.userGrade 컬럼 safeAddColumn
-2. OWNER_ACCOUNT user seed
-3. OWNER GENERAL profile seed
-4. OWNER BUSINESS profile seed
-5. OWNER BUSINESS profile OWNER_MASTER_ADMIN 적용
-6. test1 BUSINESS governanceTier = 11 적용
-7. test2 BUSINESS governanceTier = 12 적용
+1. users.userGrade CHECK 0~12 확장
+2. users.corporationGrade 컬럼 safeAddColumn 및 CHECK 0~12 적용
+3. users.genesisGrade 컬럼 safeAddColumn 및 CHECK 0~12 적용
+4. OWNER_ACCOUNT user seed
+5. OWNER GENERAL profile seed
+6. OWNER BUSINESS profile seed
+7. OWNER BUSINESS profile OWNER_MASTER_ADMIN 적용
+8. test1 BUSINESS governanceTier = 11 적용
+9. test2 BUSINESS governanceTier = 12 적용
 
 ==================================================
 SECTION 10 : VALIDATION SQL
@@ -201,7 +241,9 @@ SELECT
   email,
   phone,
   baseCode,
-  userGrade
+  userGrade,
+  corporationGrade,
+  genesisGrade
 FROM users
 WHERE email IN (
   'hn0628@naver.com',
@@ -234,7 +276,9 @@ SECTION 11 : VALIDATION
 
 1. backend npm run db:init 통과
 2. backend npm run build 통과
-3. hn0628@naver.com users.userGrade = 4 확인
+3. hn0628@naver.com users.userGrade = 12 확인
+3-1. hn0628@naver.com users.corporationGrade = 12 확인
+3-2. hn0628@naver.com users.genesisGrade = 12 확인
 4. OWNER GENERAL channelCode = A012712392766 확인
 5. OWNER BUSINESS channelCode = B012712392766 확인
 6. OWNER BUSINESS operationGrade = 3 확인
@@ -270,13 +314,14 @@ OWNER_ACCOUNT 및 테스트 계정 BUSINESS profile governance seed를
 - 기존 init-db 구조 우선 유지
 - safeAddColumn 패턴 우선 재사용
 - DB → Service → Controller → Front 흐름 유지
-- users = 계정 레벨
+- users.corporationGrade = 회사 직급권한 정규 기준
+- users.genesisGrade = 플랫폼 최상위 보안등급 / Genesis 보호 계층
+- users.userGrade = deprecated legacy marker
 - profiles = 채널/운영 capability
 - governance = symbolic metadata only
 - auth bypass / JWT bypass / hardcoded admin login 금지
 
 절대 금지:
-- users.userGrade에 11 또는 12 저장 금지
 - GENERAL profile에 test governance 적용 금지
 - OWNER_ACCOUNT 값 변경 금지
 - channelCode/baseCode 변경 금지
@@ -300,6 +345,40 @@ OWNER_ACCOUNT 및 테스트 계정 BUSINESS profile governance seed를
 ==================================================
 END OF SNAPSHOT
 ==================================================
+
+==================================================
+SECTION : CORPORATION GRADE AUTHORITY RULE
+==================================================
+
+users.corporationGrade는 회사 직급권한의 정규 컬럼이다.
+
+권한값:
+0 = 수습사원
+1 = 팀원
+2 = 대리
+3 = 팀장
+4 = 과장
+5 = 상무
+6~11 = 확장 직급권한
+12 = 최종 OWNER_ACCOUNT / 최고직급권한
+
+DB:
+
+corporationGrade INTEGER NOT NULL DEFAULT 0
+CHECK(corporationGrade BETWEEN 0 AND 12)
+
+genesisGrade INTEGER NOT NULL DEFAULT 0
+CHECK(genesisGrade BETWEEN 0 AND 12)
+
+정책:
+- 기존 users.userGrade는 삭제하지 않고 deprecated로 유지한다.
+- 기존 userGrade 값은 corporationGrade로 백필한다.
+- users.genesisGrade는 corporationGrade보다 상위의 플랫폼 최상위 보호 계층이다.
+- OWNER_ACCOUNT hn0628@naver.com 은 userGrade = 12 / corporationGrade = 12 / genesisGrade = 12 를 적용한다.
+- test1/test2 계정은 corporationGrade = 0 을 유지한다.
+- profiles.operationGrade는 프로필/채널 운영 capability 기준으로 유지한다.
+- profiles.governanceTier는 symbolic 전용이며 실제 권한으로 사용하지 않는다.
+- 실제 권한 판정은 users.userGrade / users.corporationGrade / users.genesisGrade / profiles.operationGrade를 역할별로 구분해 사용한다.
 작업명:
 테스트 계정 symbolic reserved account 정책 반영
 
@@ -420,7 +499,7 @@ platform symbolic reserved accounts 로 유지한다.
 - test1/test2 baseCode/channelCode 변경 금지
 - test1/test2 passwordHash 변경 금지
 - OWNER_ACCOUNT hn0628@naver.com 로직 변경 금지
-- users.userGrade에 11/12 저장 금지
+- users.userGrade / users.corporationGrade 0~12 범위 외 저장 금지
 - governanceTier를 auth/security에 연결 금지
 - DB 컬럼 추가 금지
 - Service/Controller/API/Frontend 수정 금지

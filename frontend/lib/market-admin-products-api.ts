@@ -138,7 +138,25 @@ export type MarketAdminImportPreviewRow = {
   id: number
   rowNo: number
   productName: string | null
+  brandName: string | null
   scanCodeValue: string | null
+  productCode: string | null
+  semanticProductCode: string | null
+  categoryType: string | null
+  parserType: 'EAN13_BARCODE' | 'SEMANTIC_BARCODE' | 'RAW_UNKNOWN' | null
+  parserStatus:
+    | 'PARSER_SUCCESS'
+    | 'SEMANTIC_REGISTRY_MATCHED'
+    | 'RAW_UNKNOWN'
+    | 'PARSER_FAILED'
+  masterLinkStatus:
+    | 'LINKED'
+    | 'CREATE_REQUIRED'
+    | 'PARSER_FAILED'
+  imageLinkStatus:
+    | 'LINKED'
+    | 'MISSING'
+  thumbnailUrl: string | null
   salePrice: number
   eventCode: string | null
   eventTitle: string | null
@@ -358,7 +376,13 @@ export function uploadMarketAdminProductImportFile(params: {
       body: formData,
       isForm: true
     }
-  )
+  ).then((response) => ({
+    ...response,
+    rows: response.rows.map((row) => ({
+      ...row,
+      thumbnailUrl: resolveThumbnailUrl(row.thumbnailUrl)
+    }))
+  }))
 }
 
 export function confirmMarketAdminProductImport(params: {

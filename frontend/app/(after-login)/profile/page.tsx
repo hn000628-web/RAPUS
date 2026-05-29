@@ -56,6 +56,9 @@ type AccountInfoState = {
   profileId: number | null
   email: string
   channelCode: string
+  corporationGrade: number
+  providerGrade?: number | null
+  userGrade?: number | null
 }
 
 type UnknownRecord =
@@ -86,7 +89,10 @@ const LEGACY_PROFILE_ID_KEYS = [
 const DEFAULT_ACCOUNT_INFO: AccountInfoState = {
   profileId: null,
   email: '이메일 확인중',
-  channelCode: '채널코드 확인중'
+  channelCode: '채널코드 확인중',
+  corporationGrade: 0,
+  providerGrade: undefined,
+  userGrade: undefined
 }
 
 const PROFILE_ENTRY_CONFIG: Record<'GENERAL' | 'BUSINESS', ProfileEntryConfig> = {
@@ -184,10 +190,45 @@ function createAccountInfo(
       ['profile', 'channelCode']
     ]) || '채널코드 확인 필요'
 
+  const corporationGrade =
+    readNestedNumber(source, [
+      ['corporationGrade'],
+      ['user', 'corporationGrade'],
+      ['profile', 'corporationGrade']
+    ]) ?? 0
+
+  const providerGrade =
+    readNestedNumber(source, [
+      ['providerGrade'],
+      ['user', 'providerGrade'],
+      ['profile', 'providerGrade']
+    ]) ??
+    null
+
+  const userPayload =
+    isRecord(source) && isRecord((source as UnknownRecord).user)
+      ? (source as UnknownRecord).user as UnknownRecord
+      : null
+
+  const officialUserGrade =
+    readNestedNumber(userPayload, [['userGrade']])
+
+  const userGrade =
+    officialUserGrade ??
+    readNestedNumber(source, [
+      ['userGrade'],
+      ['user', 'userGrade'],
+      ['profile', 'userGrade']
+    ]) ??
+    null
+
   return {
     profileId,
     email,
-    channelCode
+    channelCode,
+    corporationGrade,
+    providerGrade,
+    userGrade
   }
 }
 
@@ -283,6 +324,53 @@ function isRecord(
   value: unknown
 ): value is UnknownRecord {
   return typeof value === 'object' && value !== null
+}
+
+function syncActiveProfileStorage(
+  type: ProfileType,
+  source: unknown
+) {
+  if (type !== 'GENERAL' && type !== 'BUSINESS') {
+    return
+  }
+
+  const profileId =
+    readNestedNumber(source, [
+      ['profileId'],
+      ['user', 'profileId'],
+      ['id'],
+      ['profile', 'id']
+    ])
+
+  const channelCode =
+    readNestedString(source, [
+      ['channelCode'],
+      ['user', 'channelCode'],
+      ['profile', 'channelCode']
+    ])
+
+  const displayName =
+    readNestedString(source, [
+      ['displayName'],
+      ['user', 'displayName'],
+      ['profile', 'displayName']
+    ])
+
+  localStorage.setItem('activeProfileType', type)
+  localStorage.setItem('profileType', type)
+
+  if (profileId !== null) {
+    localStorage.setItem('profileId', String(profileId))
+    localStorage.setItem('activeProfileId', String(profileId))
+  }
+
+  if (channelCode) {
+    localStorage.setItem('channelCode', channelCode)
+  }
+
+  if (displayName) {
+    localStorage.setItem('displayName', displayName)
+  }
 }
 
 // SECTION 04 : COMPONENT
@@ -388,7 +476,10 @@ export default function ProfileHubPage() {
           setAccountInfo({
             profileId: null,
             email: '이메일 확인 필요',
-            channelCode: '채널코드 확인 필요'
+            channelCode: '채널코드 확인 필요',
+            corporationGrade: 0,
+            providerGrade: null,
+            userGrade: null
           })
 
           setActiveProfileType(null)
@@ -438,16 +529,16 @@ export default function ProfileHubPage() {
     setLoadingSwitch(type)
 
     try {
-      await switchProfile(type)
+      const switchedProfile =
+        await switchProfile(type)
 
-      localStorage.setItem(
-        'activeProfileType',
-        type
+      syncActiveProfileStorage(
+        type,
+        switchedProfile
       )
 
-      localStorage.setItem(
-        'profileType',
-        type
+      window.dispatchEvent(
+        new Event('auth-change')
       )
 
       router.push(
@@ -504,6 +595,68 @@ export default function ProfileHubPage() {
     router.push('/profile/business/account')
   }
 
+  async function moveToBusinessProfileDirect() {
+    if (loadingSwitch) {
+      return
+    }
+
+    setLoadingSwitch('BUSINESS')
+
+    try {
+      const switchedProfile =
+        await switchProfile('BUSINESS')
+
+      syncActiveProfileStorage(
+        'BUSINESS',
+        switchedProfile
+      )
+
+      const me = await getMe()
+      const nextAccountInfo = createAccountInfo(me)
+      const nextProfileType = resolveProfileTypeByChannelCode(
+        nextAccountInfo.channelCode
+      )
+
+      if (nextProfileType !== 'BUSINESS') {
+        throw new Error('BUSINESS profile switch not applied')
+      }
+
+      let nextBusinessPlaceFeedTypeCode: PlaceFeedTypeCode = 'NORMAL'
+      if (nextAccountInfo.channelCode.length > 0) {
+        const businessProfile = await getProfileByChannelCode(
+          nextAccountInfo.channelCode
+        )
+
+        nextBusinessPlaceFeedTypeCode =
+          businessProfile.placeFeedTypeCode ?? 'NORMAL'
+      }
+
+      setAccountInfo(nextAccountInfo)
+      setActiveProfileType('BUSINESS')
+      setGeneralAccountSummary(null)
+      setBusinessPlaceFeedTypeCode(nextBusinessPlaceFeedTypeCode)
+
+      syncActiveProfileStorage(
+        'BUSINESS',
+        me
+      )
+
+      window.dispatchEvent(
+        new Event('auth-change')
+      )
+
+      router.replace('/profile')
+      router.refresh()
+    } catch (err) {
+      console.error(
+        'BUSINESS PROFILE DIRECT MOVE ERROR',
+        err
+      )
+    } finally {
+      setLoadingSwitch(null)
+    }
+  }
+
   const canUseProductSystem =
     hasPlaceFeedPresetCapability(
       businessPlaceFeedTypeCode,
@@ -552,9 +705,13 @@ export default function ProfileHubPage() {
         generalAccountSummary={generalAccountSummary}
         profileConfig={PROFILE_ENTRY_CONFIG.GENERAL}
         loadingSwitch={loadingSwitch !== null}
+        businessProfileSwitching={loadingSwitch === 'BUSINESS'}
         personalItems={GENERAL_MANAGEMENT_ITEMS}
         onSwitchProfile={() => {
           switchToProfile('GENERAL')
+        }}
+        onMoveBusinessProfile={() => {
+          void moveToBusinessProfileDirect()
         }}
       />
     )

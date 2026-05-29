@@ -229,6 +229,32 @@ export class ProfileSettingsController {
     return this.service.updateProfileCore(userId, profileId, channelCode, body)
   }
 
+  @Patch(':profileId/place-feed-settings')
+  @UseGuards(JwtAuthGuard)
+  updateBusinessPlaceFeedSettings(
+    @Param('profileId', ParseIntPipe) profileId: number,
+    @Req() req: AuthRequest,
+    @Body() body: {
+      businessTypeCode?: string | null
+      placeFeedTypeCode?: string | null
+      primaryIndustryId?: number | null
+      primaryIndustrySubtypeId?: number | null
+      primaryIndustryCode?: string | null
+      primaryIndustrySubtypeCode?: string | null
+      updatedAt?: string | null
+    }
+  ) {
+    const userId = req.user?.id ?? req.user?.userId ?? 0
+    const channelCode = req.user?.channelCode ?? ''
+
+    return this.service.updateBusinessPlaceFeedSettings(
+      userId,
+      profileId,
+      channelCode,
+      body
+    )
+  }
+
   @Patch(':profileId/channel')
   @UseGuards(JwtAuthGuard)
   updateProfileChannel(

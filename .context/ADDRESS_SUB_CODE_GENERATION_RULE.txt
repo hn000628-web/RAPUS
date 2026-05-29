@@ -1,0 +1,29 @@
+ADDRESS SUB CODE GENERATION RULE
+================================
+
+SECTION 01 : FORMAT
+AddressSubCode
+- 길이 12
+- 패턴: A + 11자리 숫자
+- 예: A00000000001, A00000000002, A00000000003
+
+SECTION 02 : CREATION AUTHORITY
+- 생성 위치: 본사 관리자
+- 생성 방식: 자동 생성
+- 사용자 직접 입력 금지
+
+SECTION 03 : REUSE POLICY
+- 재사용 금지
+- 삭제 후 재사용 금지
+- Soft Delete Only
+
+SECTION 04 : ADDRESS CODE 24
+AddressCode24 = AddressMainCode + AddressSubCode
+
+예)
+KRGWJSGUGHD + A00000000001 = KRGWJSGUGHDA00000000001
+
+SECTION 05 : OPERATION NOTE
+- AddressSubCode는 운영 시스템의 고정 식별자다.
+- 사람이 수정하지 않고 시스템이 순번으로 생성한다.
+- 비활성/삭제 상태에서도 기존 코드는 이력으로 보존한다.

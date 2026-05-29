@@ -170,7 +170,12 @@ fetchRegions(page)
 
 console.error(err)
 
-alert('업로드 실패')
+const message=
+err instanceof Error
+?err.message
+:'업로드 실패'
+
+alert(`업로드 실패\n${message}`)
 
 }
 finally{

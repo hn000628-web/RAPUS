@@ -276,6 +276,10 @@ console.error(
 err
 )
 
+if(err instanceof BadRequestException){
+throw err
+}
+
 throw new InternalServerErrorException(
 'CSV Import 실패'
 )

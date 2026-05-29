@@ -1,0 +1,112 @@
+MART PRICE SYSTEM SNAPSHOT
+
+==================================================
+SECTION 01 : CORE CONCEPT
+==================================================
+
+마트 가격은 channel_product_prices 전용으로 관리한다.
+
+가격 4종:
+- purchasePrice (매입가)
+- regularPrice (일반가)
+- eventPrice (행사가)
+- specialPrice (특판가)
+
+실제 판매 우선순위:
+SPECIAL -> EVENT -> REGULAR
+
+==================================================
+SECTION 02 : PURCHASE PRICE RULE
+==================================================
+
+purchasePrice:
+- 공급사 매입 원가
+- 0 이상
+- 외부 노출 금지
+- 관리자 전용 데이터
+
+==================================================
+SECTION 03 : REGULAR PRICE RULE
+==================================================
+
+regularPrice:
+- 기본 정상 판매가
+- 0 이상
+- 특판/행사 미적용 시 최종 판매 기준
+
+==================================================
+SECTION 04 : EVENT PRICE RULE
+==================================================
+
+eventPrice:
+- 일반 행사 판매가
+- NULL 가능
+- 값 존재 시 regularPrice보다 우선 가능
+
+==================================================
+SECTION 05 : SPECIAL PRICE RULE
+==================================================
+
+specialPrice:
+- 초특가/일시 특판 가격
+- NULL 가능
+- 특판 기간(specialPriceStartAt ~ specialPriceEndAt) 내 최우선
+
+==================================================
+SECTION 06 : ACTIVE SALE PRICE RULE
+==================================================
+
+activeSalePriceType:
+- REGULAR
+- EVENT
+- SPECIAL
+
+운영 선언:
+- SPECIAL 활성 시 specialPrice 적용
+- 그 외 EVENT 가능 시 eventPrice 적용
+- 그 외 regularPrice 적용
+
+==================================================
+SECTION 07 : PRODUCT LOOKUP RULE
+==================================================
+
+조회 키:
+- channelCode + productCode
+
+UNIQUE(channelCode, productCode) 유지
+
+==================================================
+SECTION 08 : MASTER PRODUCT PRICE PROHIBITION
+==================================================
+
+master_products 가격 저장 금지:
+- purchasePrice 금지
+- regularPrice 금지
+- eventPrice 금지
+- specialPrice 금지
+
+가격은 channel_product_prices 전용
+
+==================================================
+SECTION 09 : ADMIN ONLY PURCHASE PRICE RULE
+==================================================
+
+purchasePrice 정책:
+- 관리자 내부 API 전용
+- 프론트/장바구니/주문자 응답 금지
+
+==================================================
+SECTION 10 : FINAL DECLARATION
+==================================================
+
+매입가 = purchasePrice
+일반가 = regularPrice
+행사가 = eventPrice
+특판가 = specialPrice
+
+실제 판매 우선순위:
+SPECIAL -> EVENT -> REGULAR
+
+master_products 가격 금지
+가격은 channel_product_prices 전용
+

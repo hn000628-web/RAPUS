@@ -1,6 +1,7 @@
 import { apiFetch } from '@/lib/api'
 import { getMe, MeResponse } from '@/lib/authApi'
 import type { PlaceFeedTypeCode } from '@/lib/profile-summary-api'
+import type { BusinessTypeCode } from './business-type-api'
 
 export type FulfillmentTypeCode =
   | 'NONE'
@@ -255,6 +256,33 @@ export async function updateBusinessProfileCore(
   }
 ): Promise<BusinessProfile> {
   return apiFetch(`${BUSINESS_PROFILE_BASE}/${profileId}/core`, {
+    method: 'PATCH',
+    body: data
+  })
+}
+
+export async function updateBusinessPlaceFeedSettings(
+  profileId: number,
+  data: {
+    businessTypeCode?: BusinessTypeCode | null
+    placeFeedTypeCode?: PlaceFeedTypeCode | null
+    primaryIndustryId?: number | null
+    primaryIndustrySubtypeId?: number | null
+    primaryIndustryCode?: string | null
+    primaryIndustrySubtypeCode?: string | null
+  }
+): Promise<{
+  ok: true
+  profileId: number
+  channelCode: string
+  businessTypeCode: BusinessTypeCode | null
+  placeFeedTypeCode: PlaceFeedTypeCode | null
+  primaryIndustryId: number | null
+  primaryIndustrySubtypeId: number | null
+  primaryIndustryCode: string | null
+  primaryIndustrySubtypeCode: string | null
+}> {
+  return apiFetch(`${BUSINESS_PROFILE_BASE}/${profileId}/place-feed-settings`, {
     method: 'PATCH',
     body: data
   })

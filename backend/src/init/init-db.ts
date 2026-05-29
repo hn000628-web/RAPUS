@@ -1,4 +1,4 @@
-// FILE: C:\Users\kjm\social-platform\backend\src\init\init-db.ts
+﻿// FILE: C:\Users\kjm\social-platform\backend\src\init\init-db.ts
 // ROOT : C:\Users\kjm\social-platform\backend\src\init\init-db.ts
 // STATUS : PRODUCTION DB INIT FINAL (TEST SECTION FIRST ORDER)
 
@@ -6,6 +6,8 @@ import fs from 'fs'
 import path from 'path'
 import Database from 'better-sqlite3'
 import * as bcrypt from 'bcrypt'
+import { initSecurityQrAuthSchema } from './security-qr-auth.schema'
+import { initWalletLedgerSchema } from './wallet-ledger.schema'
 
 export async function initDatabase(){
 
@@ -78,8 +80,22 @@ status TEXT CHECK(status IN('ACTIVE','INACTIVE')) DEFAULT 'ACTIVE',
 
 type TEXT DEFAULT 'normal',
 
+-- DEPRECATED: legacy account grade marker.
+-- Use corporationGrade for company grade authority.
 userGrade INTEGER NOT NULL DEFAULT 0
-CHECK(userGrade IN(0,1,2,3,4)),
+CHECK(userGrade BETWEEN 0 AND 12),
+
+corporationGrade INTEGER NOT NULL DEFAULT 0
+CHECK(corporationGrade BETWEEN 0 AND 24),
+
+providerGrade INTEGER NOT NULL DEFAULT 0
+CHECK(providerGrade BETWEEN 0 AND 24),
+
+genesisGrade INTEGER NOT NULL DEFAULT 0
+CHECK(genesisGrade BETWEEN 0 AND 24),
+
+meteoAiGrade INTEGER NOT NULL DEFAULT 0
+CHECK(meteoAiGrade BETWEEN 0 AND 24),
 
 birthDate TEXT,
 
@@ -113,8 +129,141 @@ safeAddColumn(
 safeAddColumn(
   'users',
   'userGrade',
-  'INTEGER NOT NULL DEFAULT 0 CHECK(userGrade IN(0,1,2,3,4))'
+  'INTEGER NOT NULL DEFAULT 0 CHECK(userGrade BETWEEN 0 AND 12)'
 )
+
+safeAddColumn(
+  'users',
+  'corporationGrade',
+  'INTEGER NOT NULL DEFAULT 0 CHECK(corporationGrade BETWEEN 0 AND 24)'
+)
+
+safeAddColumn(
+  'users',
+  'providerGrade',
+  'INTEGER NOT NULL DEFAULT 0 CHECK(providerGrade BETWEEN 0 AND 24)'
+)
+
+safeAddColumn(
+  'users',
+  'genesisGrade',
+  'INTEGER NOT NULL DEFAULT 0 CHECK(genesisGrade BETWEEN 0 AND 24)'
+)
+
+safeAddColumn(
+  'users',
+  'meteoAiGrade',
+  'INTEGER NOT NULL DEFAULT 0 CHECK(meteoAiGrade BETWEEN 0 AND 24)'
+)
+
+const usersGradeMax12TableSqlRow = db.prepare(`
+  SELECT sql
+  FROM sqlite_master
+  WHERE type = 'table'
+    AND name = 'users'
+  LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const usersGradeMax12TableSql =
+usersGradeMax12TableSqlRow?.sql ?? ''
+
+const usersNeedsGradeMax24Migration =
+  usersGradeMax12TableSql.includes('CHECK(userGrade IN(0,1,2,3,4))') ||
+  usersGradeMax12TableSql.includes('CHECK(corporationGrade IN(0,1,2,3,4,5,7))') ||
+  usersGradeMax12TableSql.includes('CHECK(corporationGrade BETWEEN 0 AND 12)') ||
+  usersGradeMax12TableSql.includes('CHECK(providerGrade BETWEEN 0 AND 12)') ||
+  usersGradeMax12TableSql.includes('CHECK(genesisGrade BETWEEN 0 AND 12)')
+
+if (usersNeedsGradeMax24Migration) {
+  const nextUsersSql =
+    usersGradeMax12TableSql
+      .replace(
+        /CREATE TABLE "?users"?/i,
+        'CREATE TABLE users_new'
+      )
+      .replace(
+        /CHECK\s*\(\s*userGrade\s+IN\s*\(0,1,2,3,4\)\s*\)/g,
+        'CHECK(userGrade BETWEEN 0 AND 12)'
+      )
+      .replace(
+        /CHECK\s*\(\s*corporationGrade\s+IN\s*\(0,1,2,3,4,5,7\)\s*\)/g,
+        'CHECK(corporationGrade BETWEEN 0 AND 24)'
+      )
+      .replace(
+        /CHECK\s*\(\s*corporationGrade\s+BETWEEN\s+0\s+AND\s+12\s*\)/g,
+        'CHECK(corporationGrade BETWEEN 0 AND 24)'
+      )
+      .replace(
+        /CHECK\s*\(\s*providerGrade\s+BETWEEN\s+0\s+AND\s+12\s*\)/g,
+        'CHECK(providerGrade BETWEEN 0 AND 24)'
+      )
+      .replace(
+        /CHECK\s*\(\s*genesisGrade\s+BETWEEN\s+0\s+AND\s+12\s*\)/g,
+        'CHECK(genesisGrade BETWEEN 0 AND 24)'
+      )
+
+  if (
+    !nextUsersSql.includes('CHECK(userGrade BETWEEN 0 AND 12)') ||
+    !nextUsersSql.includes('CHECK(corporationGrade BETWEEN 0 AND 24)') ||
+    !nextUsersSql.includes('CHECK(providerGrade BETWEEN 0 AND 24)') ||
+    !nextUsersSql.includes('CHECK(genesisGrade BETWEEN 0 AND 24)')
+  ) {
+    throw new Error('users grade max 24 migration failed')
+  }
+
+  const userColumns =
+    db.prepare(`PRAGMA table_info(users)`).all() as Array<{ name: string }>
+  const userColumnNames =
+    userColumns.map((column) => column.name)
+  const userColumnList =
+    userColumnNames.join(', ')
+
+  db.exec(`PRAGMA foreign_keys = OFF`)
+
+  try {
+    db.exec(`DROP TABLE IF EXISTS users_new`)
+    db.exec(nextUsersSql)
+    db.exec(`
+      INSERT INTO users_new(${userColumnList})
+      SELECT ${userColumnList}
+      FROM users
+    `)
+    db.exec(`DROP TABLE users`)
+    db.exec(`ALTER TABLE users_new RENAME TO users`)
+
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_users_adult_verification_status
+      ON users(adultVerificationStatus);
+
+      CREATE INDEX IF NOT EXISTS idx_users_birth_date
+      ON users(birthDate);
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_baseCode
+      ON users(baseCode);
+
+      CREATE INDEX IF NOT EXISTS idx_users_meteo_ai_grade
+      ON users(meteoAiGrade);
+    `)
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ON`)
+  }
+}
+
+db.exec(`
+UPDATE users
+SET corporationGrade = 0
+WHERE corporationGrade IS NULL
+   OR (
+    email != 'hn0628@naver.com'
+    AND corporationGrade != 0
+  )
+`)
+
+db.exec(`
+UPDATE users
+SET providerGrade = 0
+WHERE providerGrade IS NULL
+`)
 
 //===================================================
 // SECTION 01-0 : USERS PRIVACY / ADULT VERIFICATION SAFE ADD
@@ -172,6 +321,13 @@ ON users(birthDate)
 
 `)
 
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS idx_users_meteo_ai_grade
+ON users(meteoAiGrade)
+
+`)
+
 
 //======================================================
 // SECTION 02 : TEST USERS (기본 테스트 계정)
@@ -211,6 +367,14 @@ UPDATE users
 SET baseCode = ?
 WHERE email = ?
   AND baseCode IS NULL
+
+`)
+
+const updateUserBaseCodeByEmail = db.prepare(`
+
+UPDATE users
+SET baseCode = ?
+WHERE email = ?
 
 `)
 
@@ -255,19 +419,136 @@ throw new Error(`failed to ensure test user: ${email}`)
 return row.id
 }
 
+const test11ConflictRow = db.prepare(`
+SELECT COUNT(*) AS count
+FROM users
+WHERE email IN ('test1@prod.com', 'test11@naver.com', 'test11@prod.com')
+`).get() as { count?: number } | undefined
+
+if ((test11ConflictRow?.count ?? 0) > 1) {
+throw new Error('email conflict: test11@prod.com already exists')
+}
+
+const test12ConflictRow = db.prepare(`
+SELECT COUNT(*) AS count
+FROM users
+WHERE email IN ('test2@prod.com', 'test12@naver.com', 'test12@prod.com')
+`).get() as { count?: number } | undefined
+
+if ((test12ConflictRow?.count ?? 0) > 1) {
+throw new Error('email conflict: test12@prod.com already exists')
+}
+
+db.exec(`
+UPDATE users
+SET
+  email = 'test11@prod.com',
+  displayName = '테스트 사용자 1'
+WHERE email IN ('test1@prod.com', 'test11@naver.com')
+  AND NOT EXISTS (
+    SELECT 1
+    FROM users existing
+    WHERE existing.email = 'test11@prod.com'
+  );
+
+UPDATE users
+SET
+  email = 'test12@prod.com',
+  displayName = '테스트 사용자 2'
+WHERE email IN ('test2@prod.com', 'test12@naver.com')
+  AND NOT EXISTS (
+    SELECT 1
+    FROM users existing
+    WHERE existing.email = 'test12@prod.com'
+  );
+`)
+
 const userId1 =
 ensureTestUserId(
-'test1@prod.com',
+'test11@prod.com',
 '테스트 사용자 1',
-'1B2C3D4E5F6G'
+'144000012734'
 )
 
 const userId2 =
 ensureTestUserId(
-'test2@prod.com',
+'test12@prod.com',
 '테스트 사용자 2',
-'8X7C6V5B4N3M'
+'012734144000'
 )
+
+const hnSeedAccounts =
+Array.from({ length: 10 }, (_, index) => {
+const sequence = index + 1
+const padded = String(sequence).padStart(4, '0')
+const baseCode =
+sequence === 1 ? '762491830572' : String(sequence).padStart(12, '0')
+return {
+email: sequence === 1 ? 'test01@prod.com' : `hn${padded}@naver.com`,
+displayName: sequence === 1 ? '그린 생활마트' : `hn${padded}`,
+baseCode,
+phone: '010-1234-1234'
+}
+})
+
+const legacyDemoAccountEmail =
+'hn000' + '1@naver.com'
+
+const demoAccountConflictRow = db.prepare(`
+SELECT COUNT(*) AS count
+FROM users
+WHERE email IN (?, ?)
+`).get(legacyDemoAccountEmail, 'test01@prod.com') as { count?: number } | undefined
+
+if ((demoAccountConflictRow?.count ?? 0) > 1) {
+throw new Error('email conflict: test01@prod.com already exists')
+}
+
+db.prepare(`
+UPDATE users
+SET email = 'test01@prod.com'
+WHERE email = ?
+  AND NOT EXISTS (
+    SELECT 1
+    FROM users existing
+    WHERE existing.email = 'test01@prod.com'
+  )
+`).run(legacyDemoAccountEmail)
+
+const hnSeedUsers =
+hnSeedAccounts.map((account) => {
+const userId = ensureTestUserId(
+  account.email,
+  account.displayName,
+  account.baseCode
+)
+
+updateUserBaseCodeByEmail.run(
+  account.baseCode,
+  account.email
+)
+
+db.prepare(`
+UPDATE users
+SET
+  phone = ?,
+  status = 'ACTIVE'
+WHERE email = ?
+`).run(account.phone, account.email)
+
+return {
+  ...account,
+  userId
+}
+})
+
+db.prepare(`
+UPDATE users
+SET
+  userGrade = 2,
+  providerGrade = 1
+WHERE email = 'test01@prod.com'
+`).run()
 
 //======================================================
 // SECTION 02-1 : OWNER ACCOUNT SEED
@@ -290,29 +571,71 @@ phone,
 accountType,
 status,
 type,
-userGrade
+userGrade,
+corporationGrade,
+providerGrade,
+genesisGrade,
+meteoAiGrade
 )
-VALUES(?,?,?,?,?,?,?,?,?)
+VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
 `).run(
 ownerAccountEmail,
 ownerAccountInitialPasswordHash,
 '012712392766',
 'OWNER_ACCOUNT',
-'010-5450-0628',
+'010-1234-1234',
 'USER',
 'ACTIVE',
 'normal',
-4
+12,
+24,
+24,
+24,
+24
 )
 
 db.prepare(`
 UPDATE users
 SET
   baseCode = '012712392766',
-  phone = '010-5450-0628',
-  userGrade = 4
+  phone = '010-1234-1234',
+  userGrade = 12,
+  providerGrade = 24,
+  corporationGrade = 24,
+  genesisGrade = 24,
+  meteoAiGrade = 24
 WHERE email = ?
 `).run(ownerAccountEmail)
+
+db.exec(`
+UPDATE users
+SET phone = '010-1234-1234'
+WHERE phone IS NULL
+   OR TRIM(phone) != '010-1234-1234'
+`)
+
+db.prepare(`
+UPDATE users
+SET corporationGrade = 0
+WHERE email IN (
+  'test11@prod.com',
+  'test12@prod.com',
+  'test1@prod.com',
+  'test2@prod.com',
+  'test11@naver.com',
+  'test12@naver.com'
+)
+`).run()
+
+db.prepare(`
+UPDATE users
+SET
+  userGrade = 1,
+  providerGrade = 0,
+  corporationGrade = 0,
+  genesisGrade = 1
+WHERE email = 'test12@prod.com'
+`).run()
 
 const ownerAccountUserIdRow =
 findUserIdByEmail.get(ownerAccountEmail) as { id?: number } | undefined
@@ -652,14 +975,14 @@ insertBusinessType.run(
 
 insertBusinessType.run(
 'STORE',
-'고정형마켓',
+'오프라인스토어',
 '고정 매장 기반 상품 판매 / 마트 / 상점 / 음식점',
 2
 )
 
 insertBusinessType.run(
 'SHOPPING_MALL',
-'쇼핑몰형',
+'온라인스토어',
 '온라인 상품 판매 / 자체몰 / 택배 중심 운영',
 3
 )
@@ -684,8 +1007,8 @@ UPDATE business_types
 SET
   name = CASE code
     WHEN 'NORMAL' THEN '일반형'
-    WHEN 'STORE' THEN '고정형마켓'
-    WHEN 'SHOPPING_MALL' THEN '쇼핑몰형'
+    WHEN 'STORE' THEN '오프라인스토어'
+    WHEN 'SHOPPING_MALL' THEN '온라인스토어'
     WHEN 'FREELANCER' THEN '프리랜서'
     WHEN 'MOBILE_BIZ' THEN '이동형'
     ELSE name
@@ -984,6 +1307,16 @@ geoHash TEXT,
 isActive INTEGER DEFAULT 1,
 sortOrder INTEGER DEFAULT 0,
 
+addressMainCode TEXT,
+
+mainAddressCode TEXT UNIQUE
+CHECK(length(mainAddressCode)=12),
+
+roadAddress TEXT,
+
+addressLevel INTEGER
+CHECK(addressLevel BETWEEN 1 AND 5),
+
 createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
 updatedAt TEXT,
 
@@ -1040,6 +1373,30 @@ safeAddColumn(
 
 safeAddColumn(
 'regions',
+'addressMainCode',
+'TEXT'
+)
+
+safeAddColumn(
+'regions',
+'mainAddressCode',
+'TEXT UNIQUE CHECK(length(mainAddressCode)=12)'
+)
+
+safeAddColumn(
+'regions',
+'roadAddress',
+'TEXT'
+)
+
+safeAddColumn(
+'regions',
+'addressLevel',
+'INTEGER CHECK(addressLevel BETWEEN 1 AND 5)'
+)
+
+safeAddColumn(
+'regions',
 'updatedAt',
 'TEXT'
 )
@@ -1086,6 +1443,90 @@ ON regions(geoHash)
 
 `)
 
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS
+idx_regions_address_main_code
+ON regions(addressMainCode)
+
+`)
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS
+idx_regions_main_address_code
+ON regions(mainAddressCode)
+
+`)
+
+db.exec(`
+
+UPDATE regions
+SET addressMainCode = code
+WHERE (addressMainCode IS NULL OR TRIM(addressMainCode) = '')
+  AND code IS NOT NULL
+  AND TRIM(code) != ''
+
+`)
+
+//===================================================
+// SECTION 05-0 : ADDRESS PLACES (ADDRESS CODE 24)
+//===================================================
+
+db.exec(`
+
+CREATE TABLE IF NOT EXISTS address_places(
+
+id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+mainAddressCode TEXT NOT NULL,
+
+subAddressCode TEXT NOT NULL UNIQUE,
+
+addressCode24 TEXT NOT NULL UNIQUE,
+
+roadAddress TEXT NOT NULL,
+
+buildingName TEXT,
+
+detailAddress TEXT,
+
+latitude REAL,
+
+longitude REAL,
+
+isActive INTEGER DEFAULT 1,
+
+createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+
+)
+
+`)
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS
+idx_address_places_main
+ON address_places(mainAddressCode)
+
+`)
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS
+idx_address_places_sub
+ON address_places(subAddressCode)
+
+`)
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS
+idx_address_places_address24
+ON address_places(addressCode24)
+
+`)
+
 //========================================================
 // SECTION 05-1 : IMAGE ASSETS (OWNER CHANNEL FK + ACTIVE CONTROL FINAL)
 
@@ -1119,6 +1560,99 @@ ON image_assets(isActive);
 
 CREATE INDEX IF NOT EXISTS idx_image_assets_created
 ON image_assets(createdAt);
+`);
+
+//=====================================================
+// SECTION 05-1-0 : MARKET HERO BANNERS
+// ROLE : MARKET MAIN HERO BANNER RELATION
+// RULE : image_assets owns filePath / this table only selects active hero banner
+//=====================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS market_hero_banners(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channelCode TEXT NOT NULL,
+  bannerSlot TEXT NOT NULL DEFAULT 'MAIN_HERO',
+  imageAssetId INTEGER NOT NULL,
+  sortOrder INTEGER NOT NULL DEFAULT 1
+  CHECK(sortOrder BETWEEN 1 AND 5),
+  title TEXT,
+  description TEXT,
+  displayStatus TEXT NOT NULL DEFAULT 'VISIBLE'
+  CHECK(displayStatus IN ('VISIBLE','HIDDEN')),
+  isActive INTEGER NOT NULL DEFAULT 1
+  CHECK(isActive IN (0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  deletedAt TEXT,
+  FOREIGN KEY(imageAssetId) REFERENCES image_assets(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_market_hero_banners_channel
+ON market_hero_banners(channelCode);
+
+CREATE INDEX IF NOT EXISTS idx_market_hero_banners_slot
+ON market_hero_banners(bannerSlot);
+
+CREATE INDEX IF NOT EXISTS idx_market_hero_banners_active
+ON market_hero_banners(isActive, displayStatus);
+`);
+
+safeAddColumn('market_hero_banners', 'sortOrder', 'INTEGER NOT NULL DEFAULT 1')
+safeAddColumn('market_hero_banners', 'linkUrl', 'TEXT')
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_hero_banners_order
+ON market_hero_banners(channelCode, bannerSlot, sortOrder, isActive);
+`);
+
+//=====================================================
+// SECTION 05-1-2 : MARKET BRAND AD TEXT CONFIG
+// ROLE : CHANNEL BASED BRAND AD TITLE/DESCRIPTION CONFIG
+//=====================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS market_brand_ad_configs(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channelCode TEXT NOT NULL UNIQUE,
+  title TEXT,
+  description TEXT,
+  displayStatus TEXT NOT NULL DEFAULT 'VISIBLE'
+  CHECK(displayStatus IN ('VISIBLE','HIDDEN')),
+  isActive INTEGER NOT NULL DEFAULT 1
+  CHECK(isActive IN (0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_market_brand_ad_configs_channel
+ON market_brand_ad_configs(channelCode);
+
+CREATE INDEX IF NOT EXISTS idx_market_brand_ad_configs_active
+ON market_brand_ad_configs(isActive, displayStatus);
+`);
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS market_brand_ad_logos(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channelCode TEXT NOT NULL,
+  imageAssetId INTEGER NOT NULL,
+  sortOrder INTEGER NOT NULL DEFAULT 1,
+  displayStatus TEXT NOT NULL DEFAULT 'VISIBLE'
+  CHECK(displayStatus IN ('VISIBLE','HIDDEN')),
+  isActive INTEGER NOT NULL DEFAULT 1
+  CHECK(isActive IN (0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  deletedAt TEXT,
+  FOREIGN KEY(imageAssetId) REFERENCES image_assets(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_market_brand_ad_logos_channel
+ON market_brand_ad_logos(channelCode);
+
+CREATE INDEX IF NOT EXISTS idx_market_brand_ad_logos_order
+ON market_brand_ad_logos(channelCode, sortOrder, isActive);
 `);
 
 //=====================================================
@@ -1476,6 +2010,26 @@ feedRegionId INTEGER,
 
 detailAddress TEXT,
 
+mainAddressCode TEXT
+CHECK(
+  mainAddressCode IS NULL
+  OR length(mainAddressCode)=12
+),
+
+subAddressCode TEXT
+CHECK(
+  subAddressCode IS NULL
+  OR length(subAddressCode)=12
+),
+
+addressCode24 TEXT
+CHECK(
+  addressCode24 IS NULL
+  OR length(addressCode24)=24
+),
+
+roadAddress TEXT,
+
 businessRegistrationNumber TEXT,
 
 loginPasswordHash TEXT,
@@ -1514,6 +2068,17 @@ CHECK(
   )
 ),
 
+partnerTypeCode TEXT
+CHECK(
+  partnerTypeCode IS NULL
+  OR partnerTypeCode IN(
+    'MAKER',
+    'PROVIDER',
+    'CUSTOMER',
+    'OPEN_MARKET'
+  )
+),
+
 placeFeedTypeCode TEXT
 CHECK(
   placeFeedTypeCode IS NULL
@@ -1525,7 +2090,8 @@ CHECK(
     'BEAUTY',
     'CULTURE',
     'STAY',
-    'RENTCAR'
+    'RENTCAR',
+    'ONLINE_SHOP'
   )
 ),
 
@@ -1571,6 +2137,17 @@ CHECK(
 ),
 
 CHECK(
+  (profileType='GENERAL' AND partnerTypeCode IS NULL)
+  OR
+  (profileType='BUSINESS' AND partnerTypeCode IN(
+    'MAKER',
+    'PROVIDER',
+    'CUSTOMER',
+    'OPEN_MARKET'
+  ))
+),
+
+CHECK(
   (profileType='GENERAL' AND placeFeedTypeCode IS NULL)
   OR
   (profileType='BUSINESS' AND placeFeedTypeCode IN(
@@ -1581,7 +2158,8 @@ CHECK(
     'BEAUTY',
     'CULTURE',
     'STAY',
-    'RENTCAR'
+    'RENTCAR',
+    'ONLINE_SHOP'
   ))
 ),
 
@@ -1680,7 +2258,8 @@ if (!profilesSupportsNormalBusinessType) {
           'BEAUTY',
           'CULTURE',
           'STAY',
-          'RENTCAR'
+          'RENTCAR',
+          'ONLINE_SHOP'
         )
       ),
 
@@ -1726,7 +2305,8 @@ if (!profilesSupportsNormalBusinessType) {
           'BEAUTY',
           'CULTURE',
           'STAY',
-          'RENTCAR'
+          'RENTCAR',
+          'ONLINE_SHOP'
         ))
       ),
 
@@ -1830,6 +2410,20 @@ safeAddColumn(
 
 safeAddColumn(
   'profiles',
+  'partnerTypeCode',
+  `TEXT CHECK(
+    partnerTypeCode IS NULL
+    OR partnerTypeCode IN(
+      'MAKER',
+      'PROVIDER',
+      'CUSTOMER',
+      'OPEN_MARKET'
+    )
+  )`
+)
+
+safeAddColumn(
+  'profiles',
   'placeFeedTypeCode',
   `TEXT CHECK(
     placeFeedTypeCode IS NULL
@@ -1841,7 +2435,8 @@ safeAddColumn(
       'BEAUTY',
       'CULTURE',
       'STAY',
-      'RENTCAR'
+      'RENTCAR',
+      'ONLINE_SHOP'
     )
   )`
 )
@@ -1867,6 +2462,39 @@ safeAddColumn(
 safeAddColumn(
   'profiles',
   'managerEmail',
+  'TEXT'
+)
+
+safeAddColumn(
+  'profiles',
+  'mainAddressCode',
+  `TEXT CHECK(
+    mainAddressCode IS NULL
+    OR length(mainAddressCode)=12
+  )`
+)
+
+safeAddColumn(
+  'profiles',
+  'subAddressCode',
+  `TEXT CHECK(
+    subAddressCode IS NULL
+    OR length(subAddressCode)=12
+  )`
+)
+
+safeAddColumn(
+  'profiles',
+  'addressCode24',
+  `TEXT CHECK(
+    addressCode24 IS NULL
+    OR length(addressCode24)=24
+  )`
+)
+
+safeAddColumn(
+  'profiles',
+  'roadAddress',
   'TEXT'
 )
 
@@ -2149,7 +2777,8 @@ if (!profilesSupportsClassicPlaceFeedType) {
           'BEAUTY',
           'CULTURE',
           'STAY',
-          'RENTCAR'
+          'RENTCAR',
+          'ONLINE_SHOP'
         )
       ),
 
@@ -2195,7 +2824,8 @@ if (!profilesSupportsClassicPlaceFeedType) {
           'BEAUTY',
           'CULTURE',
           'STAY',
-          'RENTCAR'
+          'RENTCAR',
+          'ONLINE_SHOP'
         ))
       ),
 
@@ -2400,6 +3030,339 @@ if (!profilesSupportsShoppingMallBusinessType) {
 }
 
 //===================================================
+// SECTION 06-0-5 : PROFILES PLACE FEED TYPE ONLINE SHOP MIGRATION
+// ROLE : SQLITE CHECK REBUILD FOR ONLINE COMMERCE PLACE FEED TYPE
+// RULE : ONLINE_SHOP uses MARKET projection route without changing existing types
+//===================================================
+
+const profilesOnlineShopTableSqlRow = db.prepare(`
+  SELECT sql
+  FROM sqlite_master
+  WHERE type='table'
+    AND name='profiles'
+  LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const profilesSupportsOnlineShopPlaceFeedType =
+  profilesOnlineShopTableSqlRow?.sql?.includes(`'ONLINE_SHOP'`) ?? false
+
+if (!profilesSupportsOnlineShopPlaceFeedType) {
+  const currentProfilesSql =
+    profilesOnlineShopTableSqlRow?.sql ?? ''
+  const nextProfilesSql =
+    currentProfilesSql
+      .replace(
+        /CREATE TABLE "?profiles"?/i,
+        'CREATE TABLE profiles_new'
+      )
+      .replace(
+        /'RENTCAR'(\s*\)\))/g,
+        "'RENTCAR',\n    'ONLINE_SHOP'$1"
+      )
+      .replace(
+        /'RENTCAR'(\s*\))/g,
+        "'RENTCAR',\n    'ONLINE_SHOP'$1"
+      )
+
+  if (!nextProfilesSql.includes(`'ONLINE_SHOP'`)) {
+    throw new Error('profiles placeFeedTypeCode ONLINE_SHOP migration failed')
+  }
+
+  const profileColumns =
+    db.prepare(`PRAGMA table_info(profiles)`).all() as Array<{ name: string }>
+  const profileColumnNames =
+    profileColumns.map((column) => column.name)
+  const profileColumnList =
+    profileColumnNames.join(', ')
+
+  db.exec(`PRAGMA foreign_keys = OFF`)
+
+  try {
+    db.exec(`DROP TABLE IF EXISTS profiles_new`)
+    db.exec(nextProfilesSql)
+    db.exec(`
+      INSERT INTO profiles_new(${profileColumnList})
+      SELECT ${profileColumnList}
+      FROM profiles
+    `)
+    db.exec(`DROP TABLE profiles`)
+    db.exec(`ALTER TABLE profiles_new RENAME TO profiles`)
+
+    db.exec(`
+      CREATE INDEX IF NOT EXISTS idx_profiles_businessTypeCode
+      ON profiles(businessTypeCode);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_place_feed_type
+      ON profiles(placeFeedTypeCode);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_login_password_set
+      ON profiles(loginPasswordSetAt);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_login_password_locked
+      ON profiles(loginPasswordLockedUntil);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_payment_password_set
+      ON profiles(paymentPasswordSetAt);
+
+      CREATE INDEX IF NOT EXISTS idx_profiles_payment_password_locked
+      ON profiles(paymentPasswordLockedUntil);
+    `)
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ON`)
+  }
+}
+
+//===================================================
+// SECTION 06-0-6 : SECURITY QR AUTH SCHEMA
+// ROLE : 3RD QR POSSESSION AUTHENTICATION TABLES
+// RULE : QR token hash only / 180 seconds / one-time token
+//===================================================
+
+initSecurityQrAuthSchema(db)
+
+//===================================================
+// SECTION 06-0-7 : WALLET LEDGER SCHEMA
+// ROLE : CHANNEL ASSET SNAPSHOT + ABSOLUTE LEDGER
+// RULE : wallets.balance is cache / wallet_ledger is source of truth
+//===================================================
+
+initWalletLedgerSchema(db)
+
+const walletsTableSqlRow = db.prepare(`
+  SELECT sql
+  FROM sqlite_master
+  WHERE type='table'
+    AND name='wallets'
+  LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const walletLedgerTableSqlRow = db.prepare(`
+  SELECT sql
+  FROM sqlite_master
+  WHERE type='table'
+    AND name='wallet_ledger'
+  LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const finalWalletAssetTypes = [
+  'KRW_CASH',
+  'USD_CASH',
+  'JPY_CASH',
+  'CNY_CASH',
+  'EUR_CASH',
+  'GBP_CASH',
+  'AED_CASH',
+  'POINT'
+] as const
+
+const walletsSupportsFinalAssetTypes =
+  finalWalletAssetTypes.every(
+    (assetType) =>
+      walletsTableSqlRow?.sql?.includes(`'${assetType}'`) ?? false
+  )
+
+const walletLedgerSupportsFinalAssetTypes =
+  finalWalletAssetTypes.every(
+    (assetType) =>
+      walletLedgerTableSqlRow?.sql?.includes(`'${assetType}'`) ?? false
+  ) &&
+  (walletLedgerTableSqlRow?.sql?.includes(`'POINT_INIT_GRANT'`) ?? false)
+
+if (!walletsSupportsFinalAssetTypes || !walletLedgerSupportsFinalAssetTypes) {
+  const nextWalletsSql = `
+CREATE TABLE wallets_new(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  walletId TEXT NOT NULL UNIQUE,
+  channelCode TEXT NOT NULL,
+  balance BIGINT NOT NULL DEFAULT 0
+  CHECK(balance >= 0),
+  assetType TEXT NOT NULL
+  CHECK(assetType IN(
+    'KRW_CASH',
+    'USD_CASH',
+    'JPY_CASH',
+    'CNY_CASH',
+    'EUR_CASH',
+    'GBP_CASH',
+    'AED_CASH',
+    'POINT'
+  )),
+  status TEXT NOT NULL DEFAULT 'ACTIVE'
+  CHECK(status IN(
+    'ACTIVE',
+    'LOCKED',
+    'DISABLED'
+  )),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode)
+)
+`
+
+  const nextWalletLedgerSql = `
+CREATE TABLE wallet_ledger_new(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ledgerId TEXT NOT NULL UNIQUE,
+  walletId TEXT NOT NULL,
+  channelCode TEXT NOT NULL,
+  ledgerType TEXT NOT NULL
+  CHECK(ledgerType IN(
+    'POINT_INIT_GRANT',
+    'CASH_INIT_SET',
+    'POINT_ADJUST'
+  )),
+  amount BIGINT NOT NULL
+  CHECK(amount > 0),
+  balanceAfter BIGINT NOT NULL
+  CHECK(balanceAfter >= 0),
+  assetType TEXT NOT NULL
+  CHECK(assetType IN(
+    'KRW_CASH',
+    'USD_CASH',
+    'JPY_CASH',
+    'CNY_CASH',
+    'EUR_CASH',
+    'GBP_CASH',
+    'AED_CASH',
+    'POINT'
+  )),
+  isSandbox INTEGER NOT NULL DEFAULT 1
+  CHECK(isSandbox IN(0,1)),
+  reason TEXT,
+  memo TEXT,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(walletId) REFERENCES wallets(walletId),
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode)
+)
+`
+
+  db.exec(`PRAGMA foreign_keys = OFF`)
+  try {
+    db.exec(`DROP TABLE IF EXISTS wallets_new`)
+    db.exec(`DROP TABLE IF EXISTS wallet_ledger_new`)
+
+    db.exec(nextWalletsSql)
+    db.exec(nextWalletLedgerSql)
+
+    db.exec(`
+      INSERT INTO wallets_new(
+        id,
+        walletId,
+        channelCode,
+        balance,
+        assetType,
+        status,
+        createdAt,
+        updatedAt
+      )
+      SELECT
+        id,
+        walletId,
+        channelCode,
+        CASE
+          WHEN assetType = 'CASH' THEN 0
+          WHEN assetType = 'POINT' THEN 1000000
+          ELSE balance
+        END AS balance,
+        CASE
+          WHEN assetType = 'CASH' THEN 'KRW_CASH'
+          WHEN assetType = 'POINT' THEN 'POINT'
+          ELSE assetType
+        END AS assetType,
+        status,
+        createdAt,
+        updatedAt
+      FROM wallets
+      WHERE assetType IN ('CASH', 'POINT')
+    `)
+
+    db.exec(`
+      INSERT INTO wallet_ledger_new(
+        id,
+        ledgerId,
+        walletId,
+        channelCode,
+        ledgerType,
+        amount,
+        balanceAfter,
+        assetType,
+        isSandbox,
+        reason,
+        memo,
+        createdAt
+      )
+      SELECT
+        id,
+        ledgerId,
+        walletId,
+        channelCode,
+        ledgerType,
+        amount,
+        balanceAfter,
+        CASE
+          WHEN assetType = 'CASH' THEN 'KRW_CASH'
+          WHEN assetType = 'POINT' THEN 'POINT'
+          ELSE assetType
+        END AS assetType,
+        isSandbox,
+        memo AS reason,
+        memo,
+        createdAt
+      FROM wallet_ledger
+      WHERE assetType IN ('CASH', 'POINT')
+    `)
+
+    db.exec(`DROP TABLE wallet_ledger`)
+    db.exec(`DROP TABLE wallets`)
+    db.exec(`ALTER TABLE wallets_new RENAME TO wallets`)
+    db.exec(`ALTER TABLE wallet_ledger_new RENAME TO wallet_ledger`)
+
+    db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_wallets_channel_asset
+      ON wallets(channelCode, assetType);
+
+      CREATE INDEX IF NOT EXISTS idx_wallets_channel
+      ON wallets(channelCode);
+
+      CREATE INDEX IF NOT EXISTS idx_wallets_asset_type
+      ON wallets(assetType);
+
+      CREATE INDEX IF NOT EXISTS idx_wallets_status
+      ON wallets(status);
+
+      CREATE INDEX IF NOT EXISTS idx_wallet_ledger_wallet
+      ON wallet_ledger(walletId);
+
+      CREATE INDEX IF NOT EXISTS idx_wallet_ledger_channel
+      ON wallet_ledger(channelCode);
+
+      CREATE INDEX IF NOT EXISTS idx_wallet_ledger_asset_type
+      ON wallet_ledger(assetType);
+
+      CREATE INDEX IF NOT EXISTS idx_wallet_ledger_type
+      ON wallet_ledger(ledgerType);
+
+      CREATE INDEX IF NOT EXISTS idx_wallet_ledger_sandbox
+      ON wallet_ledger(isSandbox);
+
+      CREATE INDEX IF NOT EXISTS idx_wallet_ledger_created
+      ON wallet_ledger(createdAt);
+
+      CREATE INDEX IF NOT EXISTS idx_wallet_ledger_reason
+      ON wallet_ledger(reason);
+    `)
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ON`)
+  }
+}
+
+safeAddColumn(
+  'wallet_ledger',
+  'reason',
+  'TEXT'
+)
+
+//===================================================
 // SECTION 06-1A : PROFILES OPERATION GOVERNANCE SAFE ADD
 // ROLE : REAL CAPABILITY LAYER + SYMBOLIC GOVERNANCE METADATA
 // RULE : operationGrade controls capability / governance* is symbolic only
@@ -2537,6 +3500,15 @@ ON profiles(businessTypeCode)
 db.exec(`
 
 CREATE INDEX IF NOT EXISTS
+idx_profiles_partner_type_code
+
+ON profiles(partnerTypeCode)
+
+`)
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS
 idx_profiles_place_feed_type
 
 ON profiles(placeFeedTypeCode)
@@ -2588,6 +3560,33 @@ ON profiles(baseCode, profileType)
 
 `)
 
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS
+idx_profiles_main_address_code
+
+ON profiles(mainAddressCode)
+
+`)
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS
+idx_profiles_sub_address_code
+
+ON profiles(subAddressCode)
+
+`)
+
+db.exec(`
+
+CREATE INDEX IF NOT EXISTS
+idx_profiles_address_code24
+
+ON profiles(addressCode24)
+
+`)
+
 //===================================================
 // SECTION 06-2 : TEST PROFILES (1 ACCOUNT = 1 BASECODE)
 // RULE : GENERAL businessType = NULL
@@ -2623,15 +3622,15 @@ GENERAL  = businessType NULL
 BUSINESS = default NORMAL
 ================================ */
 
-/* user1 baseCode = 1B2C3D4E5F6G */
+/* user1 baseCode = 144000012734 */
 
 insertProfile.run(
   userId1,
   'GENERAL',
-  '1B2C3D4E5F6G',
+  '144000012734',
   'test1_general',
-  'A1B2C3D4E5F6G',
-  'xxx.com/@A1B2C3D4E5F6G',
+  'A144000012734',
+  'xxx.com/@A144000012734',
   null,
   null,
   null,
@@ -2641,25 +3640,31 @@ insertProfile.run(
 insertProfile.run(
   userId1,
   'BUSINESS',
-  '1B2C3D4E5F6G',
+  '144000012734',
   'test1_business',
-  'B1B2C3D4E5F6G',
-  'xxx.com/@B1B2C3D4E5F6G',
+  'B144000012734',
+  'xxx.com/@B144000012734',
   null,
   normalBusinessTypeId,
   'NORMAL',
   'NORMAL'
 )
 
-/* user2 baseCode = 8X7C6V5B4N3M */
+db.prepare(`
+UPDATE users
+SET baseCode = '144000012734'
+WHERE email = 'test11@prod.com'
+`).run()
+
+/* user2 baseCode = 012734144000 */
 
 insertProfile.run(
   userId2,
   'GENERAL',
-  '8X7C6V5B4N3M',
+  '012734144000',
   'test2_general',
-  'A8X7C6V5B4N3M',
-  'xxx.com/@A8X7C6V5B4N3M',
+  'A012734144000',
+  'xxx.com/@A012734144000',
   null,
   null,
   null,
@@ -2669,15 +3674,177 @@ insertProfile.run(
 insertProfile.run(
   userId2,
   'BUSINESS',
-  '8X7C6V5B4N3M',
+  '012734144000',
   'test2_business',
-  'B8X7C6V5B4N3M',
-  'xxx.com/@B8X7C6V5B4N3M',
+  'B012734144000',
+  'xxx.com/@B012734144000',
   null,
   normalBusinessTypeId,
   'NORMAL',
   'NORMAL'
 )
+
+db.prepare(`
+UPDATE users
+SET baseCode = '012734144000'
+WHERE email = 'test12@prod.com'
+`).run()
+
+function updateExistingChannelReferences(
+  previousChannelCode: string,
+  nextChannelCode: string
+) {
+  const tableRows =
+    db.prepare(`
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'table'
+        AND name NOT LIKE 'sqlite_%'
+    `).all() as Array<{ name: string }>
+
+  for (const tableRow of tableRows) {
+    const tableName = tableRow.name
+
+    if (
+      tableName === 'profiles' ||
+      !/^[A-Za-z_][A-Za-z0-9_]*$/.test(tableName)
+    ) {
+      continue
+    }
+
+    const columns =
+      db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
+        name: string
+      }>
+
+    for (const column of columns) {
+      if (
+        !/^[A-Za-z_][A-Za-z0-9_]*$/.test(column.name) ||
+        !column.name.toLowerCase().includes('channelcode')
+      ) {
+        continue
+      }
+
+      db.prepare(`
+        UPDATE ${tableName}
+        SET ${column.name} = ?
+        WHERE ${column.name} = ?
+      `).run(nextChannelCode, previousChannelCode)
+    }
+  }
+}
+
+db.exec(`PRAGMA foreign_keys = OFF`)
+
+try {
+for (const hnUser of hnSeedUsers) {
+const previousBaseCode =
+  hnUser.email === 'test01@prod.com' ? '000000000001' : hnUser.baseCode
+const generalProfileDisplayName =
+  hnUser.email === 'test01@prod.com'
+    ? '그린 생활마트_general'
+    : `${hnUser.displayName}_general`
+const businessProfileDisplayName =
+  hnUser.email === 'test01@prod.com'
+    ? '그린 생활마트'
+    : `${hnUser.displayName}_business`
+
+if (previousBaseCode !== hnUser.baseCode) {
+  updateExistingChannelReferences(
+    `A${previousBaseCode}`,
+    `A${hnUser.baseCode}`
+  )
+  updateExistingChannelReferences(
+    `B${previousBaseCode}`,
+    `B${hnUser.baseCode}`
+  )
+}
+
+insertProfile.run(
+    hnUser.userId,
+    'GENERAL',
+    hnUser.baseCode,
+    generalProfileDisplayName,
+    `A${hnUser.baseCode}`,
+    `xxx.com/@A${hnUser.baseCode}`,
+    null,
+    null,
+    null,
+    null
+  )
+
+insertProfile.run(
+    hnUser.userId,
+    'BUSINESS',
+    hnUser.baseCode,
+    businessProfileDisplayName,
+    `B${hnUser.baseCode}`,
+    `xxx.com/@B${hnUser.baseCode}`,
+    null,
+    normalBusinessTypeId,
+    'NORMAL',
+    'NORMAL'
+  )
+
+db.prepare(`
+  UPDATE profiles
+  SET
+    baseCode = ?,
+    displayName = ?,
+    channelCode = ?,
+    channelURL = ?,
+    contactPhone = ?,
+    paymentPasswordHash = NULL,
+    paymentPasswordSetAt = NULL,
+    paymentPasswordUpdatedAt = NULL,
+    paymentPasswordFailCount = 0,
+    paymentPasswordLockedUntil = NULL,
+    businessTypeId = NULL,
+    businessTypeCode = NULL,
+    placeFeedTypeCode = NULL,
+    updatedAt = CURRENT_TIMESTAMP
+  WHERE userId = ?
+    AND profileType = 'GENERAL'
+`).run(
+    hnUser.baseCode,
+    generalProfileDisplayName,
+    `A${hnUser.baseCode}`,
+    `xxx.com/@A${hnUser.baseCode}`,
+    hnUser.phone,
+    hnUser.userId
+  )
+
+db.prepare(`
+  UPDATE profiles
+  SET
+    baseCode = ?,
+    displayName = ?,
+    channelCode = ?,
+    channelURL = ?,
+    contactPhone = ?,
+    paymentPasswordHash = NULL,
+    paymentPasswordSetAt = NULL,
+    paymentPasswordUpdatedAt = NULL,
+    paymentPasswordFailCount = 0,
+    paymentPasswordLockedUntil = NULL,
+    businessTypeId = COALESCE(businessTypeId, ${normalBusinessTypeId}),
+    businessTypeCode = COALESCE(businessTypeCode, 'NORMAL'),
+    placeFeedTypeCode = COALESCE(placeFeedTypeCode, 'NORMAL'),
+    updatedAt = CURRENT_TIMESTAMP
+  WHERE userId = ?
+    AND profileType = 'BUSINESS'
+`).run(
+    hnUser.baseCode,
+    businessProfileDisplayName,
+    `B${hnUser.baseCode}`,
+    `xxx.com/@B${hnUser.baseCode}`,
+    hnUser.phone,
+    hnUser.userId
+)
+}
+} finally {
+db.exec(`PRAGMA foreign_keys = ON`)
+}
 
 /* owner account baseCode = 012712392766 */
 
@@ -2688,7 +3855,7 @@ insertProfile.run(
   'OWNER_ACCOUNT_GENERAL',
   'A012712392766',
   'xxx.com/@A012712392766',
-  '010-5450-0628',
+  '010-1234-1234',
   null,
   null,
   null
@@ -2701,7 +3868,7 @@ insertProfile.run(
   'OWNER_ACCOUNT_BUSINESS',
   'B012712392766',
   'xxx.com/@B012712392766',
-  '010-5450-0628',
+  '010-1234-1234',
   normalBusinessTypeId,
   'NORMAL',
   'NORMAL'
@@ -2714,7 +3881,7 @@ SET
   displayName = 'OWNER_ACCOUNT_GENERAL',
   channelCode = 'A012712392766',
   channelURL = 'xxx.com/@A012712392766',
-  contactPhone = '010-5450-0628',
+  contactPhone = '010-1234-1234',
   businessTypeId = NULL,
   businessTypeCode = NULL,
   placeFeedTypeCode = NULL,
@@ -2734,10 +3901,10 @@ SET
   displayName = 'OWNER_ACCOUNT_BUSINESS',
   channelCode = 'B012712392766',
   channelURL = 'xxx.com/@B012712392766',
-  contactPhone = '010-5450-0628',
-  businessTypeId = ${normalBusinessTypeId},
-  businessTypeCode = 'NORMAL',
-  placeFeedTypeCode = 'NORMAL',
+  contactPhone = '010-1234-1234',
+  businessTypeId = COALESCE(businessTypeId, ${normalBusinessTypeId}),
+  businessTypeCode = COALESCE(businessTypeCode, 'NORMAL'),
+  placeFeedTypeCode = COALESCE(placeFeedTypeCode, 'NORMAL'),
   updatedAt = CURRENT_TIMESTAMP
 WHERE userId = ?
   AND profileType = 'BUSINESS'
@@ -2747,10 +3914,10 @@ db.exec(`
 
 UPDATE profiles
 SET
-  businessTypeId = ${normalBusinessTypeId},
-  businessTypeCode = 'NORMAL'
+  businessTypeId = COALESCE(businessTypeId, ${normalBusinessTypeId}),
+  businessTypeCode = COALESCE(businessTypeCode, 'NORMAL'),
+  placeFeedTypeCode = COALESCE(placeFeedTypeCode, 'NORMAL')
 WHERE profileType = 'BUSINESS'
-  AND businessTypeCode = 'STORE'
   AND displayName IN ('test1_business', 'test2_business')
 
 `)
@@ -2843,6 +4010,278 @@ if (!ownerMasterAdminUserRow?.id) {
     )
   }
 }
+
+//===================================================
+// SECTION 06-2-2 : SECURITY CREDENTIAL SEED
+// ROLE : 1ST / 2ND / 3RD AUTH CREDENTIALS FOR OWNER + TEST BUSINESS CHANNELS
+// RULE : password and emergency code are hash only / QR seed uses profile baseCode
+//===================================================
+
+const emergencyAccessCodeHash =
+bcrypt.hashSync('217400',10)
+
+const securityCredentialSeedRows =
+db.prepare(`
+SELECT
+  u.email,
+  u.passwordHash AS loginPasswordHash,
+  p.channelCode,
+  p.baseCode
+FROM users u
+INNER JOIN profiles p
+  ON p.userId = u.id
+WHERE (
+    u.email IN (
+      'test11@prod.com',
+      'test12@prod.com',
+      'test1@prod.com',
+      'test2@prod.com',
+      'test11@naver.com',
+      'test12@naver.com',
+      'hn0628@naver.com'
+    )
+    OR u.email = 'test01@prod.com'
+    OR u.email BETWEEN 'hn0002@naver.com' AND 'hn0010@naver.com'
+  )
+  AND p.profileType = 'BUSINESS'
+ORDER BY u.email
+`).all() as Array<{
+  email: string
+  loginPasswordHash: string
+  channelCode: string
+  baseCode: string
+}>
+
+const upsertSecurityCredential =
+db.prepare(`
+INSERT INTO user_security_credentials(
+  channelCode,
+  loginPasswordHash,
+  emergencyAccessCodeHash,
+  qrBaseCode,
+  qrStatus,
+  createdAt,
+  updatedAt
+)
+VALUES(?,?,?,?, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT(channelCode) DO UPDATE SET
+  loginPasswordHash = excluded.loginPasswordHash,
+  emergencyAccessCodeHash = excluded.emergencyAccessCodeHash,
+  qrBaseCode = excluded.qrBaseCode,
+  qrStatus = 'ACTIVE',
+  updatedAt = CURRENT_TIMESTAMP
+`)
+
+for (const credential of securityCredentialSeedRows) {
+  upsertSecurityCredential.run(
+    credential.channelCode,
+    credential.loginPasswordHash,
+    emergencyAccessCodeHash,
+    credential.baseCode
+  )
+}
+
+//===================================================
+// SECTION 06-2-3 : WALLET CASH/POINT SPLIT SEED
+// ROLE : CASH(정산) / POINT(테스트) 분리 고정
+// RULE : CASH = 0 / POINT = 1000000 / wallet_ledger assetType 명시
+//===================================================
+
+const walletTargetChannelRows = db.prepare(`
+SELECT DISTINCT p.channelCode
+FROM profiles p
+INNER JOIN users u
+  ON u.id = p.userId
+WHERE u.email IN (
+    'hn0628@naver.com',
+    'test11@prod.com',
+    'test12@prod.com',
+    'test1@prod.com',
+    'test2@prod.com',
+    'test11@naver.com',
+    'test12@naver.com'
+  )
+  AND p.channelCode IS NOT NULL
+`).all() as Array<{ channelCode?: string }>
+
+const walletTargetChannelCodes =
+  walletTargetChannelRows
+    .map((row) => row.channelCode)
+    .filter((channelCode): channelCode is string => Boolean(channelCode))
+
+const upsertWalletForAsset = db.prepare(`
+INSERT INTO wallets(
+  walletId,
+  channelCode,
+  balance,
+  assetType,
+  status,
+  createdAt,
+  updatedAt
+)
+VALUES(?,?,?,?,'ACTIVE',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)
+ON CONFLICT(channelCode, assetType) DO UPDATE SET
+  balance = excluded.balance,
+  status = 'ACTIVE',
+  updatedAt = CURRENT_TIMESTAMP
+`)
+
+const insertPointInitLedger = db.prepare(`
+INSERT OR IGNORE INTO wallet_ledger(
+  ledgerId,
+  walletId,
+  channelCode,
+  ledgerType,
+  amount,
+  balanceAfter,
+  assetType,
+  isSandbox,
+  reason,
+  memo,
+  createdAt
+)
+VALUES(?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+`)
+
+const pointInitLedgerMemo =
+  'POINT 초기 지급 1000000'
+
+const cashAssetTypes = [
+  'KRW_CASH',
+  'USD_CASH',
+  'JPY_CASH',
+  'CNY_CASH',
+  'EUR_CASH',
+  'GBP_CASH',
+  'AED_CASH'
+] as const
+
+let cashWalletCount = 0
+let pointWalletCount = 0
+let pointLedgerInsertCount = 0
+
+for (const channelCode of walletTargetChannelCodes) {
+  for (const cashAssetType of cashAssetTypes) {
+    upsertWalletForAsset.run(
+      `wallet_${cashAssetType.toLowerCase()}_${channelCode}`,
+      channelCode,
+      0,
+      cashAssetType
+    )
+    cashWalletCount += 1
+  }
+
+  upsertWalletForAsset.run(
+    `wallet_point_${channelCode}`,
+    channelCode,
+    1_000_000,
+    'POINT'
+  )
+  pointWalletCount += 1
+
+  const pointWalletRow = db.prepare(`
+    SELECT walletId
+    FROM wallets
+    WHERE channelCode = ?
+      AND assetType = 'POINT'
+    LIMIT 1
+  `).get(channelCode) as { walletId?: string } | undefined
+
+  if (!pointWalletRow?.walletId) {
+    continue
+  }
+
+  const hasPointInitLedgerRow = db.prepare(`
+    SELECT 1
+    FROM wallet_ledger
+    WHERE channelCode = ?
+      AND assetType = 'POINT'
+      AND ledgerType = 'POINT_INIT_GRANT'
+      AND memo = ?
+    LIMIT 1
+  `).get(channelCode, pointInitLedgerMemo) as { 1?: number } | undefined
+
+  if (!hasPointInitLedgerRow) {
+    insertPointInitLedger.run(
+      `ledger_point_init_${channelCode}`,
+      pointWalletRow.walletId,
+      channelCode,
+      'POINT_INIT_GRANT',
+      1_000_000,
+      1_000_000,
+      'POINT',
+      1,
+      pointInitLedgerMemo,
+      pointInitLedgerMemo
+    )
+    pointLedgerInsertCount += 1
+  }
+}
+
+db.exec(`
+DELETE FROM wallet_ledger
+WHERE assetType NOT IN (
+  'KRW_CASH',
+  'USD_CASH',
+  'JPY_CASH',
+  'CNY_CASH',
+  'EUR_CASH',
+  'GBP_CASH',
+  'AED_CASH',
+  'POINT'
+)
+`)
+
+db.exec(`
+DELETE FROM wallets
+WHERE assetType NOT IN (
+  'KRW_CASH',
+  'USD_CASH',
+  'JPY_CASH',
+  'CNY_CASH',
+  'EUR_CASH',
+  'GBP_CASH',
+  'AED_CASH',
+  'POINT'
+)
+`)
+
+db.exec(`
+UPDATE wallets
+SET balance = 1000000,
+    status = 'ACTIVE',
+    updatedAt = CURRENT_TIMESTAMP
+WHERE assetType = 'POINT'
+`)
+
+db.exec(`
+UPDATE wallets
+SET balance = 0,
+    status = 'ACTIVE',
+    updatedAt = CURRENT_TIMESTAMP
+WHERE assetType IN (
+  'KRW_CASH',
+  'USD_CASH',
+  'JPY_CASH',
+  'CNY_CASH',
+  'EUR_CASH',
+  'GBP_CASH',
+  'AED_CASH'
+)
+`)
+
+console.log(
+  'WALLET CASH/POINT SEED RESULT ->',
+  JSON.stringify({
+    success: true,
+    targetChannelCount: walletTargetChannelCodes.length,
+    cashWalletCount,
+    pointWalletCount,
+    pointLedgerInsertCount,
+    cashBalance: 0,
+    pointBalance: 1_000_000
+  })
+)
 
 //===================================================
 // SECTION 06-3 : USERS BASECODE BACKFILL + CONSISTENCY WARN
@@ -3800,6 +5239,16 @@ WHERE profileType='BUSINESS'
 LIMIT 1
 `)
 
+const findBusinessProfileByEmail = db.prepare(`
+SELECT p.id, p.channelCode
+FROM profiles p
+INNER JOIN users u
+  ON u.id = p.userId
+WHERE p.profileType='BUSINESS'
+  AND u.email=?
+LIMIT 1
+`)
+
 function getBusinessProfileByChannelCode(channelCode: string): { id: number; channelCode: string } {
 const row = findBusinessProfileByChannelCode.get(channelCode) as { id?: number; channelCode?: string } | undefined
 
@@ -3813,11 +5262,33 @@ channelCode: row.channelCode
 }
 }
 
+function getBusinessProfileByEmailCandidates(emails: string[]): { id: number; channelCode: string } {
+for (const email of emails) {
+const row = findBusinessProfileByEmail.get(email) as { id?: number; channelCode?: string } | undefined
+if (row?.id && row?.channelCode) {
+return {
+id: row.id,
+channelCode: row.channelCode
+}
+}
+}
+
+throw new Error(`business profile not found for emails: ${emails.join(', ')}`)
+}
+
 const businessProfile1 =
-getBusinessProfileByChannelCode('B1B2C3D4E5F6G')
+getBusinessProfileByEmailCandidates([
+  'test11@prod.com',
+  'test1@prod.com',
+  'test11@naver.com'
+])
 
 const businessProfile2 =
-getBusinessProfileByChannelCode('B8X7C6V5B4N3M')
+getBusinessProfileByEmailCandidates([
+  'test12@prod.com',
+  'test2@prod.com',
+  'test12@naver.com'
+])
 
 const deleteBusinessHoursByChannelCodeExceptProfile = db.prepare(`
 DELETE FROM business_hours
@@ -8290,7 +9761,7 @@ SELECT
   CURRENT_TIMESTAMP
 FROM profiles p
 WHERE p.profileType='BUSINESS'
-  AND p.channelCode='B1B2C3D4E5F6G'
+  AND p.channelCode='${businessProfile1.channelCode}'
 `)
 
 db.exec(`
@@ -8349,7 +9820,7 @@ SELECT
   CURRENT_TIMESTAMP
 FROM profiles p
 WHERE p.profileType='BUSINESS'
-  AND p.channelCode='B1B2C3D4E5F6G'
+  AND p.channelCode='${businessProfile1.channelCode}'
 `)
 
 db.exec(`
@@ -8886,6 +10357,123 @@ for (const category of masterProductCategorySeeds) {
   )
 }
 
+//==================================================
+// SECTION 14-5 : MANUFACTURERS / BRANDS
+// RULE : 제조사와 브랜드는 분리 개념
+//==================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS manufacturers(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  manufacturerCode TEXT NOT NULL UNIQUE,
+  manufacturerName TEXT NOT NULL,
+  description TEXT,
+  websiteUrl TEXT,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_manufacturers_code
+ON manufacturers(manufacturerCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_manufacturers_name
+ON manufacturers(manufacturerName)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_manufacturers_active
+ON manufacturers(isActive)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS brands(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  brandCode TEXT NOT NULL UNIQUE,
+  manufacturerId INTEGER,
+  brandName TEXT NOT NULL,
+  description TEXT,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(manufacturerId) REFERENCES manufacturers(id)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_brands_code
+ON brands(brandCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_brands_name
+ON brands(brandName)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_brands_manufacturer
+ON brands(manufacturerId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_brands_active
+ON brands(isActive)
+`)
+
+const insertManufacturer = db.prepare(`
+INSERT OR IGNORE INTO manufacturers(
+  manufacturerCode,
+  manufacturerName,
+  description,
+  websiteUrl,
+  isActive
+)
+VALUES(?,?,?,?,?)
+`)
+
+insertManufacturer.run('MFR_NONGSHIM', '농심', '식품 제조사', null, 1)
+insertManufacturer.run('MFR_CJ', 'CJ제일제당', '식품 제조사', null, 1)
+insertManufacturer.run('MFR_KELLOGG', '켈로그코리아', '식품 제조사', null, 1)
+
+const findManufacturerIdByName = db.prepare(`
+SELECT id
+FROM manufacturers
+WHERE manufacturerName = ?
+LIMIT 1
+`)
+
+const insertBrand = db.prepare(`
+INSERT OR IGNORE INTO brands(
+  brandCode,
+  manufacturerId,
+  brandName,
+  description,
+  isActive
+)
+VALUES(?,?,?,?,?)
+`)
+
+const manufacturerNongshimId =
+  (findManufacturerIdByName.get('농심') as { id?: number } | undefined)?.id ?? null
+
+const manufacturerCjId =
+  (findManufacturerIdByName.get('CJ제일제당') as { id?: number } | undefined)?.id ?? null
+
+const manufacturerKelloggId =
+  (findManufacturerIdByName.get('켈로그코리아') as { id?: number } | undefined)?.id ?? null
+
+insertBrand.run('BRD_SHINRAMYUN', manufacturerNongshimId, '신라면', '농심 대표 브랜드', 1)
+insertBrand.run('BRD_CHAPAGETTI', manufacturerNongshimId, '짜파게티', '농심 대표 브랜드', 1)
+insertBrand.run('BRD_YUKGAEJANG', manufacturerNongshimId, '육개장', '농심 대표 브랜드', 1)
+insertBrand.run('BRD_HETBAHN', manufacturerCjId, '햇반', 'CJ제일제당 대표 브랜드', 1)
+insertBrand.run('BRD_BIBIGO', manufacturerCjId, '비비고', 'CJ제일제당 대표 브랜드', 1)
+insertBrand.run('BRD_CORNFROST', manufacturerKelloggId, '콘푸로스트', '켈로그코리아 대표 브랜드', 1)
+insertBrand.run('BRD_CHEX', manufacturerKelloggId, '첵스', '켈로그코리아 대표 브랜드', 1)
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS master_products(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -8894,6 +10482,8 @@ CREATE TABLE IF NOT EXISTS master_products(
   primaryScanCodeValue TEXT,
   productName TEXT NOT NULL,
   normalizedProductName TEXT,
+  manufacturerId INTEGER,
+  brandId INTEGER,
   brandName TEXT,
   manufacturerName TEXT,
   categoryCode TEXT,
@@ -8905,12 +10495,16 @@ CREATE TABLE IF NOT EXISTS master_products(
   unitLabel TEXT,
   specInfo TEXT,
   thumbnailImageAssetId INTEGER,
+  productStatus TEXT NOT NULL DEFAULT 'ACTIVE'
+  CHECK(productStatus IN('ACTIVE','INACTIVE','DELETED')),
   isAdultProduct INTEGER NOT NULL DEFAULT 0,
   isActive INTEGER NOT NULL DEFAULT 1,
   approvalStatus TEXT NOT NULL DEFAULT 'DRAFT'
   CHECK(approvalStatus IN('DRAFT','AUTO_IMPORTED','APPROVED','REJECTED')),
   createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
   updatedAt TEXT,
+  FOREIGN KEY(manufacturerId) REFERENCES manufacturers(id),
+  FOREIGN KEY(brandId) REFERENCES brands(id),
   FOREIGN KEY(thumbnailImageAssetId) REFERENCES image_assets(id)
 )
 `)
@@ -8918,6 +10512,8 @@ CREATE TABLE IF NOT EXISTS master_products(
 safeAddColumn('master_products', 'semanticProductCode', 'TEXT')
 safeAddColumn('master_products', 'primaryScanCodeValue', 'TEXT')
 safeAddColumn('master_products', 'normalizedProductName', 'TEXT')
+safeAddColumn('master_products', 'manufacturerId', 'INTEGER')
+safeAddColumn('master_products', 'brandId', 'INTEGER')
 safeAddColumn('master_products', 'brandName', 'TEXT')
 safeAddColumn('master_products', 'manufacturerName', 'TEXT')
 safeAddColumn('master_products', 'supplierName', 'TEXT')
@@ -8939,6 +10535,11 @@ safeAddColumn('master_products', 'description', 'TEXT')
 safeAddColumn('master_products', 'origin', 'TEXT')
 safeAddColumn('master_products', 'sourceSystem', 'TEXT')
 safeAddColumn('master_products', 'thumbnailImageAssetId', 'INTEGER')
+safeAddColumn(
+  'master_products',
+  'productStatus',
+  "TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(productStatus IN('ACTIVE','INACTIVE','DELETED'))"
+)
 safeAddColumn('master_products', 'isAdultProduct', 'INTEGER NOT NULL DEFAULT 0')
 safeAddColumn('master_products', 'isActive', 'INTEGER NOT NULL DEFAULT 1')
 safeAddColumn(
@@ -8950,8 +10551,29 @@ safeAddColumn('master_products', 'updatedAt', 'TEXT')
 safeAddColumn('master_products', 'deletedAt', 'TEXT')
 
 db.exec(`
+UPDATE master_products
+SET productStatus = CASE
+  WHEN deletedAt IS NOT NULL THEN 'DELETED'
+  WHEN COALESCE(isActive, 1) = 1 THEN 'ACTIVE'
+  ELSE 'INACTIVE'
+END
+WHERE productStatus IS NULL
+   OR productStatus NOT IN('ACTIVE','INACTIVE','DELETED')
+`)
+
+db.exec(`
 CREATE INDEX IF NOT EXISTS idx_master_products_category_id
 ON master_products(categoryId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_products_manufacturer_id
+ON master_products(manufacturerId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_products_brand_id
+ON master_products(brandId)
 `)
 
 db.exec(`
@@ -8972,6 +10594,21 @@ ON master_products(approvalStatus)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_master_products_product_code
 ON master_products(productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_products_normalized_name
+ON master_products(normalizedProductName)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_products_brand_name
+ON master_products(brandName)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_master_products_product_status
+ON master_products(productStatus)
 `)
 
 db.exec(`
@@ -9009,6 +10646,192 @@ ON master_products(supplierName)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_master_products_source_system
 ON master_products(sourceSystem)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS channel_products(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channelCode TEXT NOT NULL,
+  productCode TEXT NOT NULL,
+  productSourceType TEXT NOT NULL
+    CHECK(productSourceType IN('MASTER_PRODUCT','CHANNEL_MENU')),
+  masterProductId INTEGER,
+  displayName TEXT NOT NULL,
+  description TEXT,
+  salePrice INTEGER NOT NULL DEFAULT 0 CHECK(salePrice >= 0),
+  normalPrice INTEGER NOT NULL DEFAULT 0 CHECK(normalPrice >= 0),
+  stockStatus TEXT NOT NULL DEFAULT 'UNKNOWN'
+    CHECK(stockStatus IN('UNKNOWN','IN_STOCK','LOW_STOCK','OUT_OF_STOCK','SOLD_OUT')),
+  isEventActive INTEGER NOT NULL DEFAULT 0 CHECK(isEventActive IN(0,1)),
+  eventPrice INTEGER CHECK(eventPrice IS NULL OR eventPrice >= 0),
+  thumbnailImageAssetId INTEGER,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(masterProductId) REFERENCES master_products(id),
+  FOREIGN KEY(thumbnailImageAssetId) REFERENCES image_assets(id),
+  UNIQUE(channelCode, productCode),
+  CHECK(
+    (productSourceType = 'MASTER_PRODUCT' AND masterProductId IS NOT NULL)
+    OR
+    (productSourceType = 'CHANNEL_MENU' AND masterProductId IS NULL)
+  )
+)
+`)
+
+safeAddColumn('channel_products', 'channelCode', 'TEXT')
+safeAddColumn('channel_products', 'productCode', 'TEXT')
+safeAddColumn(
+  'channel_products',
+  'productSourceType',
+  "TEXT NOT NULL DEFAULT 'MASTER_PRODUCT' CHECK(productSourceType IN('MASTER_PRODUCT','CHANNEL_MENU'))"
+)
+safeAddColumn('channel_products', 'masterProductId', 'INTEGER')
+safeAddColumn('channel_products', 'displayName', 'TEXT')
+safeAddColumn('channel_products', 'description', 'TEXT')
+safeAddColumn('channel_products', 'salePrice', 'INTEGER NOT NULL DEFAULT 0 CHECK(salePrice >= 0)')
+safeAddColumn('channel_products', 'normalPrice', 'INTEGER NOT NULL DEFAULT 0 CHECK(normalPrice >= 0)')
+safeAddColumn(
+  'channel_products',
+  'stockStatus',
+  "TEXT NOT NULL DEFAULT 'UNKNOWN' CHECK(stockStatus IN('UNKNOWN','IN_STOCK','LOW_STOCK','OUT_OF_STOCK','SOLD_OUT'))"
+)
+safeAddColumn('channel_products', 'isEventActive', 'INTEGER NOT NULL DEFAULT 0 CHECK(isEventActive IN(0,1))')
+safeAddColumn('channel_products', 'eventPrice', 'INTEGER CHECK(eventPrice IS NULL OR eventPrice >= 0)')
+safeAddColumn('channel_products', 'thumbnailImageAssetId', 'INTEGER')
+safeAddColumn('channel_products', 'isActive', 'INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1))')
+safeAddColumn('channel_products', 'createdAt', 'TEXT DEFAULT CURRENT_TIMESTAMP')
+safeAddColumn('channel_products', 'updatedAt', 'TEXT')
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_products_channel
+ON channel_products(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_products_product_code
+ON channel_products(productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_products_master_product
+ON channel_products(masterProductId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_products_source_type
+ON channel_products(productSourceType)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_products_active
+ON channel_products(isActive)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_products_stock_status
+ON channel_products(stockStatus)
+`)
+
+//==================================================
+// SECTION 14-6 : MART PRICE SYSTEM
+// RULE : 가격은 channel_product_prices 전용 관리
+//==================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS channel_product_prices(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channelCode TEXT NOT NULL,
+  productCode TEXT NOT NULL,
+  channelProductId INTEGER NOT NULL,
+  purchasePrice INTEGER NOT NULL DEFAULT 0 CHECK(purchasePrice >= 0),
+  regularPrice INTEGER NOT NULL DEFAULT 0 CHECK(regularPrice >= 0),
+  eventPrice INTEGER CHECK(eventPrice IS NULL OR eventPrice >= 0),
+  specialPrice INTEGER CHECK(specialPrice IS NULL OR specialPrice >= 0),
+  appliedPrice INTEGER NOT NULL DEFAULT 0 CHECK(appliedPrice >= 0),
+  appliedPriceType TEXT NOT NULL DEFAULT 'REGULAR'
+    CHECK(appliedPriceType IN('REGULAR','EVENT','SPECIAL')),
+  activeSalePriceType TEXT NOT NULL DEFAULT 'REGULAR'
+    CHECK(activeSalePriceType IN('REGULAR','EVENT','SPECIAL')),
+  currency TEXT NOT NULL DEFAULT 'KRW'
+    CHECK(currency IN('KRW')),
+  specialPriceStartAt TEXT,
+  specialPriceEndAt TEXT,
+  priceUpdatedAt TEXT,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(channelProductId) REFERENCES channel_products(id),
+  UNIQUE(channelCode, productCode)
+)
+`)
+
+safeAddColumn(
+  'channel_product_prices',
+  'appliedPrice',
+  'INTEGER NOT NULL DEFAULT 0 CHECK(appliedPrice >= 0)'
+)
+
+safeAddColumn(
+  'channel_product_prices',
+  'appliedPriceType',
+  "TEXT NOT NULL DEFAULT 'REGULAR' CHECK(appliedPriceType IN('REGULAR','EVENT','SPECIAL'))"
+)
+
+db.exec(`
+UPDATE channel_product_prices
+SET appliedPriceType = COALESCE(appliedPriceType, activeSalePriceType, 'REGULAR')
+WHERE appliedPriceType IS NULL
+`)
+
+db.exec(`
+UPDATE channel_product_prices
+SET activeSalePriceType = COALESCE(activeSalePriceType, appliedPriceType, 'REGULAR')
+WHERE activeSalePriceType IS NULL
+`)
+
+db.exec(`
+UPDATE channel_product_prices
+SET appliedPrice = CASE
+  WHEN COALESCE(appliedPriceType, activeSalePriceType, 'REGULAR') = 'SPECIAL'
+    THEN COALESCE(specialPrice, eventPrice, regularPrice, 0)
+  WHEN COALESCE(appliedPriceType, activeSalePriceType, 'REGULAR') = 'EVENT'
+    THEN COALESCE(eventPrice, regularPrice, 0)
+  ELSE COALESCE(regularPrice, 0)
+END
+WHERE appliedPrice IS NULL
+   OR appliedPrice < 0
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_channel_product_prices_channel_product
+ON channel_product_prices(channelCode, productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_product_prices_channel
+ON channel_product_prices(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_product_prices_product_code
+ON channel_product_prices(productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_product_prices_channel_product_id
+ON channel_product_prices(channelProductId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_product_prices_applied_type
+ON channel_product_prices(appliedPriceType)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_product_prices_updated
+ON channel_product_prices(priceUpdatedAt)
 `)
 
 db.exec(`
@@ -9173,6 +10996,46 @@ ON master_product_scan_codes(scanCodeSource)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_master_product_scan_codes_external_format
 ON master_product_scan_codes(externalBarcodeFormat)
+`)
+
+db.exec(`
+INSERT OR IGNORE INTO master_product_scan_codes(
+  masterProductId,
+  productCode,
+  scanCodeType,
+  scanCodeValue,
+  scanCodeSource,
+  externalBarcodeFormat,
+  isPrimary,
+  isActive,
+  createdAt,
+  updatedAt
+)
+SELECT
+  mp.id,
+  mp.productCode,
+  CASE
+    WHEN mp.barcodeParserType = 'EAN13_BARCODE' THEN 'EXTERNAL_BARCODE'
+    ELSE 'CUSTOM'
+  END,
+  mp.primaryScanCodeValue,
+  CASE
+    WHEN mp.barcodeParserType = 'EAN13_BARCODE' THEN 'MERCHANT'
+    ELSE 'CUSTOM'
+  END,
+  CASE
+    WHEN length(mp.primaryScanCodeValue) = 13 THEN 'EAN13'
+    WHEN length(mp.primaryScanCodeValue) = 8 THEN 'EAN8'
+    ELSE NULL
+  END,
+  1,
+  1,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+FROM master_products mp
+WHERE mp.primaryScanCodeValue IS NOT NULL
+  AND trim(mp.primaryScanCodeValue) != ''
+  AND mp.deletedAt IS NULL
 `)
 
 db.exec(`
@@ -9576,6 +11439,905 @@ ON market_products(channelCode, productCode)
 WHERE isDeleted = 0
 `)
 
+//==================================================
+// SECTION 15-1A : SUPPLY CHAIN PARTNER TYPES
+// RULE : businessTypeCode(운영 형태) + partnerTypeCode(공급망 역할) 병행 운영
+//==================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS partner_types(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT UNIQUE,
+  name TEXT,
+  partnerTypeCode TEXT NOT NULL UNIQUE
+  CHECK(partnerTypeCode IN(
+    'MAKER',
+    'PROVIDER',
+    'CUSTOMER',
+    'OPEN_MARKET'
+  )),
+  partnerTypeName TEXT NOT NULL,
+  description TEXT,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  sortOrder INTEGER NOT NULL DEFAULT 0,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+)
+`)
+
+const partnerTypesTableSqlRow = db.prepare(`
+SELECT sql
+FROM sqlite_master
+WHERE type='table'
+  AND name='partner_types'
+LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const partnerTypesNeedsMigration =
+  !(partnerTypesTableSqlRow?.sql?.includes('code TEXT UNIQUE') ?? false) ||
+  !(partnerTypesTableSqlRow?.sql?.includes('partnerTypeCode') ?? false) ||
+  !(partnerTypesTableSqlRow?.sql?.includes(`'PROVIDER'`) ?? false) ||
+  !(partnerTypesTableSqlRow?.sql?.includes(`'CUSTOMER'`) ?? false)
+
+if (partnerTypesNeedsMigration) {
+  db.exec(`PRAGMA foreign_keys = OFF`)
+
+  try {
+    db.exec(`DROP TABLE IF EXISTS partner_types_new`)
+    db.exec(`
+      CREATE TABLE partner_types_new(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT UNIQUE,
+        name TEXT,
+        partnerTypeCode TEXT NOT NULL UNIQUE
+        CHECK(partnerTypeCode IN(
+          'MAKER',
+          'PROVIDER',
+          'CUSTOMER',
+          'OPEN_MARKET'
+        )),
+        partnerTypeName TEXT NOT NULL,
+        description TEXT,
+        isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+        sortOrder INTEGER NOT NULL DEFAULT 0,
+        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `)
+
+    db.exec(`DROP TABLE IF EXISTS partner_types`)
+    db.exec(`ALTER TABLE partner_types_new RENAME TO partner_types`)
+  } finally {
+    db.exec(`PRAGMA foreign_keys = ON`)
+  }
+}
+
+safeAddColumn('partner_types', 'code', 'TEXT')
+safeAddColumn('partner_types', 'name', 'TEXT')
+safeAddColumn('partner_types', 'partnerTypeCode', 'TEXT')
+safeAddColumn('partner_types', 'partnerTypeName', 'TEXT')
+
+db.exec(`
+UPDATE partner_types
+SET code = partnerTypeCode
+WHERE (code IS NULL OR TRIM(code) = '')
+  AND partnerTypeCode IS NOT NULL
+`)
+
+db.exec(`
+UPDATE partner_types
+SET name = partnerTypeName
+WHERE (name IS NULL OR TRIM(name) = '')
+  AND partnerTypeName IS NOT NULL
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_partner_types_code
+ON partner_types(partnerTypeCode)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_partner_types_legacy_code
+ON partner_types(code)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_partner_types_sort
+ON partner_types(sortOrder)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_partner_types_active
+ON partner_types(isActive)
+`)
+
+const insertPartnerType = db.prepare(`
+INSERT OR IGNORE INTO partner_types(
+  partnerTypeCode,
+  partnerTypeName,
+  description,
+  sortOrder,
+  isActive
+)
+VALUES(?,?,?,?,?)
+`)
+
+insertPartnerType.run('MAKER', '제조사', '제품 제조 및 원천 공급 파트너', 1, 1)
+insertPartnerType.run('PROVIDER', '공급자', '대리점/총판/도매 유통 파트너', 2, 1)
+insertPartnerType.run('CUSTOMER', '고객', '마트/기업고객/일반고객 수요 파트너', 3, 1)
+insertPartnerType.run('OPEN_MARKET', '오픈마켓', '오픈마켓 판매자 파트너', 4, 1)
+
+db.exec(`
+UPDATE partner_types
+SET code = partnerTypeCode,
+    name = partnerTypeName
+WHERE code IS NULL
+   OR name IS NULL
+`)
+
+db.exec(`
+DELETE FROM partner_types
+WHERE partnerTypeCode NOT IN(
+  'MAKER',
+  'PROVIDER',
+  'CUSTOMER',
+  'OPEN_MARKET'
+)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS partner_relationships(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  providerChannelCode TEXT NOT NULL,
+  customerChannelCode TEXT NOT NULL,
+  partnerTypeCode TEXT NOT NULL
+    CHECK(partnerTypeCode IN(
+      'MAKER',
+      'PROVIDER',
+      'CUSTOMER',
+      'OPEN_MARKET'
+    )),
+  relationshipStatus TEXT NOT NULL DEFAULT 'ACTIVE'
+    CHECK(relationshipStatus IN('ACTIVE','INACTIVE','SUSPENDED')),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(providerChannelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(customerChannelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(partnerTypeCode) REFERENCES partner_types(partnerTypeCode),
+  UNIQUE(providerChannelCode, customerChannelCode, partnerTypeCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_partner_relationships_provider
+ON partner_relationships(providerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_partner_relationships_customer
+ON partner_relationships(customerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_partner_relationships_type
+ON partner_relationships(partnerTypeCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_partner_relationships_status
+ON partner_relationships(relationshipStatus)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS purchase_orders(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  purchaseOrderCode TEXT NOT NULL UNIQUE CHECK(length(purchaseOrderCode)=12),
+  buyerChannelCode TEXT NOT NULL,
+  supplierChannelCode TEXT NOT NULL,
+  partnerTypeCode TEXT NOT NULL
+    CHECK(partnerTypeCode IN(
+      'MAKER',
+      'PROVIDER',
+      'CUSTOMER',
+      'OPEN_MARKET'
+    )),
+  orderStatus TEXT NOT NULL DEFAULT 'CREATED'
+    CHECK(orderStatus IN('CREATED','CONFIRMED','SHIPPED','RECEIVED','CANCELLED')),
+  totalAmount INTEGER NOT NULL DEFAULT 0 CHECK(totalAmount >= 0),
+  memo TEXT,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(buyerChannelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(supplierChannelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(partnerTypeCode) REFERENCES partner_types(partnerTypeCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_code
+ON purchase_orders(purchaseOrderCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_buyer
+ON purchase_orders(buyerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_supplier
+ON purchase_orders(supplierChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_type
+ON purchase_orders(partnerTypeCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_status
+ON purchase_orders(orderStatus)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS purchase_order_items(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  purchaseOrderId INTEGER NOT NULL,
+  masterProductId INTEGER,
+  manufacturerId INTEGER,
+  brandId INTEGER,
+  barcode TEXT,
+  productCode TEXT
+    CHECK(productCode IS NULL OR productCode LIKE 'RPB%' OR productCode LIKE 'RPN%'),
+  productNameSnapshot TEXT NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
+  unitPrice INTEGER NOT NULL DEFAULT 0 CHECK(unitPrice >= 0),
+  totalAmount INTEGER NOT NULL DEFAULT 0 CHECK(totalAmount >= 0),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(purchaseOrderId) REFERENCES purchase_orders(id),
+  FOREIGN KEY(masterProductId) REFERENCES master_products(id),
+  FOREIGN KEY(manufacturerId) REFERENCES manufacturers(id),
+  FOREIGN KEY(brandId) REFERENCES brands(id)
+)
+`)
+
+safeAddColumn('purchase_order_items', 'manufacturerId', 'INTEGER')
+safeAddColumn('purchase_order_items', 'brandId', 'INTEGER')
+safeAddColumn('purchase_order_items', 'barcode', 'TEXT')
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_purchase_order_items_order
+ON purchase_order_items(purchaseOrderId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_purchase_order_items_product_code
+ON purchase_order_items(productCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_purchase_order_items_master_product
+ON purchase_order_items(masterProductId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_purchase_order_items_manufacturer
+ON purchase_order_items(manufacturerId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_purchase_order_items_brand
+ON purchase_order_items(brandId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_purchase_order_items_barcode
+ON purchase_order_items(barcode)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS delivery_companies(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  companyCode TEXT NOT NULL UNIQUE,
+  companyName TEXT NOT NULL,
+  trackingUrl TEXT,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_delivery_companies_code
+ON delivery_companies(companyCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_delivery_companies_active
+ON delivery_companies(isActive)
+`)
+
+const insertDeliveryCompany = db.prepare(`
+INSERT OR IGNORE INTO delivery_companies(
+  companyCode,
+  companyName,
+  trackingUrl,
+  isActive
+)
+VALUES(?,?,?,?)
+`)
+
+insertDeliveryCompany.run('CJ', 'CJ대한통운', 'https://www.cjlogistics.com/ko/tool/parcel/tracking', 1)
+insertDeliveryCompany.run('LOTTE', '롯데택배', 'https://www.lotteglogis.com/home/reservation/tracking/linkView', 1)
+insertDeliveryCompany.run('HANJIN', '한진택배', 'https://www.hanjin.com/kor/CMS/DeliveryMgr/WaybillResult.do', 1)
+insertDeliveryCompany.run('LOGEN', '로젠택배', 'https://www.ilogen.com/web/personal/trace', 1)
+insertDeliveryCompany.run('POST', '우체국택배', 'https://service.epost.go.kr/trace.RetrieveDomRigiTraceList.comm', 1)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS shipments(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  shipmentCode TEXT NOT NULL UNIQUE CHECK(length(shipmentCode)=12),
+  purchaseOrderId INTEGER NOT NULL,
+  senderChannelCode TEXT NOT NULL,
+  receiverChannelCode TEXT NOT NULL,
+  deliveryCompanyId INTEGER NOT NULL,
+  invoiceNumber TEXT NOT NULL,
+  shipmentStatus TEXT NOT NULL DEFAULT 'CREATED'
+    CHECK(shipmentStatus IN('CREATED','READY','SHIPPED','IN_TRANSIT','DELIVERED','CANCELLED')),
+  trackingUrlSnapshot TEXT,
+  shippedAt TEXT,
+  deliveredAt TEXT,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(purchaseOrderId) REFERENCES purchase_orders(id),
+  FOREIGN KEY(senderChannelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(receiverChannelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(deliveryCompanyId) REFERENCES delivery_companies(id)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipments_code
+ON shipments(shipmentCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipments_purchase_order
+ON shipments(purchaseOrderId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipments_sender
+ON shipments(senderChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipments_receiver
+ON shipments(receiverChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipments_delivery_company
+ON shipments(deliveryCompanyId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipments_invoice
+ON shipments(invoiceNumber)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipments_status
+ON shipments(shipmentStatus)
+`)
+
+safeAddColumn(
+  'shipments',
+  'mainAddressCode',
+  'TEXT'
+)
+
+safeAddColumn(
+  'shipments',
+  'subAddressCode',
+  'TEXT'
+)
+
+safeAddColumn(
+  'shipments',
+  'detailAddressCode',
+  'TEXT'
+)
+
+safeAddColumn(
+  'shipments',
+  'deliveryCompletedQrCode',
+  'TEXT'
+)
+
+safeAddColumn(
+  'shipments',
+  'deliveryCompletedAt',
+  'TEXT'
+)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipments_main_address_code
+ON shipments(mainAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipments_sub_address_code
+ON shipments(subAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipments_detail_address_code
+ON shipments(detailAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipments_delivery_completed_qr
+ON shipments(deliveryCompletedQrCode)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS shipment_events(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  shipmentId INTEGER NOT NULL,
+  eventType TEXT NOT NULL
+    CHECK(eventType IN('CREATED','READY','SHIPPED','IN_TRANSIT','DELIVERED','CANCELLED')),
+  eventMessage TEXT,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(shipmentId) REFERENCES shipments(id)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipment_events_shipment
+ON shipment_events(shipmentId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipment_events_type
+ON shipment_events(eventType)
+`)
+
+//==================================================
+// SECTION 15-1C : PACKAGE UNIT / RECEIPT / INVENTORY MOVEMENT
+// RULE : 박스/낱개/케이스/팔렛트 단위 입고 환산 지원
+//==================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS product_package_units(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  masterProductId INTEGER NOT NULL,
+  manufacturerId INTEGER,
+  brandId INTEGER,
+  barcode TEXT NOT NULL UNIQUE,
+  packageType TEXT NOT NULL
+    CHECK(packageType IN('ITEM','BOX','CASE','PALLET')),
+  packageName TEXT,
+  quantityPerUnit INTEGER NOT NULL DEFAULT 1 CHECK(quantityPerUnit >= 1),
+  isDefault INTEGER NOT NULL DEFAULT 0 CHECK(isDefault IN(0,1)),
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(masterProductId) REFERENCES master_products(id),
+  FOREIGN KEY(manufacturerId) REFERENCES manufacturers(id),
+  FOREIGN KEY(brandId) REFERENCES brands(id)
+)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_product_package_units_barcode
+ON product_package_units(barcode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_package_units_master_product
+ON product_package_units(masterProductId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_product_package_units_package_type
+ON product_package_units(packageType)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS goods_receipts(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  receiptCode TEXT NOT NULL UNIQUE CHECK(length(receiptCode)=12),
+  shipmentId INTEGER,
+  purchaseOrderId INTEGER,
+  receiverChannelCode TEXT NOT NULL,
+  supplierChannelCode TEXT NOT NULL,
+  receiptStatus TEXT NOT NULL DEFAULT 'CREATED'
+    CHECK(receiptStatus IN('CREATED','RECEIVING','RECEIVED','CANCELLED')),
+  receivedAt TEXT,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(shipmentId) REFERENCES shipments(id),
+  FOREIGN KEY(purchaseOrderId) REFERENCES purchase_orders(id),
+  FOREIGN KEY(receiverChannelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(supplierChannelCode) REFERENCES profiles(channelCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_goods_receipts_code
+ON goods_receipts(receiptCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_goods_receipts_receiver
+ON goods_receipts(receiverChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_goods_receipts_supplier
+ON goods_receipts(supplierChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_goods_receipts_status
+ON goods_receipts(receiptStatus)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS goods_receipt_items(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  goodsReceiptId INTEGER NOT NULL,
+  masterProductId INTEGER NOT NULL,
+  manufacturerId INTEGER,
+  brandId INTEGER,
+  barcode TEXT,
+  packageType TEXT
+    CHECK(packageType IS NULL OR packageType IN('ITEM','BOX','CASE','PALLET')),
+  receivedQuantity INTEGER NOT NULL DEFAULT 0 CHECK(receivedQuantity >= 0),
+  convertedItemQuantity INTEGER NOT NULL DEFAULT 0 CHECK(convertedItemQuantity >= 0),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(goodsReceiptId) REFERENCES goods_receipts(id),
+  FOREIGN KEY(masterProductId) REFERENCES master_products(id),
+  FOREIGN KEY(manufacturerId) REFERENCES manufacturers(id),
+  FOREIGN KEY(brandId) REFERENCES brands(id)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_goods_receipt_items_receipt
+ON goods_receipt_items(goodsReceiptId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_goods_receipt_items_barcode
+ON goods_receipt_items(barcode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_goods_receipt_items_master_product
+ON goods_receipt_items(masterProductId)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS inventory_movements(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channelCode TEXT NOT NULL,
+  masterProductId INTEGER NOT NULL,
+  movementType TEXT NOT NULL
+    CHECK(movementType IN('INBOUND','OUTBOUND','ADJUST','RETURN')),
+  quantity INTEGER NOT NULL,
+  beforeQuantity INTEGER NOT NULL DEFAULT 0,
+  afterQuantity INTEGER NOT NULL DEFAULT 0,
+  referenceType TEXT NOT NULL
+    CHECK(referenceType IN('GOODS_RECEIPT','ORDER','MANUAL','RETURN')),
+  referenceId INTEGER,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(masterProductId) REFERENCES master_products(id)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_channel
+ON inventory_movements(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_master_product
+ON inventory_movements(masterProductId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_type
+ON inventory_movements(movementType)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_inventory_movements_created_at
+ON inventory_movements(createdAt)
+`)
+
+//==================================================
+// SECTION 15-1D : REGION SERVICE GOVERNANCE
+// RULE : mainAddressCode = 플랫폼 권역 운영 기준 코드
+//==================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS service_regions(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  mainAddressCode TEXT NOT NULL UNIQUE,
+  regionName TEXT,
+  regionLevel INTEGER,
+  regionStatus TEXT NOT NULL DEFAULT 'ACTIVE'
+    CHECK(regionStatus IN('ACTIVE','INACTIVE','BLOCKED')),
+  deliveryEnabled INTEGER NOT NULL DEFAULT 1 CHECK(deliveryEnabled IN(0,1)),
+  marketEnabled INTEGER NOT NULL DEFAULT 1 CHECK(marketEnabled IN(0,1)),
+  adEnabled INTEGER NOT NULL DEFAULT 1 CHECK(adEnabled IN(0,1)),
+  couponEnabled INTEGER NOT NULL DEFAULT 1 CHECK(couponEnabled IN(0,1)),
+  groupPurchaseEnabled INTEGER NOT NULL DEFAULT 1 CHECK(groupPurchaseEnabled IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(mainAddressCode) REFERENCES regions(mainAddressCode)
+)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_service_regions_main_address_code
+ON service_regions(mainAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_service_regions_status
+ON service_regions(regionStatus)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS channel_service_regions(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channelCode TEXT NOT NULL,
+  mainAddressCode TEXT NOT NULL,
+  serviceType TEXT NOT NULL
+    CHECK(serviceType IN('DELIVERY','MARKET','EVENT','ADVERTISEMENT','GROUP_PURCHASE')),
+  isPrimary INTEGER NOT NULL DEFAULT 0 CHECK(isPrimary IN(0,1)),
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(mainAddressCode) REFERENCES regions(mainAddressCode),
+  UNIQUE(channelCode, mainAddressCode, serviceType)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_service_regions_channel
+ON channel_service_regions(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_service_regions_main_address_code
+ON channel_service_regions(mainAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_channel_service_regions_service_type
+ON channel_service_regions(serviceType)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS market_region_policies(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channelCode TEXT NOT NULL,
+  mainAddressCode TEXT NOT NULL,
+  policyType TEXT NOT NULL
+    CHECK(policyType IN(
+      'DELIVERY_ALLOWED',
+      'DELIVERY_BLOCKED',
+      'STORE_VISIBLE',
+      'STORE_HIDDEN',
+      'ORDER_ALLOWED',
+      'ORDER_BLOCKED'
+    )),
+  policyValue TEXT,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(mainAddressCode) REFERENCES regions(mainAddressCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_region_policies_channel
+ON market_region_policies(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_region_policies_main_address_code
+ON market_region_policies(mainAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_region_policies_policy_type
+ON market_region_policies(policyType)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS region_delivery_zones(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  providerChannelCode TEXT NOT NULL,
+  mainAddressCode TEXT NOT NULL,
+  deliveryFee INTEGER NOT NULL DEFAULT 0 CHECK(deliveryFee >= 0),
+  minimumOrderAmount INTEGER NOT NULL DEFAULT 0 CHECK(minimumOrderAmount >= 0),
+  estimatedMinutes INTEGER NOT NULL DEFAULT 0 CHECK(estimatedMinutes >= 0),
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(providerChannelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(mainAddressCode) REFERENCES regions(mainAddressCode),
+  UNIQUE(providerChannelCode, mainAddressCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_delivery_zones_provider
+ON region_delivery_zones(providerChannelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_region_delivery_zones_main_address_code
+ON region_delivery_zones(mainAddressCode)
+`)
+
+//==================================================
+// SECTION 15-1B : ADDRESS QR TRACKING / 공동배송 확장
+// RULE : 건물/층/호실 QR 스캔 기반 배송 증적 및 완료 처리
+//==================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS address_buildings(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  mainAddressCode TEXT,
+  subAddressCode TEXT NOT NULL UNIQUE,
+  buildingName TEXT NOT NULL,
+  buildingType TEXT NOT NULL
+    CHECK(buildingType IN(
+      'APARTMENT',
+      'OFFICETEL',
+      'COMMERCIAL',
+      'HOTEL',
+      'HOSPITAL',
+      'DORMITORY',
+      'ETC'
+    )),
+  latitude REAL,
+  longitude REAL,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT
+)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_address_buildings_sub_address_code
+ON address_buildings(subAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_address_buildings_main_address_code
+ON address_buildings(mainAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_address_buildings_type
+ON address_buildings(buildingType)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS address_building_details(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  mainAddressCode TEXT,
+  subAddressCode TEXT NOT NULL,
+  detailAddressCode TEXT NOT NULL UNIQUE,
+  buildingDong TEXT,
+  buildingFloor INTEGER,
+  roomNumber TEXT,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(subAddressCode) REFERENCES address_buildings(subAddressCode)
+)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_address_building_details_detail_address_code
+ON address_building_details(detailAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_address_building_details_sub_address_code
+ON address_building_details(subAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_address_building_details_dong_floor_room
+ON address_building_details(buildingDong, buildingFloor, roomNumber)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS address_qr_codes(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  qrCode TEXT NOT NULL UNIQUE,
+  mainAddressCode TEXT,
+  subAddressCode TEXT,
+  detailAddressCode TEXT,
+  qrLevel TEXT NOT NULL
+    CHECK(qrLevel IN('BUILDING','FLOOR','ROOM')),
+  qrName TEXT,
+  qrDescription TEXT,
+  isActive INTEGER NOT NULL DEFAULT 1 CHECK(isActive IN(0,1)),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(subAddressCode) REFERENCES address_buildings(subAddressCode),
+  FOREIGN KEY(detailAddressCode) REFERENCES address_building_details(detailAddressCode)
+)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_address_qr_codes_qr_code
+ON address_qr_codes(qrCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_address_qr_codes_qr_level
+ON address_qr_codes(qrLevel)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_address_qr_codes_sub_address_code
+ON address_qr_codes(subAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_address_qr_codes_detail_address_code
+ON address_qr_codes(detailAddressCode)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS shipment_qr_logs(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  shipmentId INTEGER NOT NULL,
+  qrCode TEXT NOT NULL,
+  mainAddressCode TEXT,
+  subAddressCode TEXT,
+  detailAddressCode TEXT,
+  scanType TEXT NOT NULL
+    CHECK(scanType IN(
+      'BUILDING_SCAN',
+      'FLOOR_SCAN',
+      'ROOM_SCAN',
+      'DELIVERY_COMPLETE'
+    )),
+  scannedByChannelCode TEXT,
+  scannedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(shipmentId) REFERENCES shipments(id),
+  FOREIGN KEY(qrCode) REFERENCES address_qr_codes(qrCode),
+  FOREIGN KEY(scannedByChannelCode) REFERENCES profiles(channelCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipment_qr_logs_shipment
+ON shipment_qr_logs(shipmentId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipment_qr_logs_qr_code
+ON shipment_qr_logs(qrCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_shipment_qr_logs_scanned_at
+ON shipment_qr_logs(scannedAt)
+`)
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS market_event_masters(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -9663,6 +12425,238 @@ ON market_inventory(profileId)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_market_inventory_sold_out_policy
 ON market_inventory(soldOutPolicy)
+`)
+
+//==================================================
+// SECTION 15-2 : CART ALLOCATION ENGINE CORE TABLES
+// RULE : 상품원장 * 권역(mainAddressCode) * 재고 * 가격 기반 자동 배정
+//==================================================
+
+safeAddColumn('market_inventory', 'mainAddressCode', 'TEXT')
+safeAddColumn('market_inventory', 'masterProductId', 'INTEGER')
+safeAddColumn('market_inventory', 'manufacturerId', 'INTEGER')
+safeAddColumn('market_inventory', 'brandId', 'INTEGER')
+safeAddColumn('market_inventory', 'barcode', 'TEXT')
+safeAddColumn('market_inventory', 'stockQuantity', 'INTEGER NOT NULL DEFAULT 0 CHECK(stockQuantity >= 0)')
+safeAddColumn('market_inventory', 'reservedQuantity', 'INTEGER NOT NULL DEFAULT 0 CHECK(reservedQuantity >= 0)')
+safeAddColumn('market_inventory', 'availableQuantity', 'INTEGER NOT NULL DEFAULT 0 CHECK(availableQuantity >= 0)')
+safeAddColumn('market_inventory', 'createdAt', 'TEXT DEFAULT CURRENT_TIMESTAMP')
+
+db.exec(`
+UPDATE market_inventory
+SET
+  stockQuantity = COALESCE(stockQuantity, currentStock, 0),
+  reservedQuantity = COALESCE(reservedQuantity, 0),
+  availableQuantity = CASE
+    WHEN COALESCE(stockQuantity, currentStock, 0) - COALESCE(reservedQuantity, 0) < 0 THEN 0
+    ELSE COALESCE(stockQuantity, currentStock, 0) - COALESCE(reservedQuantity, 0)
+  END
+WHERE stockQuantity IS NULL
+   OR reservedQuantity IS NULL
+   OR availableQuantity IS NULL
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_inventory_main_address_code
+ON market_inventory(mainAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_inventory_master_product
+ON market_inventory(masterProductId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_inventory_barcode
+ON market_inventory(barcode)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS market_prices(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  channelCode TEXT NOT NULL,
+  mainAddressCode TEXT,
+  masterProductId INTEGER NOT NULL,
+  barcode TEXT,
+  salePrice INTEGER NOT NULL DEFAULT 0 CHECK(salePrice >= 0),
+  normalPrice INTEGER NOT NULL DEFAULT 0 CHECK(normalPrice >= 0),
+  discountAmount INTEGER NOT NULL DEFAULT 0 CHECK(discountAmount >= 0),
+  isEventPrice INTEGER NOT NULL DEFAULT 0 CHECK(isEventPrice IN(0,1)),
+  eventStartAt TEXT,
+  eventEndAt TEXT,
+  updatedAt TEXT,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(channelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(mainAddressCode) REFERENCES regions(mainAddressCode),
+  FOREIGN KEY(masterProductId) REFERENCES master_products(id)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_prices_channel
+ON market_prices(channelCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_prices_main_address_code
+ON market_prices(mainAddressCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_market_prices_master_product
+ON market_prices(masterProductId)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS customer_carts(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  cartCode TEXT NOT NULL UNIQUE CHECK(length(cartCode)=12),
+  customerChannelCode TEXT NOT NULL,
+  mainAddressCode TEXT,
+  cartStatus TEXT NOT NULL DEFAULT 'ACTIVE'
+    CHECK(cartStatus IN('ACTIVE','CHECKOUT','ORDERED','EXPIRED')),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(customerChannelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(mainAddressCode) REFERENCES regions(mainAddressCode)
+)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_carts_code
+ON customer_carts(cartCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_customer_carts_customer
+ON customer_carts(customerChannelCode)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS customer_cart_items(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  cartId INTEGER NOT NULL,
+  masterProductId INTEGER NOT NULL,
+  manufacturerId INTEGER,
+  brandId INTEGER,
+  barcode TEXT,
+  quantity INTEGER NOT NULL DEFAULT 1 CHECK(quantity > 0),
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(cartId) REFERENCES customer_carts(id),
+  FOREIGN KEY(masterProductId) REFERENCES master_products(id),
+  FOREIGN KEY(manufacturerId) REFERENCES manufacturers(id),
+  FOREIGN KEY(brandId) REFERENCES brands(id)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_customer_cart_items_cart
+ON customer_cart_items(cartId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_customer_cart_items_master_product
+ON customer_cart_items(masterProductId)
+`)
+
+const cartAllocationsSqlRow = db.prepare(`
+SELECT sql
+FROM sqlite_master
+WHERE type='table'
+  AND name='cart_allocations'
+LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const cartAllocationsNeedsMigration =
+  (cartAllocationsSqlRow?.sql?.includes('assignedMarketChannelCode') ?? false) === false ||
+  (cartAllocationsSqlRow?.sql?.includes('allocationMode') ?? false) === false
+
+if (cartAllocationsNeedsMigration && cartAllocationsSqlRow?.sql) {
+  const legacyName = `cart_allocations_legacy_${Date.now()}`
+  db.exec(`ALTER TABLE cart_allocations RENAME TO ${legacyName}`)
+}
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS cart_allocations(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  allocationCode TEXT NOT NULL UNIQUE CHECK(length(allocationCode)=12),
+  cartCode TEXT NOT NULL,
+  buyerChannelCode TEXT NOT NULL,
+  assignedMarketChannelCode TEXT,
+  allocationStatus TEXT NOT NULL DEFAULT 'DRAFT'
+    CHECK(allocationStatus IN('DRAFT','ALLOCATED','CONFIRMED','CANCELLED','FAILED')),
+  allocationMode TEXT NOT NULL DEFAULT 'BALANCED'
+    CHECK(allocationMode IN('NEAREST','LOWEST_PRICE','BALANCED')),
+  totalEstimatedPrice INTEGER NOT NULL DEFAULT 0 CHECK(totalEstimatedPrice >= 0),
+  totalDistanceMeter REAL,
+  estimatedReadyMinutes INTEGER,
+  scoreTotal REAL,
+  stockScore REAL,
+  regionScore REAL,
+  distanceScore REAL,
+  priceScore REAL,
+  eventScore REAL,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT,
+  FOREIGN KEY(cartCode) REFERENCES customer_carts(cartCode),
+  FOREIGN KEY(buyerChannelCode) REFERENCES profiles(channelCode),
+  FOREIGN KEY(assignedMarketChannelCode) REFERENCES profiles(channelCode)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_allocations_cart_code
+ON cart_allocations(cartCode)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_allocations_assigned_market_channel
+ON cart_allocations(assignedMarketChannelCode)
+`)
+
+const cartAllocationItemsSqlRow = db.prepare(`
+SELECT sql
+FROM sqlite_master
+WHERE type='table'
+  AND name='cart_allocation_items'
+LIMIT 1
+`).get() as { sql?: string } | undefined
+
+const cartAllocationItemsNeedsMigration =
+  (cartAllocationItemsSqlRow?.sql?.includes('channelProductId') ?? false) === false
+
+if (cartAllocationItemsNeedsMigration && cartAllocationItemsSqlRow?.sql) {
+  const legacyName = `cart_allocation_items_legacy_${Date.now()}`
+  db.exec(`ALTER TABLE cart_allocation_items RENAME TO ${legacyName}`)
+}
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS cart_allocation_items(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  allocationId INTEGER NOT NULL,
+  channelProductId INTEGER,
+  productCode TEXT,
+  requestedQuantity INTEGER NOT NULL DEFAULT 0 CHECK(requestedQuantity >= 0),
+  allocatedQuantity INTEGER NOT NULL DEFAULT 0 CHECK(allocatedQuantity >= 0),
+  unitPrice INTEGER NOT NULL DEFAULT 0 CHECK(unitPrice >= 0),
+  eventPrice INTEGER CHECK(eventPrice IS NULL OR eventPrice >= 0),
+  stockStatus TEXT
+    CHECK(stockStatus IS NULL OR stockStatus IN('UNKNOWN','IN_STOCK','LOW_STOCK','OUT_OF_STOCK','SOLD_OUT')),
+  itemScore REAL,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(allocationId) REFERENCES cart_allocations(id),
+  FOREIGN KEY(channelProductId) REFERENCES channel_products(id)
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_allocation_items_allocation
+ON cart_allocation_items(allocationId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_cart_allocation_items_channel_product
+ON cart_allocation_items(channelProductId)
 `)
 
 db.exec(`

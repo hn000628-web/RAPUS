@@ -543,11 +543,11 @@ export default function BusinessProfileSettingsPage() {
     typeCode?: 'STORE' | 'SHOPPING_MALL' | 'FREELANCER' | 'MOBILE_BIZ' | null
   ) {
     if (typeCode === 'STORE') {
-      return '고정형마켓'
+      return '오프라인스토어'
     }
 
     if (typeCode === 'SHOPPING_MALL') {
-      return '쇼핑몰형'
+      return '온라인스토어'
     }
 
     if (typeCode === 'FREELANCER') {

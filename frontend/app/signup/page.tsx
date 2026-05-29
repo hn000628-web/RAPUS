@@ -15,12 +15,11 @@
 
 // SECTION 01 : IMPORT
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CSSProperties, FormEvent } from 'react'
 
 import { signup } from '@/lib/signup-api'
-import type { SignupProfileType } from '@/lib/signup-api'
 
 // SECTION 02 : COMPONENT
 
@@ -31,14 +30,9 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
-  const [selectedProfile, setSelectedProfile] =
-    useState<SignupProfileType>('GENERAL')
   const [loading, setLoading] = useState(false)
-  const [channelCode, setChannelCode] = useState('')
-
-  useEffect(() => {
-    setChannelCode('자동 생성 예정 (A/B + BaseCode)')
-  }, [selectedProfile])
+  const channelCode = '자동 생성 예정 (A/B + BaseCode)'
+  const selectedProfile = 'GENERAL'
 
   const handleNextStep = () => {
     const normalizedEmail = email.trim().toLowerCase()
@@ -123,46 +117,6 @@ export default function SignupPage() {
         <p style={subTitle}>
           Sign Up for RAPUS Platform
         </p>
-
-        <div style={profileSelectWrapStyle}>
-          <button
-            type="button"
-            style={{
-              ...selectButton,
-              background:
-                selectedProfile === 'GENERAL'
-                  ? '#2563eb'
-                  : '#f3f4f6',
-              color:
-                selectedProfile === 'GENERAL'
-                  ? '#fff'
-                  : '#111827'
-            }}
-            onClick={() => setSelectedProfile('GENERAL')}
-            disabled={loading}
-          >
-            일반
-          </button>
-
-          <button
-            type="button"
-            style={{
-              ...selectButton,
-              background:
-                selectedProfile === 'BUSINESS'
-                  ? '#2563eb'
-                  : '#f3f4f6',
-              color:
-                selectedProfile === 'BUSINESS'
-                  ? '#fff'
-                  : '#111827'
-            }}
-            onClick={() => setSelectedProfile('BUSINESS')}
-            disabled={loading}
-          >
-            비즈니스
-          </button>
-        </div>
 
         {step === 1 && (
           <div style={formStyle}>
@@ -302,13 +256,7 @@ const logoStyle: CSSProperties = {
 const subTitle: CSSProperties = {
   fontSize: 13,
   color: '#64748b',
-  marginBottom: 28
-}
-
-const profileSelectWrapStyle: CSSProperties = {
-  display: 'flex',
-  gap: 12,
-  marginBottom: 12
+  marginBottom: 18
 }
 
 const formStyle: CSSProperties = {
@@ -334,16 +282,6 @@ const readonlyInputStyle: CSSProperties = {
   backgroundColor: '#f0f0f0',
   cursor: 'not-allowed',
   marginBottom: 12
-}
-
-const selectButton: CSSProperties = {
-  flex: 1,
-  height: 42,
-  borderRadius: 12,
-  border: '1px solid #e2e8f0',
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer'
 }
 
 const submitButtonStyle: CSSProperties = {

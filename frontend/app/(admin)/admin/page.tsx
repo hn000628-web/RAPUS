@@ -68,6 +68,40 @@ export default function AdminHomePage() {
             RAPUS 표준 상품 원장 / 바코드 / 상품코드 관리
           </p>
         </Link>
+
+        <Link
+          href="/admin/market"
+          style={{
+            display: 'block',
+            textDecoration: 'none',
+            color: 'inherit',
+            border: '1px solid #e5e7eb',
+            borderRadius: 12,
+            background: '#ffffff',
+            padding: 16
+          }}
+        >
+          <strong
+            style={{
+              display: 'block',
+              fontSize: 16,
+              marginBottom: 8
+            }}
+          >
+            마켓관리
+          </strong>
+          <p
+            style={{
+              margin: 0,
+              color: '#6b7280',
+              fontSize: 13,
+              lineHeight: 1.5
+            }}
+          >
+            마트 운영 콘솔 / 행사 / 상품 / 배너 / 바코드 관리
+          </p>
+        </Link>
+
       </section>
     </div>
   )

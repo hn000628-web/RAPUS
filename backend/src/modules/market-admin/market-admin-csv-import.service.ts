@@ -44,6 +44,10 @@ type MasterProductMatchRow = {
   productName: string;
   brandName: string | null;
   categoryName: string | null;
+  semanticProductCode: string | null;
+  categoryType: string | null;
+  parserType: BarcodeParserResult['parserType'] | null;
+  thumbnailUrl: string | null;
 };
 
 type ImportRowRecord = Record<string, string | number | boolean | null | undefined>;
@@ -92,7 +96,16 @@ type ImportPreviewRow = {
   id: number;
   rowNo: number;
   productName: string | null;
+  brandName: string | null;
   scanCodeValue: string | null;
+  productCode: string | null;
+  semanticProductCode: string | null;
+  categoryType: string | null;
+  parserType: BarcodeParserResult['parserType'] | null;
+  parserStatus: 'PARSER_SUCCESS' | 'SEMANTIC_REGISTRY_MATCHED' | 'RAW_UNKNOWN' | 'PARSER_FAILED';
+  masterLinkStatus: 'LINKED' | 'CREATE_REQUIRED' | 'PARSER_FAILED';
+  imageLinkStatus: 'LINKED' | 'MISSING';
+  thumbnailUrl: string | null;
   salePrice: number;
   eventCode: string | null;
   eventTitle: string | null;
@@ -762,11 +775,22 @@ export class MarketAdminCsvImportService {
   }
 
   private resolvePreviewRow(row: NormalizedImportRow): Omit<ImportPreviewRow, 'id'> {
+    const parserPreview = this.resolveParserPreviewMetadata(row);
+
     if (!row.scanCodeValue) {
       return {
         rowNo: row.rowNo,
         productName: row.productName,
+        brandName: row.supplierName,
         scanCodeValue: null,
+        productCode: null,
+        semanticProductCode: null,
+        categoryType: null,
+        parserType: null,
+        parserStatus: 'PARSER_FAILED',
+        masterLinkStatus: 'PARSER_FAILED',
+        imageLinkStatus: 'MISSING',
+        thumbnailUrl: null,
         salePrice: row.salePrice,
         eventCode: row.eventCode,
         eventTitle: row.eventTitle,
@@ -786,7 +810,9 @@ export class MarketAdminCsvImportService {
       return {
         rowNo: row.rowNo,
         productName: row.productName,
+        brandName: row.supplierName,
         scanCodeValue: row.scanCodeValue,
+        ...parserPreview,
         salePrice: row.salePrice,
         eventCode: row.eventCode,
         eventTitle: row.eventTitle,
@@ -806,7 +832,16 @@ export class MarketAdminCsvImportService {
       return {
         rowNo: row.rowNo,
         productName: row.productName,
+        brandName: row.supplierName ?? row.matchedProduct.brandName,
         scanCodeValue: row.scanCodeValue,
+        productCode: row.matchedProduct.productCode,
+        semanticProductCode: row.matchedProduct.semanticProductCode,
+        categoryType: row.matchedProduct.categoryType,
+        parserType: row.matchedProduct.parserType,
+        parserStatus: this.resolveParserStatus(row.matchedProduct.parserType),
+        masterLinkStatus: 'LINKED',
+        imageLinkStatus: row.matchedProduct.thumbnailUrl ? 'LINKED' : 'MISSING',
+        thumbnailUrl: row.matchedProduct.thumbnailUrl,
         salePrice: row.salePrice,
         eventCode: row.eventCode,
         eventTitle: row.eventTitle,
@@ -826,7 +861,9 @@ export class MarketAdminCsvImportService {
     return {
       rowNo: row.rowNo,
       productName: row.productName,
+      brandName: row.supplierName,
       scanCodeValue: row.scanCodeValue,
+      ...parserPreview,
       salePrice: row.salePrice,
       eventCode: row.eventCode,
       eventTitle: row.eventTitle,
@@ -840,6 +877,99 @@ export class MarketAdminCsvImportService {
       displayStatus: 'NEW_PRODUCT_REQUIRED',
       errorMessage: row.stock.stockNormalizeMemo,
     };
+  }
+
+  private resolveParserPreviewMetadata(
+    row: NormalizedImportRow,
+  ): Pick<
+    ImportPreviewRow,
+    | 'semanticProductCode'
+    | 'productCode'
+    | 'categoryType'
+    | 'parserType'
+    | 'parserStatus'
+    | 'masterLinkStatus'
+    | 'imageLinkStatus'
+    | 'thumbnailUrl'
+  > {
+    if (!row.scanCodeValue) {
+      return {
+        semanticProductCode: null,
+        productCode: null,
+        categoryType: null,
+        parserType: null,
+        parserStatus: 'PARSER_FAILED',
+        masterLinkStatus: 'PARSER_FAILED',
+        imageLinkStatus: 'MISSING',
+        thumbnailUrl: null,
+      };
+    }
+
+    if (row.matchedProduct) {
+      return {
+        semanticProductCode: row.matchedProduct.semanticProductCode,
+        productCode: row.matchedProduct.productCode,
+        categoryType: row.matchedProduct.categoryType,
+        parserType: row.matchedProduct.parserType,
+        parserStatus: this.resolveParserStatus(row.matchedProduct.parserType),
+        masterLinkStatus: 'LINKED',
+        imageLinkStatus: row.matchedProduct.thumbnailUrl ? 'LINKED' : 'MISSING',
+        thumbnailUrl: row.matchedProduct.thumbnailUrl,
+      };
+    }
+
+    try {
+      const parsed = this.barcodeParserService.parseScanCodeValue(row.scanCodeValue);
+
+      return {
+        semanticProductCode: parsed.semanticProductCode,
+        productCode: parsed.productCode,
+        categoryType: this.resolveParserCategoryType(parsed),
+        parserType: parsed.parserType,
+        parserStatus: this.resolveParserStatus(parsed.parserType),
+        masterLinkStatus:
+          parsed.parserType === 'RAW_UNKNOWN' ? 'PARSER_FAILED' : 'CREATE_REQUIRED',
+        imageLinkStatus: 'MISSING',
+        thumbnailUrl: null,
+      };
+    } catch {
+      return {
+        semanticProductCode: null,
+        productCode: null,
+        categoryType: null,
+        parserType: null,
+        parserStatus: 'PARSER_FAILED',
+        masterLinkStatus: 'PARSER_FAILED',
+        imageLinkStatus: 'MISSING',
+        thumbnailUrl: null,
+      };
+    }
+  }
+
+  private resolveParserStatus(
+    parserType: BarcodeParserResult['parserType'] | null,
+  ): ImportPreviewRow['parserStatus'] {
+    if (parserType === 'SEMANTIC_BARCODE') {
+      return 'SEMANTIC_REGISTRY_MATCHED';
+    }
+
+    if (parserType === 'RAW_UNKNOWN') {
+      return 'RAW_UNKNOWN';
+    }
+
+    if (parserType === 'EAN13_BARCODE') {
+      return 'PARSER_SUCCESS';
+    }
+
+    return 'PARSER_FAILED';
+  }
+
+  private resolveParserCategoryType(parsed: BarcodeParserResult): string | null {
+    const categoryType = parsed.parsedMetadata.categoryType;
+
+    return typeof categoryType === 'string' && categoryType.trim()
+      ? categoryType.trim()
+      : null;
   }
 
   private insertImportBatch(params: {
@@ -1027,12 +1157,28 @@ export class MarketAdminCsvImportService {
 
   private ensureMasterProductForImportRow(row: ImportRowForConfirm): MasterProductMatchRow {
     if (row.mappedMasterProductId && row.mappedProductCode) {
+      const mappedScanCodeValue = this.normalizeScanCode(
+        row.mappedScanCodeValue ?? row.rawBarcode,
+      );
+
+      if (mappedScanCodeValue) {
+        this.ensureMasterProductScanCodeRelation({
+          masterProductId: row.mappedMasterProductId,
+          productCode: row.mappedProductCode,
+          scanCodeValue: mappedScanCodeValue,
+        });
+      }
+
       return {
         masterProductId: row.mappedMasterProductId,
         productCode: row.mappedProductCode,
         productName: row.rawProductName ?? '상품명 미등록',
         brandName: row.rawSupplierName,
         categoryName: this.resolveCategoryName(row),
+        semanticProductCode: null,
+        categoryType: null,
+        parserType: null,
+        thumbnailUrl: null,
       };
     }
 
@@ -1045,6 +1191,12 @@ export class MarketAdminCsvImportService {
     const existing = this.findMasterProductByScanCode(scanCodeValue);
 
     if (existing) {
+      this.ensureMasterProductScanCodeRelation({
+        masterProductId: existing.masterProductId,
+        productCode: existing.productCode,
+        scanCodeValue,
+      });
+
       return existing;
     }
 
@@ -1108,6 +1260,83 @@ export class MarketAdminCsvImportService {
 
     const masterProductId = Number(result.lastInsertRowid);
 
+    this.ensureMasterProductScanCodeRelation({
+      masterProductId,
+      productCode,
+      scanCodeValue,
+      parsedProductCode,
+    });
+
+    return {
+      masterProductId,
+      productCode,
+      productName,
+      brandName: row.rawSupplierName,
+      categoryName,
+      semanticProductCode: parsedProductCode.semanticProductCode,
+      categoryType: this.resolveParserCategoryType(parsedProductCode),
+      parserType: parsedProductCode.parserType,
+      thumbnailUrl: null,
+    };
+  }
+
+  private ensureMasterProductScanCodeRelation(params: {
+    masterProductId: number;
+    productCode: string;
+    scanCodeValue: string;
+    parsedProductCode?: BarcodeParserResult;
+  }): void {
+    const parsedProductCode =
+      params.parsedProductCode ??
+      this.barcodeParserService.parseScanCodeValue(params.scanCodeValue);
+    const scanCodeValue = parsedProductCode.scanCodeValue;
+
+    const existing = db
+      .prepare(
+        `
+        SELECT
+          id,
+          masterProductId,
+          productCode,
+          isActive
+        FROM master_product_scan_codes
+        WHERE scanCodeValue = ?
+          AND deletedAt IS NULL
+        LIMIT 1
+        `,
+      )
+      .get(scanCodeValue) as
+      | {
+          id: number;
+          masterProductId: number;
+          productCode: string;
+          isActive: number;
+        }
+      | undefined;
+
+    if (existing) {
+      if (
+        existing.masterProductId !== params.masterProductId ||
+        existing.productCode !== params.productCode
+      ) {
+        throw new BadRequestException('SCAN_CODE_ALREADY_LINKED');
+      }
+
+      if (existing.isActive !== 1) {
+        db.prepare(
+          `
+          UPDATE master_product_scan_codes
+          SET
+            isActive = 1,
+            updatedAt = CURRENT_TIMESTAMP
+          WHERE id = ?
+          `,
+        ).run(existing.id);
+      }
+
+      return;
+    }
+
     db.prepare(
       `
       INSERT INTO master_product_scan_codes(
@@ -1119,13 +1348,14 @@ export class MarketAdminCsvImportService {
         externalBarcodeFormat,
         isPrimary,
         isActive,
+        createdAt,
         updatedAt
       )
-      VALUES(?, ?, ?, ?, ?, ?, 1, 1, CURRENT_TIMESTAMP)
+      VALUES(?, ?, ?, ?, ?, ?, 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       `,
     ).run(
-      masterProductId,
-      productCode,
+      params.masterProductId,
+      params.productCode,
       parsedProductCode.parserType === 'EAN13_BARCODE'
         ? 'EXTERNAL_BARCODE'
         : 'CUSTOM',
@@ -1137,14 +1367,6 @@ export class MarketAdminCsvImportService {
         ? this.resolveExternalBarcodeFormat(scanCodeValue)
         : null,
     );
-
-    return {
-      masterProductId,
-      productCode,
-      productName,
-      brandName: row.rawSupplierName,
-      categoryName,
-    };
   }
 
   private resolveConfirmProcessPolicy(
@@ -1624,10 +1846,25 @@ export class MarketAdminCsvImportService {
           mp.productCode AS productCode,
           mp.productName AS productName,
           mp.brandName AS brandName,
-          mp.categoryName AS categoryName
+          mp.categoryName AS categoryName,
+          mp.semanticProductCode AS semanticProductCode,
+          COALESCE(mp.categoryCode, mp.categoryLarge, mp.categoryName) AS categoryType,
+          mp.barcodeParserType AS parserType,
+          CASE
+            WHEN ia.filePath IS NOT NULL AND ia.filePath LIKE '/%' THEN ia.filePath
+            WHEN ia.filePath IS NOT NULL THEN '/media/' || ia.filePath
+            ELSE NULL
+          END AS thumbnailUrl
         FROM master_product_scan_codes mpsc
         INNER JOIN master_products mp
           ON mp.id = mpsc.masterProductId
+        LEFT JOIN master_product_thumbnails mpt
+          ON mpt.masterProductId = mp.id
+          AND mpt.isPrimary = 1
+          AND mpt.isActive = 1
+        LEFT JOIN image_assets ia
+          ON ia.id = COALESCE(mp.thumbnailImageAssetId, mpt.imageAssetId)
+          AND ia.isActive = 1
         WHERE mpsc.scanCodeValue = ?
           AND mpsc.isActive = 1
           AND mpsc.deletedAt IS NULL
@@ -1651,10 +1888,25 @@ export class MarketAdminCsvImportService {
             mp.productCode AS productCode,
             mp.productName AS productName,
             mp.brandName AS brandName,
-            mp.categoryName AS categoryName
+            mp.categoryName AS categoryName,
+            mp.semanticProductCode AS semanticProductCode,
+            COALESCE(mp.categoryCode, mp.categoryLarge, mp.categoryName) AS categoryType,
+            mp.barcodeParserType AS parserType,
+            CASE
+              WHEN ia.filePath IS NOT NULL AND ia.filePath LIKE '/%' THEN ia.filePath
+              WHEN ia.filePath IS NOT NULL THEN '/media/' || ia.filePath
+              ELSE NULL
+            END AS thumbnailUrl
           FROM master_product_barcodes mpb
           INNER JOIN master_products mp
             ON mp.id = mpb.masterProductId
+          LEFT JOIN master_product_thumbnails mpt
+            ON mpt.masterProductId = mp.id
+            AND mpt.isPrimary = 1
+            AND mpt.isActive = 1
+          LEFT JOIN image_assets ia
+            ON ia.id = COALESCE(mp.thumbnailImageAssetId, mpt.imageAssetId)
+            AND ia.isActive = 1
           WHERE mpb.gtin = ?
             AND mp.isActive = 1
             AND mp.deletedAt IS NULL

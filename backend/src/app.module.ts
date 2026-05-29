@@ -34,6 +34,8 @@ import { CartModule } from './modules/cart/cart.module';
 import { MarketAdminModule } from './modules/market-admin/market-admin.module';
 import { MarketEventsModule } from './modules/market-events/market-events.module';
 import { MasterProductCategoriesModule } from './modules/master-product-categories/master-product-categories.module';
+import { WalletsModule } from './modules/wallets/wallets.module';
+import { GoodsReceiptsModule } from './modules/goods-receipts/goods-receipts.module';
 
 // SECTION 08 : AUTH GUARD
 import { JwtAuthGuard } from './modules/auth/jwt.guard';
@@ -75,6 +77,8 @@ import { ProfileSummaryModule } from './modules/shared/profile-summary.module';
     MarketAdminModule,
     MarketEventsModule,
     MasterProductCategoriesModule,
+    WalletsModule,
+    GoodsReceiptsModule,
 
     AdminModule,
 

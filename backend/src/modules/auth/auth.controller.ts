@@ -12,8 +12,10 @@ import {
   Get,
   UseGuards,
   Request,
+  Res,
   BadRequestException
 } from '@nestjs/common'
+import type { Response } from 'express'
 
 import { AuthService } from './auth.service'
 import { AuthGuard } from '@nestjs/passport'
@@ -36,6 +38,11 @@ type SignupBody = {
   businessTypeCode?: 'NORMAL' | 'STORE' | 'SHOPPING_MALL' | 'FREELANCER' | 'MOBILE_BIZ'
 }
 
+type BusinessSignupBody = {
+  displayName?: string
+  businessTypeCode?: 'NORMAL' | 'STORE' | 'SHOPPING_MALL' | 'FREELANCER' | 'MOBILE_BIZ'
+}
+
 type JwtUser = {
   id?: number
   userId?: number
@@ -43,6 +50,30 @@ type JwtUser = {
   profileId: number
   profileType: 'GENERAL' | 'BUSINESS'
   channelCode: string
+}
+
+type EmergencyQrTokenType =
+  | 'MASTER_ACCESS'
+  | 'GUARDIAN_ACCESS'
+  | 'EMERGENCY_LOGIN'
+
+type EmergencyGenerateQrBody = {
+  channelCode: string
+  emergencyAccessCode: string
+  tokenType?: EmergencyQrTokenType
+}
+
+type EmergencyVerifyQrBody = {
+  channelCode?: string
+  tokenId?: string
+  qrToken?: string
+  qrPayload?: string
+}
+
+type RequestWithMeta = {
+  ip?: string
+  query?: Record<string, string | string[] | undefined>
+  headers?: Record<string, string | string[] | undefined>
 }
 
 @Controller('auth')
@@ -100,12 +131,51 @@ export class AuthController {
   }
 
   /* ==================================================
+  SECTION 01-2 BUSINESS SIGNUP
+  POST /auth/business-signup
+  ================================================== */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('business-signup')
+  async businessSignup(
+    @Request() req: { user: JwtUser },
+    @Body() body: BusinessSignupBody
+  ) {
+    const userId = req.user.id ?? req.user.userId ?? req.user.sub
+
+    if (!userId) {
+      throw new BadRequestException('invalid jwt payload')
+    }
+
+    return this.authService.signupBusinessProfile(userId, body)
+  }
+
+  /* ==================================================
+  SECTION 01-3 BUSINESS TRIAL APPLY
+  POST /auth/business-trial-apply
+  ================================================== */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('business-trial-apply')
+  async businessTrialApply(
+    @Request() req: { user: JwtUser }
+  ) {
+    const userId = req.user.id ?? req.user.userId ?? req.user.sub
+
+    if (!userId) {
+      throw new BadRequestException('invalid jwt payload')
+    }
+
+    return this.authService.businessTrialApply(userId)
+  }
+
+  /* ==================================================
   SECTION 02 ME
   GET /auth/me
   ================================================== */
   @UseGuards(AuthGuard('jwt'))
   @Get('me')
   async me(@Request() req: { user: JwtUser }) {
+    this.authService.enforceAdminSessionAliveIfAdmin(req.user.profileId)
+
     const profile = await this.authService.getProfileById(req.user.profileId)
     const userId = profile.userId ?? req.user.id ?? req.user.userId ?? req.user.sub
     if (!userId) throw new BadRequestException('invalid jwt payload')
@@ -120,7 +190,12 @@ export class AuthController {
         channelCode: profile.channelCode || req.user.channelCode,
         displayName: profile.displayName,
         email: user.email,          // 추가
-        baseCode: profile.baseCode  // 추가
+        baseCode: profile.baseCode,  // 추가
+        corporationGrade: user.corporationGrade,
+        providerGrade: user.providerGrade ?? 0,
+        genesisGrade: user.genesisGrade ?? 0,
+        userGrade: user.userGrade ?? 0,
+        meteoAiGrade: user.meteoAiGrade ?? 0
       }
     }
   }
@@ -131,7 +206,30 @@ export class AuthController {
   ================================================== */
   @UseGuards(AuthGuard('jwt'))
   @Post('logout')
-  async logout(@Request() req: { user: JwtUser }) {
+  async logout(
+    @Request() req: { user: JwtUser },
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const clearCookieOptions = {
+      path: '/',
+      sameSite: 'lax' as const
+    }
+
+    const cookieKeys = [
+      'accessToken',
+      'refreshToken',
+      'rememberToken',
+      'rememberMe',
+      'autoLogin',
+      'profileSession',
+      'profileSessionId',
+      'sessionId'
+    ] as const
+
+    cookieKeys.forEach((cookieKey) => {
+      res.clearCookie(cookieKey, clearCookieOptions)
+    })
+
     return this.authService.logout(req.user.profileId)
   }
 
@@ -146,6 +244,16 @@ export class AuthController {
   }
 
   /* ==================================================
+  SECTION 04-1 ADMIN HEARTBEAT
+  POST /auth/admin-heartbeat
+  ================================================== */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('admin-heartbeat')
+  async adminHeartbeat(@Request() req: { user: JwtUser }) {
+    return this.authService.adminHeartbeat(req.user.profileId)
+  }
+
+  /* ==================================================
   SECTION 05 PROFILE SWITCH
   POST /auth/switch
   ================================================== */
@@ -157,5 +265,90 @@ export class AuthController {
     if (!userId) throw new BadRequestException('invalid jwt payload')
 
     return this.authService.switchProfile(userId, body.profileType)
+  }
+
+  /* ==================================================
+  SECTION 06 EMERGENCY QR GENERATE
+  POST /auth/emergency/generate-qr
+  ================================================== */
+  @Post('emergency/generate-qr')
+  async generateEmergencyQr(
+    @Body() body: EmergencyGenerateQrBody,
+    @Request() req: RequestWithMeta
+  ) {
+    if (!body.channelCode) {
+      throw new BadRequestException('channelCode is required')
+    }
+
+    if (!body.emergencyAccessCode) {
+      throw new BadRequestException('emergencyAccessCode is required')
+    }
+
+    return this.authService.generateEmergencyQr(
+      {
+        channelCode: body.channelCode,
+        emergencyAccessCode: body.emergencyAccessCode,
+        tokenType: body.tokenType
+      },
+      {
+        ipAddress: req.ip ?? null,
+        userAgent: this.getRequestUserAgent(req)
+      }
+    )
+  }
+
+  /* ==================================================
+  SECTION 07 EMERGENCY QR VERIFY
+  POST /auth/emergency/verify-qr
+  ================================================== */
+  @Post('emergency/verify-qr')
+  async verifyEmergencyQr(
+    @Body() body: EmergencyVerifyQrBody,
+    @Request() req: RequestWithMeta
+  ) {
+    if (!body.qrPayload && (!body.channelCode || !body.tokenId || !body.qrToken)) {
+      throw new BadRequestException('qr payload is required')
+    }
+
+    return this.authService.verifyEmergencyQr(
+      {
+        channelCode: body.channelCode,
+        tokenId: body.tokenId,
+        qrToken: body.qrToken,
+        qrPayload: body.qrPayload
+      },
+      {
+        ipAddress: req.ip ?? null,
+        userAgent: this.getRequestUserAgent(req)
+      }
+    )
+  }
+
+  /* ==================================================
+  SECTION 08 EMERGENCY QR STATUS
+  GET /auth/emergency/status
+  ================================================== */
+  @Get('emergency/status')
+  async getEmergencyStatus(@Request() req: RequestWithMeta) {
+    const queryChannelCode = req.query?.channelCode
+    const channelCode = Array.isArray(queryChannelCode)
+      ? queryChannelCode[0]
+      : queryChannelCode
+
+    if (!channelCode) {
+      throw new BadRequestException('channelCode is required')
+    }
+
+    return this.authService.getEmergencyQrStatus(channelCode)
+  }
+
+  private getRequestUserAgent(req: RequestWithMeta): string | null {
+    const userAgent = req.headers?.['user-agent']
+
+    if (Array.isArray(userAgent)) {
+      return userAgent[0] ?? null
+    }
+
+    return userAgent ?? null
   }
 }

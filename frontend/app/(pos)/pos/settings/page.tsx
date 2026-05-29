@@ -80,6 +80,10 @@ export default function PosSettingsPage() {
     router.push('/pos/settings/staff')
   }, [router])
 
+  const handleGoPosFeedSettings = useCallback(() => {
+    router.push('/pos')
+  }, [router])
+
   const handleGoBusinessSettings = useCallback(() => {
     router.push('/profile/business/account')
   }, [router])
@@ -153,6 +157,13 @@ export default function PosSettingsPage() {
         onClick: handleGoBusinessSettings
       },
       {
+        title: '포스피드설정',
+        description: '포스 진입 시 사용할 기본 바로가기 경로를 설정합니다.',
+        items: ['기본 POS 경로', '포스피드 바로가기', '미설정 시 /pos 사용'],
+        actionLabel: '포스피드 설정',
+        onClick: handleGoPosFeedSettings
+      },
+      {
         title: '출력 설정',
         description: '출력 장치와 전표 유형을 관리합니다.',
         items: ['영수증 출력', '주문서 출력', '주방 출력'],
@@ -177,6 +188,7 @@ export default function PosSettingsPage() {
     handleGoKeyboardSettings,
     handleGoMenuSettings,
     handleGoOrderTypesSettings,
+    handleGoPosFeedSettings,
     handleGoStaffSettings,
     handleGoTableSettings
   ])

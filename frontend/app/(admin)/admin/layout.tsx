@@ -5,7 +5,13 @@ SECTION 01 : IMPORT
 ================================================== */
 
 import { usePathname, useRouter } from 'next/navigation'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import {
+  getMe,
+  adminHeartbeat,
+  clearClientAuthState,
+  logout
+} from '@/lib/authApi'
 
 
 /* ==================================================
@@ -33,6 +39,7 @@ SECTION 03 : CONSTANT
 ================================================== */
 
 const TOPBAR_HEIGHT=52
+const ADMIN_HEARTBEAT_INTERVAL_MS = 10000
 
 
 /* ==================================================
@@ -45,6 +52,127 @@ export default function AdminLayout(
 
 const router=useRouter()
 const pathname=usePathname()
+const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+const [isAdminAllowed, setIsAdminAllowed] = useState(false)
+const [isMeteoMasterAllowed, setIsMeteoMasterAllowed] = useState(false)
+
+const handleBusiness = () => {
+  router.push('/profile/business')
+}
+
+const handleLogout = async () => {
+  try {
+    await logout()
+  } catch {
+  } finally {
+    router.replace('/login')
+    router.refresh()
+  }
+}
+
+useEffect(() => {
+let mounted = true
+
+async function checkAdminAccess() {
+  try {
+    const me = await getMe()
+    const corporationGrade = Number(me?.user?.corporationGrade ?? 0)
+    const meteoAiGrade = Number(me?.user?.meteoAiGrade ?? 0)
+    const allowed = corporationGrade >= 24
+
+    if (!mounted) {
+      return
+    }
+
+    setIsAdminAllowed(allowed)
+    setIsMeteoMasterAllowed(meteoAiGrade >= 24)
+
+    if (!allowed) {
+      router.replace('/login')
+    }
+  } catch {
+    if (!mounted) {
+      return
+    }
+
+    setIsAdminAllowed(false)
+    setIsMeteoMasterAllowed(false)
+    router.replace('/login')
+  } finally {
+    if (mounted) {
+      setIsCheckingAuth(false)
+    }
+  }
+}
+
+checkAdminAccess()
+
+return () => {
+  mounted = false
+}
+}, [router])
+
+useEffect(() => {
+if (!isAdminAllowed) {
+  return
+}
+
+let stopped = false
+
+async function failClosedRedirect() {
+  if (stopped) {
+    return
+  }
+
+  stopped = true
+
+  clearClientAuthState()
+
+  router.replace('/login')
+  router.refresh()
+}
+
+async function sendHeartbeat() {
+  if (stopped) {
+    return
+  }
+
+  try {
+    const heartbeat = await adminHeartbeat()
+    if (!heartbeat?.ok) {
+      await failClosedRedirect()
+      return
+    }
+  } catch {
+    await failClosedRedirect()
+  }
+}
+
+const intervalId = window.setInterval(
+  () => {
+    void sendHeartbeat()
+  },
+  ADMIN_HEARTBEAT_INTERVAL_MS
+)
+
+void sendHeartbeat()
+
+function handlePageHide() {
+  clearClientAuthState()
+}
+
+window.addEventListener('pagehide', handlePageHide)
+
+return () => {
+  stopped = true
+  window.clearInterval(intervalId)
+  window.removeEventListener('pagehide', handlePageHide)
+}
+}, [isAdminAllowed, router])
+
+if (isCheckingAuth || !isAdminAllowed) {
+  return null
+}
 
 return(
 
@@ -78,6 +206,51 @@ fontWeight:600
 }}
 >
 BASEBOOK · ADMIN
+<div
+style={{
+display:'flex',
+gap:12,
+marginLeft:'auto'
+}}
+>
+  <button
+    type='button'
+    onClick={handleBusiness}
+    style={{
+      height:34,
+      minWidth:92,
+      padding:'0 18px',
+      border:'1px solid #3f3f46',
+      borderRadius:6,
+      color:'#fff',
+      background:'#25272a',
+      cursor:'pointer',
+      fontWeight:600,
+      fontSize:13
+    }}
+  >
+    비지니스
+  </button>
+
+  <button
+    type='button'
+    onClick={handleLogout}
+    style={{
+      height:34,
+      minWidth:92,
+      padding:'0 18px',
+      border:'1px solid #3f3f46',
+      borderRadius:6,
+      color:'#fff',
+      background:'#2f3236',
+      cursor:'pointer',
+      fontWeight:600,
+      fontSize:13
+    }}
+  >
+    로그아웃
+  </button>
+</div>
 </div>
 
 
@@ -117,6 +290,14 @@ label="관리자 홈"
 onClick={()=>router.push('/admin')}
 active={pathname==='/admin'}
 />
+
+{isMeteoMasterAllowed ? (
+<NavItem
+label="메테오AI"
+onClick={()=>router.push('/admin/meteo-ai')}
+active={pathname.startsWith('/admin/meteo-ai')}
+/>
+) : null}
 
 <NavItem
 label="Users"

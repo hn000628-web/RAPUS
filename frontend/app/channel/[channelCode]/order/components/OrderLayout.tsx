@@ -368,11 +368,11 @@ function resolveBusinessTypeLabel(
     .toUpperCase()
 
   if (raw === 'STORE') {
-    return '고정형마켓'
+    return '오프라인스토어'
   }
 
   if (raw === 'SHOPPING_MALL') {
-    return '쇼핑몰형'
+    return '온라인스토어'
   }
 
   if (raw === 'FREELANCER') {

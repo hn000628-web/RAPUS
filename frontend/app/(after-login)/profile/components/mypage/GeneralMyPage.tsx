@@ -13,6 +13,11 @@
 // SECTION 01 : IMPORT
 
 import {
+  useEffect,
+  useState
+} from 'react'
+
+import {
   useRouter
 } from 'next/navigation'
 
@@ -27,6 +32,7 @@ import styles from '../../ProfilePage.module.css'
 type AccountInfoState = {
   email: string
   channelCode: string
+  userGrade?: number | null
 }
 
 type ProfileEntryConfig = {
@@ -55,8 +61,10 @@ type GeneralMyPageProps = {
   generalAccountSummary: ProfileAccountResponseData | null
   profileConfig: ProfileEntryConfig
   loadingSwitch: boolean
+  businessProfileSwitching: boolean
   personalItems: HubCardItem[]
   onSwitchProfile: () => void
+  onMoveBusinessProfile: () => void
 }
 
 // SECTION 03 : CONSTANT
@@ -81,10 +89,33 @@ export default function GeneralMyPage({
   generalAccountSummary,
   profileConfig,
   loadingSwitch,
+  businessProfileSwitching,
   personalItems,
-  onSwitchProfile
+  onSwitchProfile,
+  onMoveBusinessProfile
 }: GeneralMyPageProps) {
   const router = useRouter()
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false)
+  const canMoveBusinessProfile = Boolean(
+    accountInfo.userGrade && accountInfo.userGrade >= 1
+  )
+
+  useEffect(() => {
+    if (!isAccountModalOpen) {
+      return
+    }
+
+    function handleEscapeKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsAccountModalOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleEscapeKey)
+    return () => {
+      window.removeEventListener('keydown', handleEscapeKey)
+    }
+  }, [isAccountModalOpen])
 
   // SECTION 05 : UI BLOCK
 
@@ -119,9 +150,21 @@ export default function GeneralMyPage({
               </section>
 
               <section className={styles.section}>
-                <h2 className={styles.sectionTitle}>
-                  계정 정보
-                </h2>
+                <div className={styles.sectionHeadRow}>
+                  <h2 className={styles.sectionTitle}>
+                    계정 정보
+                  </h2>
+
+                  <button
+                    type="button"
+                    className={styles.accountOpenButton}
+                    onClick={() => {
+                      setIsAccountModalOpen(true)
+                    }}
+                  >
+                    계정정보
+                  </button>
+                </div>
 
                 <div className={styles.accountInfoBox}>
                   <InfoRow
@@ -134,47 +177,22 @@ export default function GeneralMyPage({
                     value={accountInfo.channelCode}
                   />
 
-                  <InfoRow
-                    label="생년월일"
-                    value={buildNullableDisplayText(
-                      generalAccountSummary?.birthDate
-                    )}
-                  />
-
-                  <InfoRow
-                    label="성인인증"
-                    value={buildAdultVerificationText(
-                      generalAccountSummary?.adultVerificationStatus
-                    )}
-                    valueToneClassName={buildAdultVerificationToneClassName(
-                      generalAccountSummary?.adultVerificationStatus
-                    )}
-                  />
-
-                  <InfoRow
-                    label="기본지역"
-                    value={buildNullableDisplayText(
-                      generalAccountSummary?.detailAddress
-                    )}
-                    isLongValue
-                  />
-
-                  <InfoRow
-                    label="기본연락처"
-                    value={formatKoreanPhoneDisplay(
-                      generalAccountSummary?.contactPhone
-                    )}
-                  />
-
-                  <InfoRow
-                    label="2차비밀번호"
-                    value={buildPasswordStatusText(
-                      generalAccountSummary?.paymentPasswordStatus
-                    )}
-                    valueToneClassName={buildPasswordStatusToneClassName(
-                      generalAccountSummary?.paymentPasswordStatus
-                    )}
-                  />
+                  {canMoveBusinessProfile ? (
+                    <div className={styles.accountInfoActionRow}>
+                      <button
+                        type="button"
+                        className={styles.accountInfoBusinessButton}
+                        disabled={businessProfileSwitching}
+                        onClick={() => {
+                          onMoveBusinessProfile()
+                        }}
+                      >
+                        {businessProfileSwitching
+                          ? '계정을 전환합니다'
+                          : '비지니스 프로필'}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               </section>
             </div>
@@ -247,6 +265,121 @@ export default function GeneralMyPage({
           </div>
         </section>
       </div>
+
+      {isAccountModalOpen ? (
+        <div
+          className={styles.accountModalOverlay}
+          role="presentation"
+          onClick={() => {
+            setIsAccountModalOpen(false)
+          }}
+        >
+          <section
+            className={styles.accountModal}
+            role="dialog"
+            aria-modal="true"
+            aria-label="계정 정보"
+            onClick={(event) => {
+              event.stopPropagation()
+            }}
+          >
+            <div className={styles.accountModalHeader}>
+              <h3 className={styles.accountModalTitle}>
+                계정 정보
+              </h3>
+
+              <button
+                type="button"
+                className={styles.accountModalCloseButton}
+                aria-label="닫기"
+                onClick={() => {
+                  setIsAccountModalOpen(false)
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className={styles.accountInfoBox}>
+              <InfoRow
+                label="이메일"
+                value={accountInfo.email}
+                copyValue={accountInfo.email}
+              />
+
+              <InfoRow
+                label="채널코드"
+                value={accountInfo.channelCode}
+                copyValue={accountInfo.channelCode}
+              />
+
+              <InfoRow
+                label="생년월일"
+                value={buildNullableDisplayText(
+                  generalAccountSummary?.birthDate
+                )}
+              />
+
+              <InfoRow
+                label="성인인증"
+                value={buildAdultVerificationText(
+                  generalAccountSummary?.adultVerificationStatus
+                )}
+                valueToneClassName={buildAdultVerificationToneClassName(
+                  generalAccountSummary?.adultVerificationStatus
+                )}
+              />
+
+              <InfoRow
+                label="기본지역"
+                value={buildNullableDisplayText(
+                  generalAccountSummary?.detailAddress
+                )}
+                isLongValue
+              />
+
+              <InfoRow
+                label="기본연락처"
+                value={formatKoreanPhoneDisplay(
+                  generalAccountSummary?.contactPhone
+                )}
+              />
+
+              <InfoRow
+                label="2차비밀번호"
+                value={buildPasswordStatusText(
+                  generalAccountSummary?.paymentPasswordStatus
+                )}
+                valueToneClassName={buildPasswordStatusToneClassName(
+                  generalAccountSummary?.paymentPasswordStatus
+                )}
+              />
+            </div>
+
+            <div className={styles.accountModalFooter}>
+              <button
+                type="button"
+                className={styles.accountModalGhostButton}
+                onClick={() => {
+                  setIsAccountModalOpen(false)
+                }}
+              >
+                닫기
+              </button>
+
+              <button
+                type="button"
+                className={styles.accountModalPrimaryButton}
+                onClick={() => {
+                  router.push('/profile/account')
+                }}
+              >
+                수정하기
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </main>
   )
 }
@@ -342,12 +475,14 @@ function InfoRow({
   label,
   value,
   isLongValue = false,
-  valueToneClassName
+  valueToneClassName,
+  copyValue
 }: {
   label: string
   value: string
   isLongValue?: boolean
   valueToneClassName?: string
+  copyValue?: string
 }) {
   return (
     <div className={styles.infoRow}>
@@ -355,15 +490,30 @@ function InfoRow({
         {label}
       </span>
 
-      <strong
-        className={[
-          styles.infoValue,
-          isLongValue ? styles.infoValueLong : '',
-          valueToneClassName ?? ''
-        ].join(' ').trim()}
-      >
-        {value}
-      </strong>
+      <div className={styles.infoValueWrap}>
+        <strong
+          className={[
+            styles.infoValue,
+            isLongValue ? styles.infoValueLong : '',
+            valueToneClassName ?? ''
+          ].join(' ').trim()}
+        >
+          {value}
+        </strong>
+
+        {copyValue ? (
+          <button
+            type="button"
+            className={styles.copyValueButton}
+            aria-label={`${label} 복사`}
+            onClick={() => {
+              void navigator.clipboard.writeText(copyValue)
+            }}
+          >
+            복사
+          </button>
+        ) : null}
+      </div>
     </div>
   )
 }

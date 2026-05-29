@@ -1,0 +1,131 @@
+MART PRICE SYSTEM 5 COLUMNS SNAPSHOT
+
+==================================================
+SECTION 01 : CORE CONCEPT
+==================================================
+
+마트 가격 시스템은 5개 가격 컬럼으로 고정한다.
+
+1) purchasePrice
+2) regularPrice
+3) eventPrice
+4) specialPrice
+5) appliedPrice
+
+실제 판매/배정/표시 기준은 appliedPrice이다.
+
+==================================================
+SECTION 02 : FIVE PRICE COLUMNS RULE
+==================================================
+
+고정 컬럼:
+- purchasePrice (매입가)
+- regularPrice (일반가)
+- eventPrice (행사가)
+- specialPrice (특판가)
+- appliedPrice (실제 적용가)
+
+가격 기준값(1~4)과 실제 적용값(5)을 분리한다.
+
+==================================================
+SECTION 03 : PURCHASE PRICE RULE
+==================================================
+
+purchasePrice:
+- 공급사 매입 원가
+- 관리자 전용
+- 외부 API / 프론트 / 장바구니 / 주문자 노출 금지
+
+==================================================
+SECTION 04 : REGULAR PRICE RULE
+==================================================
+
+regularPrice:
+- 기본 정상 판매가
+- 이벤트/특판 미적용 시 기준가
+
+==================================================
+SECTION 05 : EVENT PRICE RULE
+==================================================
+
+eventPrice:
+- 일반 행사 가격
+- event 운영 시 적용 가능
+
+==================================================
+SECTION 06 : SPECIAL PRICE RULE
+==================================================
+
+specialPrice:
+- 특판 초특가
+- 기간성 가격
+- specialPriceStartAt / specialPriceEndAt 사용
+
+==================================================
+SECTION 07 : APPLIED PRICE RULE
+==================================================
+
+appliedPrice:
+- 실제 판매가
+- 장바구니/배정/주문/화면 표시 기준값
+
+==================================================
+SECTION 08 : APPLIED PRICE TYPE RULE
+==================================================
+
+appliedPriceType:
+- REGULAR
+- EVENT
+- SPECIAL
+
+해석:
+- REGULAR -> appliedPrice는 regularPrice 기준
+- EVENT -> appliedPrice는 eventPrice 기준
+- SPECIAL -> appliedPrice는 specialPrice 기준
+
+==================================================
+SECTION 09 : PRODUCT LOOKUP RULE
+==================================================
+
+조회 키:
+- channelCode + productCode
+
+UNIQUE(channelCode, productCode) 유지
+
+==================================================
+SECTION 10 : MASTER PRODUCT PRICE PROHIBITION
+==================================================
+
+master_products 가격 저장 금지:
+- purchasePrice
+- regularPrice
+- eventPrice
+- specialPrice
+- appliedPrice
+
+가격은 channel_product_prices 전용
+
+==================================================
+SECTION 11 : ADMIN ONLY PURCHASE PRICE RULE
+==================================================
+
+purchasePrice는 관리자 내부 운영값이다.
+외부 노출 금지 정책을 유지한다.
+
+==================================================
+SECTION 12 : FINAL DECLARATION
+==================================================
+
+가격 컬럼은 총 5개로 고정한다.
+
+purchasePrice = 매입가
+regularPrice = 일반 판매가
+eventPrice = 행사 판매가
+specialPrice = 특판 판매가
+appliedPrice = 실제 적용가
+
+실제 판매/배정/표시 기준은 appliedPrice이다.
+행사/특판 표시는 appliedPriceType으로 판단한다.
+master_products는 가격을 저장하지 않는다.
+가격은 channel_product_prices 전용이다.
+

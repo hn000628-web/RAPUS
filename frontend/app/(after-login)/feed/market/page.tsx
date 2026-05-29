@@ -85,7 +85,7 @@ const MARKET_MOCK_CARDS: MarketMockCard[] = [
   {
     id: 'market-green',
     channelCode: 'B1B2C3D4E5F6G',
-    name: '그린 생활마트',
+    name: '상호명 미설정',
     industryName: '생활용품',
     regionName: '상무지구',
     description: '세제 / 욕실 / 청소용품 전문 스토어',

@@ -95,6 +95,7 @@
 }
 
 .headerActions button,
+.headerActions a,
 .bannerControls button,
 .searchItem button,
 .removeButton {
@@ -107,9 +108,11 @@
   font-size: 13px;
   font-weight: 900;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .headerActions button:hover,
+.headerActions a:hover,
 .bannerControls button:hover,
 .searchItem button:hover,
 .removeButton:hover {

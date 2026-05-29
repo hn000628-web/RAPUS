@@ -1,0 +1,139 @@
+FILE: METEO_AI_GOVERNANCE_ABSOLUTE_RULE_SNAPSHOT
+===============================================
+
+SECTION 01 : CORE PRINCIPLE
+===========================
+MeteoAI 운영권은
+플랫폼 일반 권한과 분리된
+독립 권한 체계이다.
+
+SECTION 02 : METEO AI GRADE
+===========================
+컬럼
+meteoAiGrade
+
+범위
+0 ~ 24
+
+SECTION 03 : SUPREME CONTROLLER
+===============================
+Grade 24
+=
+MeteoAI Supreme Controller
+최고 지도자
+최고 운영자
+
+권한
+AI Provider 관리
+AI Model 관리
+AI 정책 관리
+AI 비용 관리
+AI 성능 관리
+AI 로그 관리
+AI 보안 관리
+AI 등급 관리
+
+SECTION 04 : GRADE CONTROL RULE
+===============================
+Grade 24
+↓
+23 부여 가능
+22 부여 가능
+21 부여 가능
+20 부여 가능
+...
+0 부여 가능
+
+Grade 23 이하
+↓
+24 생성 금지
+24 수정 금지
+24 삭제 금지
+
+SECTION 05 : GOVERNANCE RULE
+============================
+Grade 24
+유일 최고 권한
+
+최고 권한은
+다른 사용자의
+meteoAiGrade
+변경 가능
+
+SECTION 06 : ACCESS RULE
+========================
+/meteoai
+사용 가능
+meteoAiGrade >= 0
+
+/meteoai_admin
+관리자
+meteoAiGrade >= 20
+
+/meteoai_admin/system
+최고 운영
+meteoAiGrade = 24
+
+SECTION 07 : PROVIDER RULE
+==========================
+관리 가능
+OpenAI
+Google Gemini
+Claude
+Grok
+DeepSeek
+Custom Provider
+
+SECTION 08 : MEDIA RULE
+=======================
+관리 가능
+AI Chat
+AI Image
+AI Video
+AI Strategy
+AI Analytics
+
+SECTION 09 : FUTURE RULE
+========================
+AddressCode24
+POS
+Market
+Feed
+Weather
+Event
+Analytics
+
+모든 전략 엔진은
+MeteoAI Governance 적용
+
+SECTION 10 : ABSOLUTE RULE
+==========================
+meteoAiGrade
+최고값
+24
+
+Grade 24 만
+최고 지도자
+
+Grade 24 는
+직접 변경 가능
+
+Grade 23 이하
+24 생성 불가
+24 수정 불가
+24 삭제 불가
+
+SECTION FINAL
+=============
+MeteoAI Governance
+최고 권한
+=
+meteoAiGrade 24
+
+운영 정책
+=
+24 → 하위 등급 통제
+23 이하 → 24 통제 불가
+
+MeteoAI 운영권은
+최고 지도자의 관리 하에 운영된다.

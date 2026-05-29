@@ -13,12 +13,10 @@ import {
 import {
   getBusinessIndustrySubtypes,
   getCurrentBusinessIndustry,
-  searchBusinessIndustries,
-  updateBusinessIndustry
+  searchBusinessIndustries
 } from '@/lib/business/business-industry-api'
 import {
   getBusinessTypes,
-  updateBusinessType,
   type BusinessTypeCode,
   type BusinessTypeItem
 } from '@/lib/business/business-type-api'
@@ -40,9 +38,17 @@ import {
   updateBusinessContactSettings,
   updateBusinessLoginPassword,
   updateBusinessPaymentPassword,
+  updateBusinessPlaceFeedSettings,
   updateBusinessProfileCore,
   updateBusinessRegistrationNumber
 } from '@/lib/business/profile-settings-api'
+import {
+  generateBusinessQr,
+  getBusinessQrStatus,
+  type BusinessQrGenerateResponse,
+  type BusinessQrStatus,
+  type BusinessQrStatusResponse
+} from '@/lib/business/profile-security-api'
 import { searchRegions } from '@/lib/regionsApi'
 import type { Region } from '@/types/region'
 
@@ -75,10 +81,23 @@ type BusinessAccountModalType =
   | 'managerEmail'
   | 'operationPassword'
   | 'paymentConfirmPassword'
+  | 'qrSecurity'
   | null
 
+type BusinessAccountFieldKey =
+  | 'businessName'
+  | 'address'
+  | 'businessHours'
+  | 'businessRegistrationNumber'
+  | 'primaryPhone'
+  | 'secondaryPhone'
+  | 'fax'
+  | 'managerEmail'
+  | 'operationPassword'
+  | 'paymentConfirmPassword'
+
 type BusinessCardItem = {
-  key: Exclude<BusinessAccountModalType, null>
+  key: BusinessAccountFieldKey
   title: string
   description: string
   buttonText: string
@@ -165,19 +184,23 @@ const PLACE_FEED_TYPE_OPTIONS: Array<{
   },
   {
     code: 'MARKET',
-    label: '마켓(유통업/마트)'
+    label: '오프라인 스토어'
+  },
+  {
+    code: 'ONLINE_SHOP',
+    label: '온라인 스토어'
   },
   {
     code: 'FOOD',
-    label: '푸드(음식점)'
+    label: '푸드'
   },
   {
     code: 'BEAUTY',
-    label: '뷰티(미용/마사지)'
+    label: '뷰티'
   },
   {
     code: 'CULTURE',
-    label: '컬쳐(공연/밴드)'
+    label: '컬쳐'
   },
   {
     code: 'STAY',
@@ -189,10 +212,13 @@ const PLACE_FEED_TYPE_OPTIONS: Array<{
   }
 ]
 
+const BUSINESS_SPECIALIZED_PROFILE_MIN_USER_GRADE = 2
+
 const PLACE_FEED_ROUTE_HINTS: Record<PlaceFeedTypeCode, string> = {
   NORMAL: '/channel/{channelCode}',
   CLASSIC: '/classic/{channelCode}',
   MARKET: '/market/{channelCode}',
+  ONLINE_SHOP: '/market/{channelCode}',
   FOOD: '/food/{channelCode}',
   BEAUTY: '/beauty/{channelCode}',
   CULTURE: '/culture/{channelCode}',
@@ -322,10 +348,23 @@ const SECURITY_CARDS: BusinessCardItem[] = [
   }
 ]
 
+const INITIAL_QR_STATUS: BusinessQrStatusResponse = {
+  success: false,
+  channelCode: '',
+  qrStatus: 'DISABLED',
+  qrCredentialStatus: 'DISABLED',
+  qrLastIssuedAt: null,
+  qrExpiresAt: null,
+  remainingSeconds: 0,
+  emergencyAccessConfigured: false,
+  activeToken: null
+}
+
 export default function BusinessAccountPage() {
   const router = useRouter()
   const [accountState, setAccountState] = useState<BusinessAccountState>(INITIAL_ACCOUNT_STATE)
   const [businessContext, setBusinessContext] = useState<BusinessContext | null>(null)
+  const [currentUserGrade, setCurrentUserGrade] = useState<number | null>(null)
   const [businessTypes, setBusinessTypes] = useState<BusinessTypeItem[]>([])
   const [selectedBusinessTypeCode, setSelectedBusinessTypeCode] = useState<BusinessTypeCode | null>(null)
   const [savedPlaceFeedTypeCode, setSavedPlaceFeedTypeCode] =
@@ -374,7 +413,20 @@ export default function BusinessAccountPage() {
   const [settlementApprovalPassword, setSettlementApprovalPassword] = useState('')
   const [newOperationPassword, setNewOperationPassword] = useState('')
   const [newOperationPasswordConfirm, setNewOperationPasswordConfirm] = useState('')
+  const [qrStatus, setQrStatus] = useState<BusinessQrStatusResponse>(INITIAL_QR_STATUS)
+  const [qrGenerateResult, setQrGenerateResult] = useState<BusinessQrGenerateResponse | null>(null)
+  const [qrEmergencyAccessCode, setQrEmergencyAccessCode] = useState('')
+  const [isQrLoading, setIsQrLoading] = useState(false)
+  const [qrError, setQrError] = useState('')
   const businessRegistrationImageInputRef = useRef<HTMLInputElement | null>(null)
+
+  const canUseSpecializedProfileType =
+    Number(currentUserGrade ?? 0) >= BUSINESS_SPECIALIZED_PROFILE_MIN_USER_GRADE
+
+  const visiblePlaceFeedTypeOptions =
+    canUseSpecializedProfileType
+      ? PLACE_FEED_TYPE_OPTIONS
+      : PLACE_FEED_TYPE_OPTIONS.filter((option) => option.code === 'NORMAL')
 
 
   const openModal = (modalType: Exclude<BusinessAccountModalType, null>) => {
@@ -394,6 +446,13 @@ export default function BusinessAccountPage() {
       return
     }
 
+    if (modalType === 'qrSecurity') {
+      setModalValue('')
+      setQrEmergencyAccessCode('')
+      setQrError('')
+      return
+    }
+
     if (modalType === 'businessName') {
       const nextCustomDomain =
         accountState.customDomain ?? ''
@@ -409,7 +468,9 @@ export default function BusinessAccountPage() {
         normalizeLocalDeliveryRegions(accountState.localDeliveryRegions)
       )
       setModalIndustryValue(accountState.businessIndustryName ?? '')
-      setSelectedPlaceFeedTypeCode(savedPlaceFeedTypeCode)
+      setSelectedPlaceFeedTypeCode(
+        canUseSpecializedProfileType ? savedPlaceFeedTypeCode : 'NORMAL'
+      )
       setIndustrySearchText('')
       return
     }
@@ -449,6 +510,9 @@ export default function BusinessAccountPage() {
     setSettlementApprovalPassword('')
     setNewOperationPassword('')
     setNewOperationPasswordConfirm('')
+    setQrEmergencyAccessCode('')
+    setQrError('')
+    setQrGenerateResult(null)
     if (businessRegistrationImageInputRef.current) {
       businessRegistrationImageInputRef.current.value = ''
     }
@@ -540,6 +604,7 @@ export default function BusinessAccountPage() {
     if (
       value === 'CLASSIC' ||
       value === 'MARKET' ||
+      value === 'ONLINE_SHOP' ||
       value === 'FOOD' ||
       value === 'BEAUTY' ||
       value === 'CULTURE' ||
@@ -973,6 +1038,14 @@ export default function BusinessAccountPage() {
         return
       }
 
+      if (
+        !canUseSpecializedProfileType &&
+        selectedPlaceFeedTypeCode !== 'NORMAL'
+      ) {
+        setModalError('현재 등급은 인트로 전용 일반 프로필만 사용할 수 있습니다.')
+        return
+      }
+
       const nextFulfillmentTypes =
         normalizeFulfillmentTypes(enabledFulfillmentTypes)
       const nextLocalDeliveryRegions =
@@ -999,23 +1072,24 @@ export default function BusinessAccountPage() {
             displayName: modalValue.trim() || null,
             customDomain: customDomain.trim() || null,
             enabledFulfillmentTypes: nextFulfillmentTypes,
-            localDeliveryRegions: nextLocalDeliveryRegions,
-            placeFeedTypeCode: selectedPlaceFeedTypeCode
+            localDeliveryRegions: nextLocalDeliveryRegions
           }
         )
 
-        await updateBusinessType({
-          profileId: businessContext.profileId,
-          channelCode: businessContext.channelCode,
-          businessTypeCode: selectedBusinessTypeCode
-        })
-
-        await updateBusinessIndustry({
-          profileId: businessContext.profileId,
-          channelCode: businessContext.channelCode,
-          industryCode: selectedIndustry.industryCode,
-          industrySubtypeCode: selectedIndustry.subtypeCode
-        })
+        await updateBusinessPlaceFeedSettings(
+          businessContext.profileId,
+          {
+            businessTypeCode: selectedBusinessTypeCode,
+            placeFeedTypeCode:
+              canUseSpecializedProfileType || savedPlaceFeedTypeCode === 'NORMAL'
+                ? selectedPlaceFeedTypeCode
+                : undefined,
+            primaryIndustryId: selectedIndustry.industryId,
+            primaryIndustrySubtypeId: selectedIndustry.subtypeId,
+            primaryIndustryCode: selectedIndustry.industryCode,
+            primaryIndustrySubtypeCode: selectedIndustry.subtypeCode
+          }
+        )
 
         setAccountState((prev) => ({
           ...prev,
@@ -1032,7 +1106,12 @@ export default function BusinessAccountPage() {
             businessTypes
           )
         }))
-        setSavedPlaceFeedTypeCode(selectedPlaceFeedTypeCode)
+        if (
+          canUseSpecializedProfileType ||
+          savedPlaceFeedTypeCode === 'NORMAL'
+        ) {
+          setSavedPlaceFeedTypeCode(selectedPlaceFeedTypeCode)
+        }
         setSavedCustomDomain(customDomain.trim())
         setIsCustomDomainEditMode(customDomain.trim().length < 1)
         closeModal()
@@ -1252,6 +1331,10 @@ export default function BusinessAccountPage() {
       return
     }
 
+    if (activeModal === 'qrSecurity') {
+      return
+    }
+
     setAccountState((prev) => ({
       ...prev,
       [activeModal]: modalValue.trim()
@@ -1262,6 +1345,7 @@ export default function BusinessAccountPage() {
 
   const hasModal = activeModal !== null
   const isOperationPasswordModal = activeModal === 'operationPassword'
+  const isQrSecurityModal = activeModal === 'qrSecurity'
   const trimmedCurrentPassword = currentPassword.trim()
   const trimmedSettlementApprovalPassword = settlementApprovalPassword.trim()
   const trimmedNewOperationPassword = newOperationPassword.trim()
@@ -1306,8 +1390,12 @@ export default function BusinessAccountPage() {
       isModalSaving ||
       !businessContext
     )
+  const qrImageDataUrl =
+    qrGenerateResult?.qrImageSvg
+      ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrGenerateResult.qrImageSvg)}`
+      : ''
 
-  const resolveDisplayValue = (key: Exclude<BusinessAccountModalType, null>) => {
+  const resolveDisplayValue = (key: BusinessAccountFieldKey) => {
     const value = accountState[key]
     if (!value || value.trim().length < 1) {
       return '미등록'
@@ -1340,6 +1428,56 @@ export default function BusinessAccountPage() {
     industrySearchText
   ])
 
+  const refreshQrStatus = async () => {
+    try {
+      const nextQrStatus = await getBusinessQrStatus()
+      setQrStatus(nextQrStatus)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  const handleGenerateQr = async () => {
+    const normalizedEmergencyCode =
+      qrEmergencyAccessCode.trim()
+
+    if (!normalizedEmergencyCode) {
+      setQrError('정산 승인 비밀번호를 입력해 주세요.')
+      return
+    }
+
+    setIsQrLoading(true)
+    setQrError('')
+
+    try {
+      const result =
+        await generateBusinessQr(normalizedEmergencyCode)
+
+      setQrGenerateResult(result)
+      setQrStatus((prev) => ({
+        ...prev,
+        success: true,
+        channelCode: result.channelCode,
+        qrStatus: 'ACTIVE',
+        qrCredentialStatus: 'ACTIVE',
+        qrLastIssuedAt: new Date().toISOString(),
+        qrExpiresAt: result.expiresAt,
+        remainingSeconds: result.ttlSeconds,
+        activeToken: {
+          tokenId: result.tokenId,
+          tokenType: result.tokenType,
+          expiresAt: result.expiresAt,
+          createdAt: new Date().toISOString()
+        }
+      }))
+    } catch (error) {
+      console.error(error)
+      setQrError('3분 QR을 생성하지 못했습니다.')
+    } finally {
+      setIsQrLoading(false)
+    }
+  }
+
   useEffect(() => {
     let mounted = true
 
@@ -1347,6 +1485,8 @@ export default function BusinessAccountPage() {
       try {
         const me = await getMe()
         const channelCode = me.user?.channelCode?.trim()
+        const nextUserGrade =
+          Number(me.user?.userGrade ?? 0)
 
         if (me.user?.profileType !== 'BUSINESS' || !channelCode) {
           return
@@ -1366,6 +1506,10 @@ export default function BusinessAccountPage() {
 
         const currentBusinessTypeCode =
           resolveBusinessTypeCodeFromProfile(profileDetail)
+        const profileTypeCodeForUserGrade =
+          nextUserGrade >= BUSINESS_SPECIALIZED_PROFILE_MIN_USER_GRADE
+            ? resolvePlaceFeedTypeCode(profileDetail.placeFeedTypeCode)
+            : 'NORMAL'
 
         const currentIndustry = await getCurrentBusinessIndustry(channelCode)
         const currentIndustryLabel = formatIndustryLabel(
@@ -1398,10 +1542,11 @@ export default function BusinessAccountPage() {
           profileId,
           channelCode
         })
+        setCurrentUserGrade(nextUserGrade)
         setBusinessTypes(nextBusinessTypes)
         setSelectedBusinessTypeCode(currentBusinessTypeCode)
         setSelectedPlaceFeedTypeCode(
-          resolvePlaceFeedTypeCode(profileDetail.placeFeedTypeCode)
+          profileTypeCodeForUserGrade
         )
         setSavedPlaceFeedTypeCode(
           resolvePlaceFeedTypeCode(profileDetail.placeFeedTypeCode)
@@ -1469,6 +1614,7 @@ export default function BusinessAccountPage() {
               ? '설정됨'
               : prev.paymentConfirmPassword
         }))
+        void refreshQrStatus()
       } catch (error) {
         console.error(error)
       }
@@ -1565,6 +1711,42 @@ export default function BusinessAccountPage() {
       window.clearTimeout(timerId)
     }
   }, [activeModal, industrySearchText])
+
+  useEffect(() => {
+    if (!qrStatus.qrExpiresAt) {
+      return
+    }
+
+    const updateRemainingSeconds = () => {
+      const expiresAtMs =
+        new Date(qrStatus.qrExpiresAt || '').getTime()
+      const remainingSeconds =
+        Number.isFinite(expiresAtMs)
+          ? Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000))
+          : 0
+
+      setQrStatus((prev) => ({
+        ...prev,
+        remainingSeconds,
+        qrStatus:
+          prev.qrCredentialStatus === 'DISABLED' ||
+          prev.qrCredentialStatus === 'LOCKED'
+            ? prev.qrCredentialStatus
+            : remainingSeconds > 0
+              ? 'ACTIVE'
+              : 'EXPIRED'
+      }))
+    }
+
+    updateRemainingSeconds()
+
+    const timerId =
+      window.setInterval(updateRemainingSeconds, 1000)
+
+    return () => {
+      window.clearInterval(timerId)
+    }
+  }, [qrStatus.qrExpiresAt])
 
   useEffect(() => {
     if (activeModal !== 'address') {
@@ -1769,6 +1951,14 @@ export default function BusinessAccountPage() {
                 onButtonClick={() => openModal(card.key)}
               />
             ))}
+            <QrSecurityCard
+              qrStatus={qrStatus.qrStatus}
+              remainingSeconds={qrStatus.remainingSeconds}
+              lastIssuedAt={qrStatus.qrLastIssuedAt}
+              expiresAt={qrStatus.qrExpiresAt}
+              emergencyAccessConfigured={qrStatus.emergencyAccessConfigured}
+              onOpen={() => openModal('qrSecurity')}
+            />
           </div>
         </section>
       </div>
@@ -1848,6 +2038,85 @@ export default function BusinessAccountPage() {
                       </p>
                     ) : null}
                   </>
+                ) : activeModal === 'qrSecurity' ? (
+                  <div className={styles.qrSecurityForm}>
+                    <section className={styles.qrStatusPanel}>
+                      <div>
+                        <span className={styles.modalLabel}>3차 보안 상태</span>
+                        <strong className={styles.qrStatusTitle}>
+                          {getQrStatusLabel(qrStatus.qrStatus)}
+                        </strong>
+                      </div>
+                      <span className={`${styles.qrStatusBadge} ${styles[`qrStatus${qrStatus.qrStatus}`]}`}>
+                        {qrStatus.qrStatus}
+                      </span>
+                    </section>
+
+                    <div className={styles.qrMetaGrid}>
+                      <div className={styles.qrMetaItem}>
+                        <span>마지막 발급</span>
+                        <strong>{formatDateTime(qrStatus.qrLastIssuedAt)}</strong>
+                      </div>
+                      <div className={styles.qrMetaItem}>
+                        <span>만료 시각</span>
+                        <strong>{formatDateTime(qrStatus.qrExpiresAt)}</strong>
+                      </div>
+                      <div className={styles.qrMetaItem}>
+                        <span>남은 시간</span>
+                        <strong>{formatRemainingSeconds(qrStatus.remainingSeconds)}</strong>
+                      </div>
+                    </div>
+
+                    <label className={styles.modalInputGroup}>
+                      <span className={styles.modalLabel}>정산 승인 비밀번호</span>
+                      <input
+                        className={styles.modalInput}
+                        type="password"
+                        value={qrEmergencyAccessCode}
+                        onChange={(event) => setQrEmergencyAccessCode(event.target.value)}
+                        placeholder="2차 emergency code 입력"
+                      />
+                    </label>
+
+                    <div className={styles.qrActionRow}>
+                      <button
+                        type="button"
+                        className={styles.actionButton}
+                        onClick={handleGenerateQr}
+                        disabled={isQrLoading}
+                      >
+                        {isQrLoading ? 'QR 생성 중' : '3분 QR 생성'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.imageRemoveButton}
+                        onClick={() => {
+                          setQrGenerateResult(null)
+                          setQrEmergencyAccessCode('')
+                          void refreshQrStatus()
+                        }}
+                      >
+                        QR 상태 조회
+                      </button>
+                    </div>
+
+                    {qrImageDataUrl ? (
+                      <section className={styles.qrPreviewBox}>
+                        <img
+                          className={styles.qrPreviewImage}
+                          src={qrImageDataUrl}
+                          alt="3차 QR 보안 인증"
+                        />
+                        <p className={styles.qrPreviewHint}>
+                          QR은 180초 동안만 유효하며 검증 성공 후 재사용할 수 없습니다.
+                        </p>
+                      </section>
+                    ) : null}
+
+                    {qrError ? (
+                      <p className={styles.modalError}>{qrError}</p>
+                    ) : null}
+                  </div>
                 ) : activeModal === 'businessName' ? (
                   <div className={styles.businessIndustryForm}>
                     <label className={styles.modalInputGroup}>
@@ -2139,7 +2408,7 @@ export default function BusinessAccountPage() {
                           setModalError('')
                         }}
                       >
-                        {PLACE_FEED_TYPE_OPTIONS.map((option) => (
+                        {visiblePlaceFeedTypeOptions.map((option) => (
                           <option
                             key={option.code}
                             value={option.code}
@@ -2151,6 +2420,11 @@ export default function BusinessAccountPage() {
                       <span className={styles.placeFeedRouteHint}>
                         {PLACE_FEED_ROUTE_HINTS[selectedPlaceFeedTypeCode]}
                       </span>
+                      {!canUseSpecializedProfileType ? (
+                        <span className={styles.gradeRestrictionNotice}>
+                          현재 등급은 인트로 전용 일반 프로필만 사용할 수 있습니다.
+                        </span>
+                      ) : null}
                     </label>
 
                     <section className={styles.industrySection}>
@@ -2513,32 +2787,34 @@ export default function BusinessAccountPage() {
               <div className={styles.modalFooter}>
                 <div className={styles.modalActions}>
                   <button type="button" className={styles.modalCancelButton} onClick={closeModal}>
-                    취소
+                    {isQrSecurityModal ? '닫기' : '취소'}
                   </button>
-                  <button
-                    type="button"
-                    className={
-                      isModalSaving ||
-                      (isOperationPasswordModal && isOperationPasswordSaveDisabled) ||
-                      isBusinessNameSaveDisabled ||
-                      isAddressSaveDisabled ||
-                      isBusinessRegistrationNumberSaveDisabled ||
-                      isBusinessHoursSaveDisabled
-                        ? styles.modalDisabledButton
-                        : styles.modalSaveButton
-                    }
-                    onClick={saveModalValue}
-                    disabled={
-                      isModalSaving ||
-                      (isOperationPasswordModal && isOperationPasswordSaveDisabled) ||
-                      isBusinessNameSaveDisabled ||
-                      isAddressSaveDisabled ||
-                      isBusinessRegistrationNumberSaveDisabled ||
-                      isBusinessHoursSaveDisabled
-                    }
-                  >
-                    {isModalSaving ? '저장 중' : '저장'}
-                  </button>
+                  {isQrSecurityModal ? null : (
+                    <button
+                      type="button"
+                      className={
+                        isModalSaving ||
+                        (isOperationPasswordModal && isOperationPasswordSaveDisabled) ||
+                        isBusinessNameSaveDisabled ||
+                        isAddressSaveDisabled ||
+                        isBusinessRegistrationNumberSaveDisabled ||
+                        isBusinessHoursSaveDisabled
+                          ? styles.modalDisabledButton
+                          : styles.modalSaveButton
+                      }
+                      onClick={saveModalValue}
+                      disabled={
+                        isModalSaving ||
+                        (isOperationPasswordModal && isOperationPasswordSaveDisabled) ||
+                        isBusinessNameSaveDisabled ||
+                        isAddressSaveDisabled ||
+                        isBusinessRegistrationNumberSaveDisabled ||
+                        isBusinessHoursSaveDisabled
+                      }
+                    >
+                      {isModalSaving ? '저장 중' : '저장'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -2590,6 +2866,58 @@ function InfoCard({
   )
 }
 
+function QrSecurityCard({
+  qrStatus,
+  remainingSeconds,
+  lastIssuedAt,
+  expiresAt,
+  emergencyAccessConfigured,
+  onOpen
+}: {
+  qrStatus: BusinessQrStatus
+  remainingSeconds: number
+  lastIssuedAt: string | null
+  expiresAt: string | null
+  emergencyAccessConfigured: boolean
+  onOpen: () => void
+}) {
+  return (
+    <article className={styles.card}>
+      <div className={styles.cardHeader}>
+        <div className={styles.cardTextBox}>
+          <h3 className={styles.cardTitle}>3차 QR 보안 인증</h3>
+          <p className={styles.cardValue}>{getQrStatusLabel(qrStatus)}</p>
+          <p className={styles.cardSubValue}>
+            남은 시간: {formatRemainingSeconds(remainingSeconds)}
+          </p>
+        </div>
+        <span className={`${styles.qrStatusBadge} ${styles[`qrStatus${qrStatus}`]}`}>
+          {qrStatus}
+        </span>
+      </div>
+
+      <p className={styles.cardDescription}>
+        QR possession 인증으로 180초 임시 토큰을 발급하고 1회 사용 후 만료합니다.
+      </p>
+
+      <div className={styles.qrCardMeta}>
+        <span>2차 코드: {emergencyAccessConfigured ? '설정됨' : '미설정'}</span>
+        <span>마지막 발급: {formatDateTime(lastIssuedAt)}</span>
+        <span>만료: {formatDateTime(expiresAt)}</span>
+      </div>
+
+      <div className={styles.cardAction}>
+        <button type="button" className={styles.actionButton} onClick={onOpen}>
+          3차 비밀번호 설정/변경
+        </button>
+        <button type="button" className={styles.qrSubActionButton} onClick={onOpen}>
+          3분 QR 생성
+        </button>
+      </div>
+    </article>
+  )
+}
+
 function getModalTitle(modalType: BusinessAccountModalType) {
   if (modalType === 'businessName') return '상호/업종 관리'
   if (modalType === 'address') return '주소 관리'
@@ -2601,6 +2929,7 @@ function getModalTitle(modalType: BusinessAccountModalType) {
   if (modalType === 'managerEmail') return '담당자 이메일 관리'
   if (modalType === 'operationPassword') return '운영 비밀번호 관리'
   if (modalType === 'paymentConfirmPassword') return '정산 승인 비밀번호 관리'
+  if (modalType === 'qrSecurity') return '3차 QR 보안 인증'
   return ''
 }
 
@@ -2615,6 +2944,7 @@ function getModalDescription(modalType: BusinessAccountModalType) {
   if (modalType === 'managerEmail') return '담당자 이메일을 입력하거나 수정합니다.'
   if (modalType === 'operationPassword') return '현재 비밀번호와 정산 승인 비밀번호 확인 후 운영 비밀번호를 변경합니다.'
   if (modalType === 'paymentConfirmPassword') return '정산 승인 비밀번호 설정/변경을 위한 목업 입력입니다.'
+  if (modalType === 'qrSecurity') return '정산 승인 비밀번호 확인 후 180초 동안 유효한 QR possession token을 생성합니다.'
   return ''
 }
 
@@ -2629,5 +2959,46 @@ function getModalLabel(modalType: BusinessAccountModalType) {
   if (modalType === 'managerEmail') return '담당자 이메일'
   if (modalType === 'operationPassword') return '운영 비밀번호'
   if (modalType === 'paymentConfirmPassword') return '정산 승인 비밀번호'
+  if (modalType === 'qrSecurity') return '3차 QR 보안 인증'
   return ''
+}
+
+function getQrStatusLabel(status: BusinessQrStatus) {
+  if (status === 'ACTIVE') return 'QR ACTIVE'
+  if (status === 'EXPIRED') return 'QR EXPIRED'
+  if (status === 'LOCKED') return 'QR LOCKED'
+  return 'QR DISABLED'
+}
+
+function formatRemainingSeconds(seconds: number) {
+  if (!seconds || seconds < 1) {
+    return '0초'
+  }
+
+  const minutes =
+    Math.floor(seconds / 60)
+  const restSeconds =
+    seconds % 60
+
+  return `${minutes}분 ${restSeconds.toString().padStart(2, '0')}초`
+}
+
+function formatDateTime(value: string | null) {
+  if (!value) {
+    return '미발급'
+  }
+
+  const date =
+    new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return '미발급'
+  }
+
+  return date.toLocaleString('ko-KR', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }

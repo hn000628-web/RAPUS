@@ -185,6 +185,61 @@
   background: #dbeafe;
 }
 
+.qrSubActionButton {
+  margin-left: 8px;
+  border: 1px solid #dbe3ec;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.qrSubActionButton:hover {
+  background: #f8fafc;
+}
+
+.qrCardMeta {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.qrStatusBadge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.qrStatusACTIVE {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.qrStatusEXPIRED {
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.qrStatusDISABLED {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.qrStatusLOCKED {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
 .modalOverlay {
   position: fixed;
   inset: 0;
@@ -788,11 +843,109 @@
   word-break: keep-all;
 }
 
+.gradeRestrictionNotice {
+  color: #92400e;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+  word-break: keep-all;
+}
+
 .modalHelperText {
   color: #64748b;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.45;
+  word-break: keep-all;
+}
+
+.qrSecurityForm {
+  display: grid;
+  gap: 14px;
+}
+
+.qrStatusPanel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: #eff6ff;
+}
+
+.qrStatusTitle {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.qrMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.qrMetaItem {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.qrMetaItem span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.qrMetaItem strong {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.4;
+}
+
+.qrActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.qrActionRow button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.qrPreviewBox {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 16px;
+  border: 1px dashed #bfdbfe;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.qrPreviewImage {
+  width: 180px;
+  height: auto;
+  border-radius: 18px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.qrPreviewHint {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.5;
+  text-align: center;
   word-break: keep-all;
 }
 

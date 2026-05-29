@@ -22,6 +22,9 @@ import styles from '../../ProfilePage.module.css'
 type AccountInfoState = {
   email: string
   channelCode: string
+  corporationGrade: number
+  providerGrade?: number | null
+  userGrade?: number | null
 }
 
 type ProfileEntryConfig = {
@@ -53,8 +56,10 @@ type BusinessProfileActionItem = {
   key: string
   label: string
   description: string
+  secondaryDescription?: string
   onClick?: () => void
   href?: string
+  disabled?: boolean
 }
 
 // SECTION 03 : CONSTANT
@@ -73,6 +78,9 @@ export default function BusinessMyPage({
   onMovePosView
 }: BusinessMyPageProps) {
   const router = useRouter()
+  const canUseBusinessPaidFeatures =
+    normalizeGradeValue(accountInfo.userGrade) >= 2 &&
+    normalizeGradeValue(accountInfo.providerGrade) >= 1
 
   const businessActionItems: BusinessProfileActionItem[] = [
     {
@@ -90,9 +98,48 @@ export default function BusinessMyPage({
     {
       key: 'business-pos-view',
       label: '포스 뷰',
-      description: '사업자 POS 화면으로 이동',
-      onClick: onMovePosView
-    }
+      description: canUseBusinessPaidFeatures
+        ? '사업자 POS 화면으로 이동'
+        : '유료 전환 후 사용 가능',
+      onClick: onMovePosView,
+      disabled: !canUseBusinessPaidFeatures
+    },
+    {
+      key: 'business-market-admin-view',
+      label: '비즈니스 어드민',
+      description: canUseBusinessPaidFeatures
+        ? '사업자 운영 관리 화면으로 이동'
+        : '유료 전환 후 사용 가능',
+      href: '/profile_admin',
+      disabled: !canUseBusinessPaidFeatures
+    },
+    ...(accountInfo.corporationGrade >= 24
+      ? [
+          {
+            key: 'business-admin-view',
+            label: '어드민',
+            description: '관리자 화면으로 이동',
+            href: '/admin'
+          } satisfies BusinessProfileActionItem
+        ]
+      : []),
+    {
+      key: 'premium-uiux-design',
+      label: '프리미엄 UI/UX 디자인',
+      description: '고급 비즈니스 디자인 적용',
+      secondaryDescription: '데모 디자인 및 서비스 신청',
+      href: '/profile/business/premium-design'
+    },
+    ...(accountInfo.corporationGrade >= 24
+      ? [
+          {
+            key: 'business-meteo-ai-view',
+            label: '메테오AI',
+            description: '메테오AI 운영 허브로 이동',
+            href: '/admin/meteo-ai'
+          } satisfies BusinessProfileActionItem
+        ]
+      : [])
   ]
 
   // SECTION 05 : UI BLOCK
@@ -107,7 +154,11 @@ export default function BusinessMyPage({
             </h1>
 
             <p className={styles.pageDescription}>
-              {BUSINESS_PAGE_DESCRIPTION}
+              {canUseBusinessPaidFeatures
+                ? BUSINESS_PAGE_DESCRIPTION
+                : normalizeGradeValue(accountInfo.userGrade) >= 2
+                  ? '현재 BUSINESS 체험판을 이용 중입니다. 상품관리, 주문, 예약, POS 기능은 유료 전환 후 사용할 수 있습니다.'
+                  : 'INTRO 무료 소개 페이지와 기본 정보를 확인합니다.'}
             </p>
           </div>
 
@@ -129,6 +180,11 @@ export default function BusinessMyPage({
                   <InfoRow
                     label="채널코드"
                     value={accountInfo.channelCode}
+                  />
+
+                  <InfoRow
+                    label="유저코드(그레이드)"
+                    value={formatUserGradeCode(accountInfo)}
                   />
                 </div>
               </section>
@@ -152,17 +208,32 @@ export default function BusinessMyPage({
                 </h2>
 
                 <div className={styles.managementGrid}>
-                  {managementItems.map((item) => (
-                    <ManagementCard
-                      key={item.title}
-                      title={item.title}
-                      description={item.description}
-                      showBadge={!item.path}
-                      onClick={() => {
-                        router.push(item.path || item.description)
-                      }}
-                    />
-                  ))}
+                  {managementItems.map((item) => {
+                    const isPaidItem =
+                      isPaidManagementItem(item.title)
+                    const isLocked =
+                      isPaidItem && !canUseBusinessPaidFeatures
+
+                    return (
+                      <ManagementCard
+                        key={item.title}
+                        title={item.title}
+                        description={
+                          isLocked
+                            ? '유료 전환 후 사용 가능'
+                            : item.description
+                        }
+                        showBadge={!item.path || isLocked}
+                        onClick={
+                          isLocked
+                            ? undefined
+                            : () => {
+                                router.push(item.path || item.description)
+                              }
+                        }
+                      />
+                    )
+                  })}
                 </div>
               </section>
             </div>
@@ -195,6 +266,45 @@ function InfoRow({
   )
 }
 
+function formatUserGradeCode(
+  accountInfo: AccountInfoState
+) {
+  const userGrade =
+    normalizeGradeValue(accountInfo.userGrade)
+  const providerGrade =
+    normalizeGradeValue(accountInfo.providerGrade)
+  const code =
+    `${userGrade}${providerGrade}0`
+
+  if (userGrade === 0 && providerGrade === 0) {
+    return `일반회원(${code})`
+  }
+
+  if (userGrade === 1 && providerGrade === 0) {
+    return `무료 비즈니스 파트너(${code})`
+  }
+
+  if (userGrade === 2 && providerGrade === 0) {
+    return `체험판 비즈니스 파트너(${code})`
+  }
+
+  if (userGrade === 2 && providerGrade === 1) {
+    return `유료 비즈니스 파트너(${code})`
+  }
+
+  return `등급 확인 필요(${code})`
+}
+
+function normalizeGradeValue(
+  grade?: number | null
+) {
+  if (typeof grade !== 'number' || !Number.isFinite(grade)) {
+    return 0
+  }
+
+  return grade
+}
+
 function BusinessProfileActionGrid({
   disabled,
   items
@@ -206,7 +316,7 @@ function BusinessProfileActionGrid({
     <div className={styles.businessProfileStack}>
       <div className={styles.businessActionGrid}>
         {items.map((item) => (
-          item.href ? (
+          item.href && !item.disabled ? (
             <Link
               key={item.key}
               href={item.href}
@@ -218,6 +328,11 @@ function BusinessProfileActionGrid({
               <span className={styles.cardDescription}>
                 {item.description}
               </span>
+              {item.secondaryDescription ? (
+                <span className={styles.cardDescription}>
+                  {item.secondaryDescription}
+                </span>
+              ) : null}
             </Link>
           ) : (
             <button
@@ -225,9 +340,9 @@ function BusinessProfileActionGrid({
               type="button"
               className={[
                 styles.businessActionButton,
-                disabled ? styles.profileEntryCardDisabled : ''
+                disabled || item.disabled ? styles.profileEntryCardDisabled : ''
               ].join(' ').trim()}
-              disabled={disabled}
+              disabled={disabled || item.disabled}
               onClick={item.onClick}
             >
               <strong className={styles.cardTitle}>
@@ -236,11 +351,30 @@ function BusinessProfileActionGrid({
               <span className={styles.cardDescription}>
                 {item.description}
               </span>
+              {item.secondaryDescription ? (
+                <span className={styles.cardDescription}>
+                  {item.secondaryDescription}
+                </span>
+              ) : null}
             </button>
           )
         ))}
       </div>
     </div>
+  )
+}
+
+function isPaidManagementItem(
+  title: string
+) {
+  return (
+    title.includes('고객') ||
+    title.includes('주문') ||
+    title.includes('정산') ||
+    title.includes('상품') ||
+    title.includes('예약') ||
+    title.includes('행사') ||
+    title.includes('POS')
   )
 }
 

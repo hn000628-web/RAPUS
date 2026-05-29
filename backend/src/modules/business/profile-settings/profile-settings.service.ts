@@ -57,11 +57,29 @@ type PlaceFeedTypeCode =
   | 'NORMAL'
   | 'CLASSIC'
   | 'MARKET'
+  | 'ONLINE_SHOP'
   | 'FOOD'
   | 'BEAUTY'
   | 'CULTURE'
   | 'STAY'
   | 'RENTCAR'
+
+type BusinessTypeCode =
+  | 'NORMAL'
+  | 'STORE'
+  | 'SHOPPING_MALL'
+  | 'FREELANCER'
+  | 'MOBILE_BIZ'
+
+type BusinessPlaceFeedSettingsPayload = {
+  businessTypeCode?: string | null
+  placeFeedTypeCode?: string | null
+  primaryIndustryId?: number | null
+  primaryIndustrySubtypeId?: number | null
+  primaryIndustryCode?: string | null
+  primaryIndustrySubtypeCode?: string | null
+  updatedAt?: string | null
+}
 
 type FulfillmentTypeCode =
   | 'NONE'
@@ -348,6 +366,33 @@ export class ProfileSettingsService {
     }
   }
 
+  private getUserGrade(userId: number): number {
+    const row = db.prepare(`
+      SELECT userGrade
+      FROM users
+      WHERE id = ?
+      LIMIT 1
+    `).get(userId) as { userGrade: number | null } | undefined
+
+    return Number(row?.userGrade ?? 0)
+  }
+
+  private assertPlaceFeedTypeAllowedForUserGrade(
+    userId: number,
+    placeFeedTypeCode: PlaceFeedTypeCode | null
+  ): void {
+    if (!placeFeedTypeCode || placeFeedTypeCode === 'NORMAL') {
+      return
+    }
+
+    const userGrade =
+      this.getUserGrade(userId)
+
+    if (userGrade < 2) {
+      throw new ForbiddenException('placeFeedType requires userGrade 2')
+    }
+  }
+
   private getProfilePasswordRow(
     profileId: number,
     channelCode: string
@@ -542,6 +587,7 @@ export class ProfileSettingsService {
       normalizedPlaceFeedTypeCode === 'NORMAL' ||
       normalizedPlaceFeedTypeCode === 'CLASSIC' ||
       normalizedPlaceFeedTypeCode === 'MARKET' ||
+      normalizedPlaceFeedTypeCode === 'ONLINE_SHOP' ||
       normalizedPlaceFeedTypeCode === 'FOOD' ||
       normalizedPlaceFeedTypeCode === 'BEAUTY' ||
       normalizedPlaceFeedTypeCode === 'CULTURE' ||
@@ -552,6 +598,67 @@ export class ProfileSettingsService {
     }
 
     throw new BadRequestException('invalid placeFeedTypeCode')
+  }
+
+  private normalizeBusinessTypeCode(
+    businessTypeCode: unknown,
+    fallback: BusinessTypeCode | null
+  ): BusinessTypeCode | null {
+    if (businessTypeCode === undefined) {
+      return fallback
+    }
+
+    if (businessTypeCode === null) {
+      return fallback
+    }
+
+    if (typeof businessTypeCode !== 'string') {
+      throw new BadRequestException('invalid businessTypeCode')
+    }
+
+    const normalizedBusinessTypeCode =
+      businessTypeCode.trim().toUpperCase()
+
+    if (
+      normalizedBusinessTypeCode === 'NORMAL' ||
+      normalizedBusinessTypeCode === 'STORE' ||
+      normalizedBusinessTypeCode === 'SHOPPING_MALL' ||
+      normalizedBusinessTypeCode === 'FREELANCER' ||
+      normalizedBusinessTypeCode === 'MOBILE_BIZ'
+    ) {
+      return normalizedBusinessTypeCode
+    }
+
+    throw new BadRequestException('invalid businessTypeCode')
+  }
+
+  private normalizeOptionalCode(
+    value: unknown,
+    fallback: string | null
+  ): string | null {
+    if (value === undefined || value === null) {
+      return fallback
+    }
+
+    if (typeof value !== 'string') {
+      throw new BadRequestException('invalid code')
+    }
+
+    return value.trim() || null
+  }
+
+  private normalizeOptionalTimestamp(
+    value: unknown
+  ): string | null {
+    if (value === undefined || value === null) {
+      return null
+    }
+
+    if (typeof value !== 'string') {
+      throw new BadRequestException('invalid updatedAt')
+    }
+
+    return value.trim() || null
   }
 
   private normalizeCustomDomain(customDomain: unknown): string | null {
@@ -1561,6 +1668,17 @@ export class ProfileSettingsService {
         payload.placeFeedTypeCode,
         current.placeFeedTypeCode ?? 'NORMAL'
       )
+
+    if (
+      payload.placeFeedTypeCode !== undefined &&
+      payload.placeFeedTypeCode !== null
+    ) {
+      this.assertPlaceFeedTypeAllowedForUserGrade(
+        userId,
+        nextPlaceFeedTypeCode
+      )
+    }
+
     const nextFulfillmentTypes =
       payload.enabledFulfillmentTypes === undefined
         ? current.enabledFulfillmentTypes
@@ -1600,6 +1718,158 @@ export class ProfileSettingsService {
     )
 
     return this.getProfile(profileId)
+  }
+
+  updateBusinessPlaceFeedSettings(
+    userId: number,
+    profileId: number,
+    channelCode: string,
+    payload: BusinessPlaceFeedSettingsPayload
+  ) {
+    this.assertProfileOwnershipWithChannel(userId, profileId, channelCode)
+
+    const normalizedChannelCode =
+      channelCode.trim()
+
+    const current = db.prepare(`
+      SELECT
+        id,
+        channelCode,
+        profileType,
+        businessTypeId,
+        businessTypeCode,
+        placeFeedTypeCode,
+        primaryIndustryId,
+        primaryIndustrySubtypeId,
+        primaryIndustryCode,
+        primaryIndustrySubtypeCode
+      FROM profiles
+      WHERE id = ?
+        AND channelCode = ?
+        AND profileType = 'BUSINESS'
+      LIMIT 1
+    `).get(
+      profileId,
+      normalizedChannelCode
+    ) as {
+      id: number
+      channelCode: string
+      profileType: 'BUSINESS'
+      businessTypeId: number | null
+      businessTypeCode: BusinessTypeCode | null
+      placeFeedTypeCode: PlaceFeedTypeCode | null
+      primaryIndustryId: number | null
+      primaryIndustrySubtypeId: number | null
+      primaryIndustryCode: string | null
+      primaryIndustrySubtypeCode: string | null
+    } | undefined
+
+    if (!current) {
+      throw new NotFoundException('Business profile not found')
+    }
+
+    const nextBusinessTypeCode =
+      this.normalizeBusinessTypeCode(
+        payload.businessTypeCode,
+        current.businessTypeCode
+      )
+    const nextPlaceFeedTypeCode =
+      this.normalizePlaceFeedTypeCode(
+        payload.placeFeedTypeCode,
+        current.placeFeedTypeCode
+      )
+
+    if (
+      payload.placeFeedTypeCode !== undefined &&
+      payload.placeFeedTypeCode !== null
+    ) {
+      this.assertPlaceFeedTypeAllowedForUserGrade(
+        userId,
+        nextPlaceFeedTypeCode
+      )
+    }
+
+    const nextPrimaryIndustryId =
+      payload.primaryIndustryId === undefined || payload.primaryIndustryId === null
+        ? current.primaryIndustryId
+        : this.normalizeOptionalIndustryId(payload.primaryIndustryId)
+    const nextPrimaryIndustrySubtypeId =
+      payload.primaryIndustrySubtypeId === undefined || payload.primaryIndustrySubtypeId === null
+        ? current.primaryIndustrySubtypeId
+        : this.normalizeOptionalIndustryId(payload.primaryIndustrySubtypeId)
+    const nextPrimaryIndustryCode =
+      this.normalizeOptionalCode(
+        payload.primaryIndustryCode,
+        current.primaryIndustryCode
+      )
+    const nextPrimaryIndustrySubtypeCode =
+      this.normalizeOptionalCode(
+        payload.primaryIndustrySubtypeCode,
+        current.primaryIndustrySubtypeCode
+      )
+    const nextUpdatedAt =
+      this.normalizeOptionalTimestamp(payload.updatedAt)
+
+    const businessType = nextBusinessTypeCode
+      ? db.prepare(`
+        SELECT id, code
+        FROM business_types
+        WHERE code = ?
+          AND isActive = 1
+        LIMIT 1
+      `).get(nextBusinessTypeCode) as {
+        id: number
+        code: BusinessTypeCode
+      } | undefined
+      : null
+
+    if (nextBusinessTypeCode && !businessType) {
+      throw new BadRequestException('businessTypeCode not found')
+    }
+
+    const transaction =
+      db.transaction(() => {
+        db.prepare(`
+          UPDATE profiles
+          SET
+            businessTypeId = COALESCE(?, businessTypeId),
+            businessTypeCode = COALESCE(?, businessTypeCode),
+            placeFeedTypeCode = COALESCE(?, placeFeedTypeCode),
+            primaryIndustryId = COALESCE(?, primaryIndustryId),
+            primaryIndustrySubtypeId = COALESCE(?, primaryIndustrySubtypeId),
+            primaryIndustryCode = COALESCE(?, primaryIndustryCode),
+            primaryIndustrySubtypeCode = COALESCE(?, primaryIndustrySubtypeCode),
+            updatedAt = COALESCE(?, CURRENT_TIMESTAMP)
+          WHERE id = ?
+            AND channelCode = ?
+            AND profileType = 'BUSINESS'
+        `).run(
+          businessType?.id ?? current.businessTypeId,
+          nextBusinessTypeCode,
+          nextPlaceFeedTypeCode,
+          nextPrimaryIndustryId,
+          nextPrimaryIndustrySubtypeId,
+          nextPrimaryIndustryCode,
+          nextPrimaryIndustrySubtypeCode,
+          nextUpdatedAt,
+          profileId,
+          normalizedChannelCode
+        )
+      })
+
+    transaction()
+
+    return {
+      ok: true,
+      profileId,
+      channelCode: normalizedChannelCode,
+      businessTypeCode: nextBusinessTypeCode,
+      placeFeedTypeCode: nextPlaceFeedTypeCode,
+      primaryIndustryId: nextPrimaryIndustryId,
+      primaryIndustrySubtypeId: nextPrimaryIndustrySubtypeId,
+      primaryIndustryCode: nextPrimaryIndustryCode,
+      primaryIndustrySubtypeCode: nextPrimaryIndustrySubtypeCode
+    }
   }
 
   updateProfileFields(userId: number, profileId: number, channelCode: string, payload: {

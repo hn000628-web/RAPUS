@@ -9,15 +9,18 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CSSProperties } from 'react'
-import { login } from '@/lib/authApi'
+import {
+  clearClientAuthState,
+  login
+} from '@/lib/authApi'
 
 export default function LoginPage() {
   const router = useRouter()
+  const defaultProfileType = 'GENERAL'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const [selectedProfile, setSelectedProfile] = useState<'GENERAL' | 'BUSINESS'>('GENERAL')
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,12 +33,13 @@ export default function LoginPage() {
       return
     }
 
+    clearClientAuthState()
     setLoading(true)
     try {
       const data = await login({
         email: normalizedEmail,
         password: normalizedPassword,
-        profileType: selectedProfile
+        profileType: defaultProfileType
       })
 
       if (!data?.accessToken) {
@@ -50,8 +54,8 @@ export default function LoginPage() {
         localStorage.setItem('userId', String(data.user.userId))
       }
 
-      localStorage.setItem('profileType', selectedProfile)
-      localStorage.setItem('activeProfileType', selectedProfile)
+      localStorage.setItem('profileType', defaultProfileType)
+      localStorage.setItem('activeProfileType', defaultProfileType)
 
       localStorage.removeItem('profileId')
       localStorage.removeItem('activeProfileId')
@@ -78,33 +82,6 @@ export default function LoginPage() {
         <h1 style={logoStyle} onClick={goHome}>RAPUS</h1>
         <p style={subTitle}>Connect Local Business &amp; People</p>
 
-        <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-          <button
-            type="button"
-            style={{
-              ...selectButton,
-              background: selectedProfile === 'GENERAL' ? '#2563eb' : '#f3f4f6',
-              color: selectedProfile === 'GENERAL' ? '#fff' : '#111827'
-            }}
-            onClick={() => setSelectedProfile('GENERAL')}
-            disabled={loading}
-          >
-            일반
-          </button>
-          <button
-            type="button"
-            style={{
-              ...selectButton,
-              background: selectedProfile === 'BUSINESS' ? '#2563eb' : '#f3f4f6',
-              color: selectedProfile === 'BUSINESS' ? '#fff' : '#111827'
-            }}
-            onClick={() => setSelectedProfile('BUSINESS')}
-            disabled={loading}
-          >
-            비즈니스
-          </button>
-        </div>
-
         <form onSubmit={handleLogin} style={formStyle}>
           <input
             type="email"
@@ -124,30 +101,27 @@ export default function LoginPage() {
             autoComplete="current-password"
             required
           />
-          <p style={devPasswordHintStyle}>
-            개발 임시 비밀번호는 1234입니다.
-          </p>
+          <div style={buttonRowStyle}>
+            <button
+              type="button"
+              style={{
+                ...buttonBaseStyle,
+                ...signupButtonStyle
+              }}
+              onClick={() => router.push('/signup')}
+              disabled={loading} // 로그인 로딩 중만 비활성
+            >
+              회원가입
+            </button>
 
-          <button
-            type="button"
-            style={{
-              ...submitButtonStyle,
-              background: 'linear-gradient(90deg,#3b82f6,#2563eb)',
-              marginBottom: 12
-            }}
-            onClick={() => router.push('/signup')} // 실제 회원가입 페이지 경로 연결
-            disabled={loading} // 로그인 로딩 중만 비활성
-          >
-            회원가입
-          </button>
-
-          <button
-            type="submit"
-            style={submitButtonStyle}
-            disabled={loading}
-          >
-            {loading ? '로그인 중...' : '로그인'}
-          </button>
+            <button
+              type="submit"
+              style={loginButtonStyle}
+              disabled={loading}
+            >
+              {loading ? '로그인 중...' : '로그인'}
+            </button>
+          </div>
         </form>
         <div style={footerText}>RAPUS Platform v1.0</div>
       </div>
@@ -174,7 +148,7 @@ const bgGlow: CSSProperties = {
 }
 
 const cardStyle: CSSProperties = {
-  width: 400,
+  width: 'min(92vw, 400px)',
   padding: '40px',
   background: 'rgba(255,255,255,0.9)',
   backdropFilter: 'blur(18px)',
@@ -220,17 +194,13 @@ const inputStyle: CSSProperties = {
   boxSizing: 'border-box'
 }
 
-const selectButton: CSSProperties = {
-  flex: 1,
-  height: 42,
-  borderRadius: 12,
-  border: '1px solid #e2e8f0',
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer'
+const buttonRowStyle: CSSProperties = {
+  display: 'flex',
+  gap: 12,
+  width: '100%'
 }
 
-const submitButtonStyle: CSSProperties = {
+const buttonBaseStyle: CSSProperties = {
   width: '100%',
   height: 54,
   background: 'linear-gradient(90deg,#22c55e,#16a34a)',
@@ -240,19 +210,21 @@ const submitButtonStyle: CSSProperties = {
   cursor: 'pointer',
   borderRadius: 18,
   fontWeight: 700,
-  boxShadow: '0 14px 30px rgba(34,197,94,0.35)'
+  boxShadow: '0 14px 30px rgba(34,197,94,0.35)',
+  flex: 1
+}
+
+const signupButtonStyle: CSSProperties = {
+  background: 'linear-gradient(90deg,#3b82f6,#2563eb)',
+  boxShadow: '0 14px 30px rgba(37,99,235,0.25)'
+}
+
+const loginButtonStyle: CSSProperties = {
+  ...buttonBaseStyle
 }
 
 const footerText: CSSProperties = {
   marginTop: 22,
   fontSize: 11,
   color: '#94a3b8'
-}
-
-const devPasswordHintStyle: CSSProperties = {
-  marginTop: -8,
-  marginBottom: 10,
-  fontSize: 12,
-  color: '#64748b',
-  textAlign: 'center'
 }

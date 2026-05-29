@@ -1,0 +1,104 @@
+CART ALLOCATION SYSTEM SNAPSHOT
+
+==================================================
+SECTION 01 : CORE CONCEPT
+==================================================
+
+장바구니 자동 배정 시스템은 주문 확정 전 추천/배정 결과를 기록한다.
+
+기준:
+- cartCode 기반
+- channel_products 기준 배정
+- 근거리/최저가/재고/행사 점수 기반
+
+==================================================
+SECTION 02 : CART ALLOCATIONS RULE
+==================================================
+
+테이블: cart_allocations
+
+핵심 컬럼:
+- allocationCode (UNIQUE)
+- cartCode
+- buyerChannelCode
+- assignedMarketChannelCode
+- allocationStatus
+- allocationMode
+- totalEstimatedPrice
+- totalDistanceMeter
+- estimatedReadyMinutes
+- scoreTotal
+- stockScore
+- regionScore
+- distanceScore
+- priceScore
+- eventScore
+
+allocationStatus:
+- DRAFT
+- ALLOCATED
+- CONFIRMED
+- CANCELLED
+- FAILED
+
+allocationMode:
+- NEAREST
+- LOWEST_PRICE
+- BALANCED
+
+==================================================
+SECTION 03 : CART ALLOCATION ITEMS RULE
+==================================================
+
+테이블: cart_allocation_items
+
+핵심 컬럼:
+- allocationId
+- channelProductId
+- productCode
+- requestedQuantity
+- allocatedQuantity
+- unitPrice
+- eventPrice
+- stockStatus
+- itemScore
+
+중요:
+- masterProductId 직접 연결 금지
+- channelProductId 기준 연결
+
+==================================================
+SECTION 04 : ORDER BEFORE PAYMENT RULE
+==================================================
+
+결제 전에도 배정 분석/기록 가능:
+- DRAFT -> ALLOCATED -> CONFIRMED
+- 주문 확정 전 추천 변경 가능
+
+==================================================
+SECTION 05 : CHANNELCODE RULE
+==================================================
+
+단일 귀속:
+- buyerChannelCode
+- assignedMarketChannelCode
+
+금지:
+- ownerChannelCode 생성 금지
+
+==================================================
+SECTION 06 : PRODUCT SYSTEM CONSISTENCY
+==================================================
+
+PRODUCT SYSTEM과 정합:
+- master_products = 전역 원장
+- channel_products = 채널 판매 원장
+- cart allocation = channel_products 기준
+
+==================================================
+SECTION 07 : FINAL DECLARATION
+==================================================
+
+CART ALLOCATION SYSTEM은
+지역마트 자동 배정 엔진의 사전 의사결정 저장 계층이다.
+

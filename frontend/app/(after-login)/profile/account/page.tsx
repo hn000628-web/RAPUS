@@ -568,6 +568,16 @@ export default function AccountPrivacyPage() {
             />
 
             <InfoCard
+              title="비즈니스 회원가입"
+              value="일반 등급에서 비즈니스 등급으로 전환"
+              description="비즈니스 프로필을 생성하면 사업자/매장/브랜드 운영 기능을 사용할 수 있습니다. 가입 후 회원 등급이 일반 등급에서 비즈니스 등급으로 전환됩니다."
+              badgeText="전환 가능"
+              badgeTone="READY"
+              buttonText="비즈니스 시작하기"
+              onButtonClick={() => router.push('/profile/business/signup')}
+            />
+
+            <InfoCard
               title="배송정보관리"
               value={deliveryAddressSummary}
               description={`주문, 배달, 배송 요청에 사용할 기본 배송정보입니다. 공동현관 출입정보 ${hasEntrancePassword ? '등록됨' : '미등록'}.`}

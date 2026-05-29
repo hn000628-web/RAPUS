@@ -45,7 +45,7 @@ export default function ProfileMenu({
       new Event('auth-change')
     )
 
-    router.replace('/')
+    router.replace('/login')
     router.refresh()
   }
 
@@ -70,7 +70,11 @@ export default function ProfileMenu({
         </div>
 
         <div style={email}>
-          {profile?.channelCode || ''}
+          {profile?.email || '이메일 확인중'}
+        </div>
+
+        <div style={emailMeta}>
+          {profile?.channelCode || '채널코드 확인중'}
         </div>
       </div>
 
@@ -188,6 +192,11 @@ const nickname: React.CSSProperties = {
 const email: React.CSSProperties = {
   fontSize: 12,
   color: '#6b7280'
+}
+
+const emailMeta: React.CSSProperties = {
+  fontSize: 12,
+  color: '#9ca3af'
 }
 
 const menu: React.CSSProperties = {

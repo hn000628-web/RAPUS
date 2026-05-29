@@ -67,6 +67,7 @@ const regions=db.prepare(`
 SELECT
 id,
 code,
+COALESCE(addressMainCode, code) as addressMainCode,
 countryCode,
 name,
 fullName,
@@ -112,6 +113,7 @@ const rows=db.prepare(`
 SELECT
 id,
 code,
+COALESCE(addressMainCode, code) as addressMainCode,
 name,
 regionType,
 depth,
@@ -256,14 +258,60 @@ throw new BadRequestException('CSV empty')
 
 rows=rows.map(r=>({
 
-code:r.code,
-countryCode:r.countryCode,
-name:r.name,
-fullName:r.fullName,
+code:
+r.code ??
+r.legalCode ??
+r.addressMainCode ??
+r.AddressMainCode ??
+r.addressMainCode12 ??
+r.mainAddressCode ??
+r.code,
 
-regionType:r.regionType,
+addressMainCode:
+r.addressMainCode ??
+r.AddressMainCode ??
+r.addressMainCode12 ??
+r.mainAddressCode ??
+r.code,
 
-depth:r.depth ?? r.level,
+mainAddressCode:
+r.mainAddressCode ??
+r.addressMainCode ??
+r.AddressMainCode ??
+r.addressMainCode12 ??
+r.code,
+
+countryCode:
+r.countryCode ??
+r.country ??
+'KR',
+
+name:
+r.name ??
+r.regionName ??
+r.region ??
+r['지역명'] ??
+r.mainRegionName ??
+r.roadAddress ??
+r['도로명주소'] ??
+r.mainAddressCode ??
+r.addressMainCode ??
+r.AddressMainCode ??
+r.code,
+
+fullName:
+r.fullName ??
+r.roadAddress ??
+r.address ??
+r['도로명주소'] ??
+r.name ??
+r.regionName,
+
+regionType:
+r.regionType ??
+r.regionLevel,
+
+depth:r.depth ?? r.level ?? r.depthLevel,
 
 parentCode:r.parentCode,
 
@@ -274,7 +322,15 @@ longitude:r.longitude,
 
 sortOrder:r.sortOrder,
 
-isActive:r.isActive
+isActive:r.isActive,
+
+roadAddress:
+r.roadAddress ??
+r['도로명주소'] ??
+r.fullName,
+
+addressLevel:
+r.addressLevel
 
 }))
 
@@ -328,36 +384,49 @@ codes.add(code)
 
 const name=this.norm(r.name)
 
-if(!name){
+const depthRaw=this.norm(r.depth)
+
+if(depthRaw){
+  const depth=Number(depthRaw)
+
+  if(Number.isNaN(depth)){
+
+  errors.push({
+  line,
+  field:'depth',
+  error:'invalid'
+  })
+
+  }
+  else if(depth<0 || depth>5){
+
+  errors.push({
+  line,
+  field:'depth',
+  error:'0~5 only'
+  })
+
+  }
+}
+
+const addressLevelRaw=this.norm(r.addressLevel)
+
+if(addressLevelRaw){
+const addressLevel=Number(addressLevelRaw)
+
+if(
+Number.isNaN(addressLevel)||
+addressLevel<1||
+addressLevel>5
+){
 
 errors.push({
 line,
-field:'name',
-error:'required'
+field:'addressLevel',
+error:'1~5 only'
 })
 
 }
-
-let depth=Number(r.depth)
-
-if(Number.isNaN(depth)){
-
-errors.push({
-line,
-field:'depth',
-error:'invalid'
-})
-
-}
-
-if(depth<0 || depth>5){
-
-errors.push({
-line,
-field:'depth',
-error:'0~5 only'
-})
-
 }
 
 }
@@ -383,6 +452,7 @@ const insert=db.prepare(`
 INSERT OR IGNORE INTO regions(
 
 code,
+addressMainCode,
 countryCode,
 name,
 fullName,
@@ -395,9 +465,13 @@ longitude,
 sortOrder,
 isActive
 
+,mainAddressCode
+,roadAddress
+,addressLevel
+
 )
 
-VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 
 `)
 
@@ -437,12 +511,64 @@ depth=5
 
 let regionType=this.norm(r.regionType)
 
+if(
+regionType!== 'COUNTRY' &&
+regionType!== 'METRO' &&
+regionType!== 'PROVINCE' &&
+regionType!== 'CITY' &&
+regionType!== 'DISTRICT' &&
+regionType!== 'DONG' &&
+regionType!== 'EUP' &&
+regionType!== 'MYEON' &&
+regionType!== 'RI' &&
+regionType!== 'NEIGHBORHOOD'
+){
+regionType=''
+}
+
 if(!regionType)
 regionType=this.resolveRegionType(depth)
+
+const mainAddressCode=
+(()=>{
+const raw=this.norm(
+  r.mainAddressCode ||
+  r.addressMainCode12 ||
+  code
+)
+return raw.length===12 ? raw : null
+})()
+
+const addressMainCode=
+this.norm(
+  r.addressMainCode ||
+  r.addressMainCode12 ||
+  code
+)
+
+const roadAddress=
+this.norm(r.roadAddress||r.fullName||name)
+
+let addressLevel=
+this.num(r.addressLevel)
+
+if(addressLevel===null){
+addressLevel=Math.min(
+5,
+Math.max(1,depth+1)
+)
+}
+
+if(addressLevel<1)
+addressLevel=1
+
+if(addressLevel>5)
+addressLevel=5
 
 insert.run(
 
 code,
+addressMainCode,
 
 (this.norm(r.countryCode)||'KR')
 .toUpperCase(),
@@ -465,7 +591,13 @@ this.num(r.longitude),
 
 this.num(r.sortOrder)||0,
 
-this.num(r.isActive)||1
+this.num(r.isActive)||1,
+
+mainAddressCode,
+
+roadAddress,
+
+addressLevel
 
 )
 
@@ -579,6 +711,7 @@ const rows=db.prepare(`
 SELECT
 
 r.code,
+r.addressMainCode,
 r.countryCode,
 r.name,
 r.fullName,
@@ -601,12 +734,12 @@ ORDER BY depth,code
 `).all()
 
 const header=
-
-'code,countryCode,name,fullName,regionType,depth,parentCode,path,latitude,longitude,sortOrder,isActive\n'
+'code,addressMainCode,countryCode,name,fullName,regionType,depth,parentCode,path,latitude,longitude,sortOrder,isActive\n'
 
 const csv=rows.map((r:any)=>[
 
 r.code,
+r.addressMainCode??r.code,
 r.countryCode,
 r.name,
 r.fullName,

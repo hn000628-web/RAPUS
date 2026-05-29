@@ -46,3 +46,4 @@ AI절대규칙_SNAPSHOT BACKEND RULE VALIDATION_반드시 준수.txt
 DB스키마_구조_규칙.txt
 DB&Service_init규칙.txt
 정규 _DB 스키마_init-db_14섹션_26-04-27.txt
+regions_address_main_code_12
