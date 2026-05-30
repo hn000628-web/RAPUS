@@ -1,0 +1,66 @@
+FILE 04 : PRODUCT_MASTER_KNOWLEDGE_RULE.txt
+STATUS : PROJECT LOCK
+ROLE : PRODUCT MASTER KNOWLEDGE RULE
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+상품원장 데이터는
+
+MeteoAI의 마켓 추론 핵심 자산이다.
+
+==================================================
+
+SECTION 02 : DATA FIELDS
+
+필수 데이터:
+
+barcode
+productCode
+productName
+brandName
+makerName
+category
+unit
+imageAssetId
+sourceType
+sourceCode
+
+==================================================
+
+SECTION 03 : IMAGE RULE
+
+상품 이미지는 구분한다.
+
+ORIGINAL
+
+ENHANCED
+
+PROMOTIONAL
+
+THUMBNAIL
+
+AI_GENERATED
+
+==================================================
+
+SECTION 04 : FINAL RULE
+
+상품 데이터는
+
+바코드
+
+상품명
+
+브랜드
+
+카테고리
+
+이미지
+
+정합성을 우선한다.
+
+==================================================
+END OF FILE 04
+==============

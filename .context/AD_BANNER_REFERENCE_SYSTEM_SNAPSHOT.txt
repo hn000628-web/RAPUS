@@ -1,0 +1,75 @@
+FILE : AD_BANNER_REFERENCE_SYSTEM_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : AD BANNER REFERENCE SYSTEM
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+광고 배너는
+
+목적 기반 시각자료로 분류한다.
+
+AI는 배너를 일반 이미지와 구분한다.
+
+==================================================
+
+SECTION 02 : BANNER TYPE
+
+MAIN_HERO
+
+CATEGORY_BANNER
+
+EVENT_BANNER
+
+PROMOTION_BANNER
+
+SEASON_BANNER
+
+BRAND_BANNER
+
+PRODUCT_BANNER
+
+==================================================
+
+SECTION 03 : BANNER STRUCTURE
+
+배너
+
+↓
+
+목적
+
+↓
+
+상품
+
+↓
+
+브랜드
+
+↓
+
+기간
+
+↓
+
+행사
+
+==================================================
+
+SECTION 04 : FINAL RULE
+
+배너는
+
+유형
+
+목적
+
+상품/브랜드 맥락
+
+기준으로 관리한다.
+
+==================================================
+END OF SNAPSHOT
+===============

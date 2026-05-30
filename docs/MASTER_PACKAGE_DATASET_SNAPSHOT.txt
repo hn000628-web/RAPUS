@@ -1,0 +1,55 @@
+FILE : MASTER_PACKAGE_DATASET_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : MASTER PACKAGE DATASET
+PRIORITY : HIGH
+===============
+
+SECTION 01
+PURPOSE
+=======
+
+패키지 원장
+
+==================================================
+SECTION 02
+STRUCTURE
+=========
+
+PACKAGE_CODE
+
+PACKAGE_TYPE
+
+FRONT
+
+BACK
+
+LEFT
+
+RIGHT
+
+TOP
+
+BOTTOM
+
+BOX
+
+CASE
+
+PALLET
+
+==================================================
+SECTION 03
+EXAMPLE
+=======
+
+신라면
+
+봉지
+
+BOX
+
+CASE
+
+==================================================
+END OF SNAPSHOT
+===============

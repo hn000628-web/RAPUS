@@ -1,0 +1,55 @@
+FILE : VISUAL_NORMALIZATION_EXAMPLE_SET_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : VISUAL NORMALIZATION EXAMPLE SET
+PRIORITY : HIGH
+===============
+
+SECTION 01 : PURPOSE
+
+입력어 표준화
+
+==================================================
+
+SECTION 02 : EXAMPLE
+
+농심 마크
+
+↓
+
+LOGO
+
+브랜드 마크
+
+↓
+
+LOGO
+
+상표
+
+↓
+
+LOGO
+
+포장 사진
+
+↓
+
+PACKAGE
+
+행사 전단
+
+↓
+
+BANNER
+
+==================================================
+
+SECTION 03 : RULE
+
+정규화 예시는 100개 이상 유지한다.
+
+입력어는 대표 TAG로 변환한다.
+
+==================================================
+END OF SNAPSHOT
+===============

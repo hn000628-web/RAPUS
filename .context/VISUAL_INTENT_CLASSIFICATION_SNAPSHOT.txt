@@ -1,0 +1,49 @@
+FILE : VISUAL_INTENT_CLASSIFICATION_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : VISUAL INTENT CLASSIFICATION
+PRIORITY : HIGH
+===============
+
+SECTION 01 : INTENT SET
+
+LOGO_SEARCH
+
+PRODUCT_SEARCH
+
+PACKAGE_SEARCH
+
+BANNER_SEARCH
+
+THUMBNAIL_GENERATION
+
+BANNER_GENERATION
+
+DETAIL_GENERATION
+
+KNOWLEDGE_SEARCH
+
+==================================================
+
+SECTION 02 : EXAMPLE
+
+농심 로고 보여줘
+
+↓
+
+LOGO_SEARCH
+
+상품 썸네일 생성
+
+↓
+
+THUMBNAIL_GENERATION
+
+행사 배너 생성
+
+↓
+
+BANNER_GENERATION
+
+==================================================
+END OF SNAPSHOT
+===============

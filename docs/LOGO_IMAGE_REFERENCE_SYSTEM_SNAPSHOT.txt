@@ -1,0 +1,79 @@
+FILE : LOGO_IMAGE_REFERENCE_SYSTEM_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : LOGO IMAGE REFERENCE SYSTEM
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+브랜드 로고는
+
+로고 유형
+
+저장 유형
+
+용도
+
+기준으로 분류한다.
+
+==================================================
+
+SECTION 02 : LOGO CLASSIFICATION
+
+PRIMARY_LOGO
+
+SECONDARY_LOGO
+
+WORD_MARK
+
+SYMBOL_MARK
+
+ICON_LOGO
+
+==================================================
+
+SECTION 03 : STORAGE TYPE
+
+ORIGINAL_LOGO
+
+TRANSPARENT_LOGO
+
+VECTOR_LOGO
+
+AD_LOGO
+
+==================================================
+
+SECTION 04 : EXAMPLE BRAND
+
+삼양
+
+농심
+
+오뚜기
+
+해태
+
+롯데
+
+코카콜라
+
+칠성사이다
+
+==================================================
+
+SECTION 05 : FINAL RULE
+
+로고 데이터는
+
+배경제거 여부
+
+벡터 여부
+
+광고용 여부
+
+를 구분하여 저장한다.
+
+==================================================
+END OF FILE
+===========

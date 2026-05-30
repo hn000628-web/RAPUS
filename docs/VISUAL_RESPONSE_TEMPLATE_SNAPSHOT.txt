@@ -1,0 +1,37 @@
+FILE : VISUAL_RESPONSE_TEMPLATE_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : VISUAL RESPONSE TEMPLATE
+PRIORITY : HIGH
+===============
+
+SECTION 01 : TEMPLATE SET
+
+PRODUCT TEMPLATE
+
+LOGO TEMPLATE
+
+PACKAGE TEMPLATE
+
+BANNER TEMPLATE
+
+DETAIL TEMPLATE
+
+THUMBNAIL TEMPLATE
+
+==================================================
+
+SECTION 02 : PRODUCT TEMPLATE EXAMPLE
+
+상품명
+
+브랜드
+
+카테고리
+
+대표이미지
+
+참조패키지
+
+==================================================
+END OF SNAPSHOT
+===============

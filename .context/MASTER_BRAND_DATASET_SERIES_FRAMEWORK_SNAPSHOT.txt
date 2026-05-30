@@ -1,0 +1,136 @@
+FILE : MASTER_BRAND_DATASET_SERIES_FRAMEWORK_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : MASTER BRAND DATASET SERIES FRAMEWORK
+PRIORITY : HIGH
+===============
+
+SECTION 01
+CORE PRINCIPLE
+==============
+
+모든 브랜드 데이터셋은
+
+동일 구조를 사용한다.
+
+==================================================
+SECTION 02
+BRAND MASTER STRUCTURE
+======================
+
+BRAND_CODE
+
+BRAND_NAME
+
+COUNTRY
+
+COMPANY_NAME
+
+PRIMARY_COLOR
+
+SECONDARY_COLOR
+
+LOGO_REFERENCE
+
+OFFICIAL_WEBSITE
+
+STATUS
+
+==================================================
+SECTION 03
+PRODUCT GROUP
+=============
+
+대표상품
+
+카테고리
+
+대표라인업
+
+상품군
+
+==================================================
+SECTION 04
+VISUAL GROUP
+============
+
+대표로고
+
+대표색상
+
+대표패키지
+
+대표배너
+
+대표썸네일
+
+==================================================
+SECTION 05
+PACKAGE GROUP
+=============
+
+봉지
+
+박스
+
+케이스
+
+팔레트
+
+==================================================
+SECTION 06
+BARCODE GROUP
+=============
+
+대표 바코드
+
+대표 상품 연결
+
+==================================================
+SECTION 07
+BRAND SERIES
+============
+
+MASTER_BRAND_NONGSHIM_DATASET
+
+MASTER_BRAND_SAMYANG_DATASET
+
+MASTER_BRAND_OTTOGI_DATASET
+
+MASTER_BRAND_PALDO_DATASET
+
+MASTER_BRAND_BINGGRAE_DATASET
+
+==================================================
+SECTION 08
+INDEX 등록
+========
+
+METEO_AI_SNAPSHOT_INDEX_FINAL_SNAPSHOT
+
+추가
+
+MASTER_BRAND_DATASET_SERIES_FRAMEWORK_SNAPSHOT
+
+==================================================
+최종 목표
+=====
+
+브랜드
+
+↓
+
+상품
+
+↓
+
+이미지
+
+↓
+
+패키지
+
+↓
+
+바코드
+
+통합 연결

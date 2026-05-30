@@ -1,0 +1,54 @@
+FILE : MASTER_PRODUCT_VISUAL_DATASET_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : MASTER PRODUCT VISUAL DATASET
+PRIORITY : HIGH
+===============
+
+SECTION 01
+PURPOSE
+=======
+
+상품 시각 원장
+
+==================================================
+SECTION 02
+STRUCTURE
+=========
+
+BARCODE
+
+PRODUCT_NAME
+
+BRAND_CODE
+
+CATEGORY
+
+PRIMARY_COLOR
+
+PACKAGE_TYPE
+
+IMAGE_REFERENCE
+
+LOGO_REFERENCE
+
+BANNER_REFERENCE
+
+==================================================
+SECTION 03
+EXAMPLE
+=======
+
+신라면
+
+브랜드
+농심
+
+카테고리
+라면
+
+대표색상
+RED
+
+==================================================
+END OF SNAPSHOT
+===============

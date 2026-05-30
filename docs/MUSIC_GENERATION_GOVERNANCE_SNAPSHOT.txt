@@ -1,0 +1,25 @@
+MUSIC_GENERATION_GOVERNANCE_SNAPSHOT
+
+SECTION 01 : CORE PRINCIPLE
+음악 생성은 원저작권을 침해하지 않는 독창적 창작을 원칙으로 한다.
+
+SECTION 02 : REFERENCE RULE
+특정 아티스트를 직접 복제하지 않는다.
+참고는 장르, 분위기, 악기 구성, 템포, 감정선 수준으로만 한다.
+
+SECTION 03 : ALLOWED REFERENCE
+- 서정적 K-pop 발라드
+- 현대 CCM 예배곡
+- 피아노 기반 발라드
+- 어쿠스틱 예배곡
+- 공동체 찬양 분위기
+
+SECTION 04 : FORBIDDEN RULE
+- 특정 아티스트 음색/창법 복제 금지
+- 기존 곡 멜로디 복제 금지
+- 기존 가사 차용 금지
+- 유튜브 음원 무단 사용 금지
+
+SECTION 05 : RESPONSIBILITY
+회사는 생성물 사용 전 저작권 검토 책임을 가진다.
+AI는 저작권 침해 가능성을 줄이는 방향으로 생성한다.

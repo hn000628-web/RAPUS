@@ -1,0 +1,150 @@
+FILE : REAL_BARCODE_INPUT_BATCH_01_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : REAL BARCODE INPUT BATCH 01
+PRIORITY : HIGH
+===============
+
+SECTION 05
+REAL_BARCODE_INPUT_BATCH_01
+===========================
+
+BARCODE
+
+↓
+
+PRODUCT
+
+↓
+
+BRAND
+
+↓
+
+IMAGE
+
+↓
+
+PACKAGE
+
+연결 구조 정의
+
+실제 바코드 입력 금지
+
+==================================================
+SECTION 06
+INPUT ORDER RULE
+================
+
+반드시
+
+BRAND
+
+↓
+
+PRODUCT
+
+↓
+
+IMAGE
+
+↓
+
+PACKAGE
+
+↓
+
+BARCODE
+
+순서 유지
+
+==================================================
+SECTION 07
+LEVEL 03 PROGRESS RULE
+======================
+
+REAL_BRAND_INPUT_BATCH_01
+
+완료
+
+↓
+
+REAL_PRODUCT_INPUT_BATCH_01
+
+완료
+
+↓
+
+REAL_IMAGE_INPUT_BATCH_01
+
+완료
+
+↓
+
+REAL_PACKAGE_INPUT_BATCH_01
+
+완료
+
+↓
+
+REAL_BARCODE_INPUT_BATCH_01
+
+완료
+
+↓
+
+LEVEL 03 COMPLETE
+
+==================================================
+SECTION 08
+INDEX 등록
+========
+
+METEO_AI_SNAPSHOT_INDEX_FINAL_SNAPSHOT
+
+추가
+
+REAL_BRAND_INPUT_BATCH_01_SNAPSHOT
+
+REAL_PRODUCT_INPUT_BATCH_01_SNAPSHOT
+
+REAL_IMAGE_INPUT_BATCH_01_SNAPSHOT
+
+REAL_PACKAGE_INPUT_BATCH_01_SNAPSHOT
+
+REAL_BARCODE_INPUT_BATCH_01_SNAPSHOT
+
+==================================================
+금지사항
+====
+
+DB 수정 금지
+
+API 수정 금지
+
+Frontend 수정 금지
+
+실제 이미지 입력 금지
+
+실제 바코드 입력 금지
+
+현재는 구조 정의만 수행
+
+==================================================
+최종 목표
+=====
+
+LEVEL 03
+
+실데이터 입력 구조 확정
+
+↓
+
+LEVEL 04
+
+실제 바코드 연결
+
+↓
+
+LEVEL 05
+
+AI 자동 추론

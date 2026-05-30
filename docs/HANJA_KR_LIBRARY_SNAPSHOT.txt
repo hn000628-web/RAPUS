@@ -1,0 +1,59 @@
+FILE 01 : HANJA_KR_LIBRARY_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : KOREAN HANJA KNOWLEDGE RULE
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+HANJA는 중국어 한자가 아니다.
+
+본 프로젝트의 HANJA 기준은 한국어 한자이다.
+
+한국어 의미
+
+한국어 음
+
+한국어 한자어 용례
+
+를 기준으로 한다.
+
+==================================================
+
+SECTION 02 : PRIORITY
+
+우선순위:
+
+1. 한국 한자어
+2. 한국어 의미
+3. 한국 문화권 해석
+4. 일본 한자 참고
+5. 중국 한자 참고
+
+==================================================
+
+SECTION 03 : DATA FIELDS
+
+필수 데이터:
+
+hanjaWord
+koReading
+koMeaning
+wordParts
+usageExample
+semanticNote
+sourceCode
+
+==================================================
+
+SECTION 04 : FINAL RULE
+
+MeteoAI는 한자 해석 시
+
+중국어 기준보다
+
+한국어 한자 의미를 우선한다.
+
+==================================================
+END OF FILE 01
+==============

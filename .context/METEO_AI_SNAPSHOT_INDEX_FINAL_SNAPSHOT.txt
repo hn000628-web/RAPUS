@@ -328,5 +328,361 @@ METEO AI는
 추론한다.
 
 ==================================================
+SECTION 15 : VISUAL KNOWLEDGE LAYER
+===================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* HUMAN_REFERENCE_LIBRARY_STRUCTURE_SNAPSHOT
+* HUMAN_REFERENCE_TAG_SYSTEM_SNAPSHOT
+* IMAGE_REFERENCE_TAG_SYSTEM_SNAPSHOT
+* ANIMATION_REFERENCE_TAG_SYSTEM_SNAPSHOT
+* PRODUCT_IMAGE_REFERENCE_SNAPSHOT
+
+ROLE:
+
+시각 추론
+
+사람 이미지 추론
+
+캐릭터 추론
+
+아바타 추론
+
+광고 모델 추론
+
+상품 이미지 추론
+
+애니메이션/IP 추론
+
+UI/UX 이미지 참고 추론
+
+==================================================
+SECTION 16 : VISUAL TAG ROUTING RULE
+====================================
+
+MeteoAI는 이미지 관련 질문 또는 디자인 관련 질문을 받으면
+
+VISUAL_KNOWLEDGE 계층을 확인한다.
+
+라우팅 순서:
+
+질문
+
+↓
+
+Intent Detection
+
+↓
+
+VISUAL_KNOWLEDGE Category 선택
+
+↓
+
+Human / Image / Animation / Product 태그 탐색
+
+↓
+
+관련 스냅샷 로드
+
+↓
+
+시각 추론
+
+==================================================
+SECTION 17 : VISUAL KNOWLEDGE PRIORITY
+======================================
+
+시각 추론 우선순위:
+
+1. 사용자 의도
+
+2. RAPUS 디자인 기준
+
+3. HUMAN_REFERENCE_LIBRARY
+
+4. HUMAN_REFERENCE_TAG_SYSTEM
+
+5. IMAGE_REFERENCE_TAG_SYSTEM
+
+6. ANIMATION_REFERENCE_TAG_SYSTEM
+
+7. PRODUCT_IMAGE_REFERENCE
+
+8. Gemini 제안
+
+9. OpenAI 제안
+
+10. 일반 디자인 지식
+
+==================================================
+SECTION 18 : IMAGE / MEDIA REFERENCE SYSTEM
+============================================
+
+CATEGORY:
+IMAGE_MEDIA_REFERENCE
+
+SNAPSHOT:
+
+* PRODUCT_IMAGE_REFERENCE_SNAPSHOT
+* IMAGE_REFERENCE_TAG_SYSTEM_SNAPSHOT
+* LOGO_IMAGE_REFERENCE_SYSTEM_SNAPSHOT
+* PACKAGE_IMAGE_REFERENCE_SYSTEM_SNAPSHOT
+
+ROLE:
+
+METEO AI
+IMAGE / MEDIA
+REFERENCE SYSTEM
+
+==================================================
+SECTION 19 : VISUAL KNOWLEDGE SYSTEM EXPANSION
+===============================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* VISUAL_TAG_DICTIONARY_SNAPSHOT
+* VISUAL_SYNONYM_MAP_SNAPSHOT
+* BRAND_IMAGE_REFERENCE_SYSTEM_SNAPSHOT
+* AD_BANNER_REFERENCE_SYSTEM_SNAPSHOT
+* PRODUCT_VISUAL_KNOWLEDGE_GRAPH_SNAPSHOT
+
+ROLE:
+
+시각태그 표준화
+
+동의어 정규화
+
+브랜드 시각참조
+
+광고 배너 참조
+
+상품 시각지식 그래프 추론
+
+==================================================
+SECTION 20 : VISUAL KNOWLEDGE ROUTER
+====================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* VISUAL_KNOWLEDGE_ROUTER_SNAPSHOT
+
+ROLE:
+
+시각지식 참조 진입점
+
+태그/동의어/상품/로고/패키지/배너/그래프 라우팅
+
+==================================================
+SECTION 21 : VISUAL ENGINE LAYER 3
+==================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* VISUAL_NORMALIZATION_EXAMPLE_SET_SNAPSHOT
+* VISUAL_INTENT_CLASSIFICATION_SNAPSHOT
+* VISUAL_KNOWLEDGE_ROUTER_SNAPSHOT
+* VISUAL_RESPONSE_TEMPLATE_SNAPSHOT
+* VISUAL_INFERENCE_POLICY_SNAPSHOT
+
+ROLE:
+
+Normalization
+
+Intent
+
+Routing
+
+Response
+
+Inference
+
+==================================================
+SECTION 22 : VISUAL ROUTER TEST CASE
+====================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* VISUAL_KNOWLEDGE_ROUTER_TEST_CASE_SNAPSHOT
+
+ROLE:
+
+시각 라우터 정규화/의도/라우팅/추론 검증
+
+==================================================
+SECTION 23 : VISUAL ENGINE VALIDATION LAYER
+===========================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* VISUAL_KNOWLEDGE_ROUTER_TEST_CASE_SNAPSHOT
+* VISUAL_NORMALIZATION_EXAMPLE_SET_SNAPSHOT
+* VISUAL_INTENT_CLASSIFICATION_SNAPSHOT
+* VISUAL_RESPONSE_TEMPLATE_SNAPSHOT
+* VISUAL_INFERENCE_POLICY_SNAPSHOT
+
+ROLE:
+
+Test
+
+Normalization
+
+Intent
+
+Response
+
+Inference
+
+==================================================
+SECTION 24 : VISUAL ROUTER TEST DATASET
+=======================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* VISUAL_KNOWLEDGE_ROUTER_TEST_DATASET_SNAPSHOT
+
+ROLE:
+
+시각 라우터 실제 데이터셋 기반 PASS/FAIL 검증
+
+==================================================
+SECTION 25 : MASTER BRAND DATASET
+=================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* MASTER_BRAND_DATASET_SNAPSHOT
+
+ROLE:
+
+브랜드-로고-상품-패키지-배너 관계 원장
+
+==================================================
+SECTION 26 : VISUAL ENGINE ROADMAP FINAL
+========================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* METEO_AI_VISUAL_ENGINE_ROADMAP_FINAL_SNAPSHOT
+
+ROLE:
+
+Visual Engine LEVEL 1~5 최상위 개발 로드맵
+
+==================================================
+SECTION 27 : LEVEL 2 MASTER DATASET SNAPSHOT PACK
+=================================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* MASTER_BRAND_DATASET_SNAPSHOT
+* MASTER_PRODUCT_VISUAL_DATASET_SNAPSHOT
+* MASTER_PACKAGE_DATASET_SNAPSHOT
+* VISUAL_ROUTER_100_CASE_DATASET_SNAPSHOT
+* VISUAL_ENGINE_BENCHMARK_SNAPSHOT
+
+ROLE:
+
+LEVEL 2 MASTER DATASET 구조 고정
+
+==================================================
+SECTION 28 : LEVEL 03 REAL DATASET INPUT FRAMEWORK
+==================================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* LEVEL_03_REAL_DATASET_INPUT_FRAMEWORK_SNAPSHOT
+
+ROLE:
+
+LEVEL 03 실데이터 입력 절대 순서 고정
+
+==================================================
+SECTION 29 : MASTER BRAND DATASET SERIES FRAMEWORK
+==================================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* MASTER_BRAND_DATASET_SERIES_FRAMEWORK_SNAPSHOT
+
+ROLE:
+
+브랜드 데이터셋 시리즈 공통 규격 고정
+
+==================================================
+SECTION 30 : MASTER BRAND DATASET SERIES PACK
+==============================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* MASTER_BRAND_NONGSHIM_DATASET_SNAPSHOT
+* MASTER_BRAND_SAMYANG_DATASET_SNAPSHOT
+* MASTER_BRAND_OTTOGI_DATASET_SNAPSHOT
+* MASTER_BRAND_PALDO_DATASET_SNAPSHOT
+* MASTER_BRAND_BINGGRAE_DATASET_SNAPSHOT
+
+ROLE:
+
+브랜드 5종 시리즈 원장 구조 고정
+
+==================================================
+SECTION 31 : LEVEL 03 REAL DATA INPUT BATCH 01 PACK
+===================================================
+
+CATEGORY:
+VISUAL_KNOWLEDGE
+
+SNAPSHOT:
+
+* REAL_BRAND_INPUT_BATCH_01_SNAPSHOT
+* REAL_PRODUCT_INPUT_BATCH_01_SNAPSHOT
+* REAL_IMAGE_INPUT_BATCH_01_SNAPSHOT
+* REAL_PACKAGE_INPUT_BATCH_01_SNAPSHOT
+* REAL_BARCODE_INPUT_BATCH_01_SNAPSHOT
+
+ROLE:
+
+LEVEL 03 실데이터 입력 배치 구조 고정
+
+==================================================
 END OF SNAPSHOT
 ===============

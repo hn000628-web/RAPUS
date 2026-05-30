@@ -1,0 +1,231 @@
+FILE : ANIMATION_REFERENCE_TAG_SYSTEM_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : ANIMATION / WEBTOON / IP REFERENCE TAG SYSTEM
+PRIORITY : HIGH
+CATEGORY : VISUAL_KNOWLEDGE
+TAGS : ANIMATION, WEBTOON, IP, MECHA, RACING, STORY
+===================================================
+
+SECTION 01 : CORE PRINCIPLE
+
+애니메이션 참고자료는
+
+IP 복제가 아니라
+
+세계관
+
+서사
+
+감성
+
+연출
+
+캐릭터 구조
+
+분석을 목적으로 한다.
+
+==================================================
+
+SECTION 02 : STORY TAG
+
+서사 태그:
+
+GROWTH
+
+RIVAL
+
+TEAMWORK
+
+RESPONSIBILITY
+
+EXISTENCE
+
+CHOICE
+
+FAITH
+
+SACRIFICE
+
+REDEMPTION
+
+CONFLICT
+
+MISSION
+
+LEGACY
+
+==================================================
+
+SECTION 03 : WORLD TAG
+
+세계관 태그:
+
+MECHA
+
+RACING
+
+SCI_FI
+
+FUTURE
+
+SPACE
+
+WAR
+
+ACADEMY
+
+CITY
+
+POST_APOCALYPSE
+
+CYBER
+
+MILITARY
+
+SPORTS
+
+==================================================
+
+SECTION 04 : CHARACTER ROLE TAG
+
+캐릭터 역할 태그:
+
+PROTAGONIST
+
+RIVAL
+
+MENTOR
+
+LEADER
+
+GENIUS
+
+PILOT
+
+ENGINEER
+
+COMMANDER
+
+SUPPORTER
+
+ANTAGONIST
+
+GUARDIAN
+
+==================================================
+
+SECTION 05 : EMOTION TAG
+
+감정 태그:
+
+HOPE
+
+COURAGE
+
+LOSS
+
+TRUST
+
+CONFLICT
+
+LOVE
+
+FRIENDSHIP
+
+FEAR
+
+DETERMINATION
+
+==================================================
+
+SECTION 06 : DESIGN TAG
+
+디자인 태그:
+
+MECHA_DESIGN
+
+VEHICLE_DESIGN
+
+SUIT_DESIGN
+
+UNIFORM
+
+TEAM_LOGO
+
+COCKPIT
+
+FUTURE_UI
+
+WEAPON_SYSTEM
+
+RACING_MACHINE
+
+==================================================
+
+SECTION 07 : IP SAFETY RULE
+
+기존 IP는
+
+분석 대상
+
+참고 대상
+
+이다.
+
+복제 대상이 아니다.
+
+금지:
+
+* 기존 캐릭터 복제
+* 기존 기체/머신 복제
+* 기존 세계관 복제
+* 기존 로고 복제
+* 기존 대사/장면 복제
+
+==================================================
+
+SECTION 08 : ORIGINAL IP RULE
+
+최종 목표는
+
+사용자 고유의 오리지널 IP 구축이다.
+
+참고자료는
+
+오리지널 세계관
+
+오리지널 캐릭터
+
+오리지널 메카닉
+
+오리지널 머신
+
+오리지널 서사
+
+생성을 위한 분석 근거로만 사용한다.
+
+==================================================
+
+SECTION 09 : FINAL DECLARATION
+
+MeteoAI는 기존 애니메이션/IP를
+
+복제하지 않는다.
+
+MeteoAI는
+
+구조
+
+감성
+
+연출
+
+세계관 설계 원리
+
+를 참고하여
+
+사용자 고유의 IP를 설계한다.
+
+==================================================
+END OF SNAPSHOT
+===============

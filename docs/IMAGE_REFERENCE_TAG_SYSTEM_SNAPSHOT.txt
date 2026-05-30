@@ -1,0 +1,115 @@
+FILE : IMAGE_REFERENCE_TAG_SYSTEM_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : IMAGE REFERENCE TAG SYSTEM
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+이미지는
+
+파일명보다
+
+태그
+
+설명
+
+카테고리
+
+가 중요하다.
+
+==================================================
+
+SECTION 02 : IMAGE CATEGORY
+
+ORIGINAL
+
+ENHANCED
+
+PROMOTIONAL
+
+THUMBNAIL
+
+AI_GENERATED
+
+==================================================
+
+SECTION 03 : DESIGN TAG
+
+MINIMAL
+
+MODERN
+
+CLASSIC
+
+PREMIUM
+
+LUXURY
+
+FUTURE
+
+TECH
+
+CINEMATIC
+
+==================================================
+
+SECTION 04 : COLOR TAG
+
+BLACK
+
+WHITE
+
+BLUE
+
+RED
+
+GREEN
+
+GOLD
+
+SILVER
+
+NEON
+
+==================================================
+
+SECTION 05 : USAGE TAG
+
+UI
+
+UX
+
+ADVERTISEMENT
+
+BRANDING
+
+PRODUCT
+
+BANNER
+
+HERO
+
+THUMBNAIL
+
+==================================================
+
+SECTION 06 : FINAL RULE
+
+이미지는
+
+카테고리
+
+*
+
+태그
+
+*
+
+설명
+
+구조로 저장한다.
+
+==================================================
+END OF FILE
+===========

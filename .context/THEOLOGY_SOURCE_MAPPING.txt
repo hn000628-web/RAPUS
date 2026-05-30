@@ -1,0 +1,60 @@
+FILE 03 : THEOLOGY_SOURCE_MAPPING.txt
+STATUS : PROJECT LOCK
+ROLE : THEOLOGY SOURCE MAPPING RULE
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+THEOLOGY는 정답 데이터가 아니다.
+
+THEOLOGY는 해석 가이드라인이다.
+
+==================================================
+
+SECTION 02 : SOURCE ROLE
+
+THEOLOGY는 다음 역할을 수행한다.
+
+* 사고 프레임
+* 검토 기준
+* 관점 비교
+* 질문 생성
+
+==================================================
+
+SECTION 03 : DATA FIELDS
+
+필수 데이터:
+
+doctrineType
+title
+summary
+stanceType
+relatedVerseKey
+sourceCode
+interpretationNote
+
+==================================================
+
+SECTION 04 : CONFLICT RULE
+
+THEOLOGY가 BIBLE과 충돌하면
+
+BIBLE 우선
+
+THEOLOGY 보조
+
+로 처리한다.
+
+==================================================
+
+SECTION 05 : FINAL RULE
+
+THEOLOGY는 AI가 답을 강요하기 위한 데이터가 아니라
+
+사용자가 생각할 기회를 제공하기 위한 가이드라인이다.
+
+==================================================
+END OF FILE 03
+==============

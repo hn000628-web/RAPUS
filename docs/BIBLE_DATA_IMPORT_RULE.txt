@@ -1,0 +1,71 @@
+FILE 02 : BIBLE_DATA_IMPORT_RULE.txt
+STATUS : PROJECT LOCK
+ROLE : BIBLE DATA IMPORT RULE
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+BIBLE은 신앙 추론의 최상위 원문 근거이다.
+
+THEOLOGY는 BIBLE을 대체할 수 없다.
+
+==================================================
+
+SECTION 02 : IMPORT UNIT
+
+성경 데이터 import 단위:
+
+bookCode
+chapter
+verse
+verseKey
+translationCode
+verseText
+sourceCode
+
+==================================================
+
+SECTION 03 : VERSE KEY RULE
+
+verseKey 형식:
+
+{bookCode}:{chapter}:{verse}
+
+예:
+
+GEN:1:1
+
+==================================================
+
+SECTION 04 : IMPORT SAFETY
+
+실제 import 전:
+
+dry-run
+
+validate
+
+duplicate check
+
+row count
+
+필수
+
+==================================================
+
+SECTION 05 : FINAL RULE
+
+BIBLE 데이터는
+
+정확성
+
+출처
+
+중복 방지
+
+를 최우선으로 한다.
+
+==================================================
+END OF FILE 02
+==============

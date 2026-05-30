@@ -1,0 +1,345 @@
+FILE : METEO_AI_VISUAL_ENGINE_ROADMAP_FINAL_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : METEO AI VISUAL ENGINE ROADMAP
+PRIORITY : TOP LEVEL
+===============
+
+SECTION 01
+CORE PURPOSE
+============
+
+METEO AI
+
+Visual Engine
+
+개발 순서 고정
+
+목표:
+
+설계
+
+↓
+
+원장
+
+↓
+
+실데이터
+
+↓
+
+바코드
+
+↓
+
+AI 추론
+
+순으로 개발한다.
+
+==================================================
+SECTION 02
+LEVEL 1
+ENGINE SNAPSHOT
+===============
+
+상태:
+
+현재 진행중
+
+목적:
+
+AI 추론 엔진 구조 완성
+
+구성:
+
+VISUAL_KNOWLEDGE_ROUTER
+
+VISUAL_TAG_DICTIONARY
+
+VISUAL_SYNONYM_MAP
+
+VISUAL_INTENT_CLASSIFICATION
+
+VISUAL_RESPONSE_TEMPLATE
+
+VISUAL_INFERENCE_POLICY
+
+VISUAL_KNOWLEDGE_GRAPH
+
+VISUAL_KNOWLEDGE_ROUTER_TEST_CASE
+
+VISUAL_ENGINE_VALIDATION_LAYER
+
+완료 조건:
+
+엔진 구조 100% 정의
+
+==================================================
+SECTION 03
+LEVEL 2
+MASTER DATASET SNAPSHOT
+=======================
+
+목적:
+
+AI가 참조할 원장 구조 정의
+
+구성:
+
+MASTER_BRAND_DATASET_SNAPSHOT
+
+MASTER_PRODUCT_VISUAL_DATASET_SNAPSHOT
+
+MASTER_PACKAGE_DATASET_SNAPSHOT
+
+VISUAL_ROUTER_100_CASE_DATASET_SNAPSHOT
+
+VISUAL_ENGINE_BENCHMARK_SNAPSHOT
+
+완료 조건:
+
+원장 구조 100% 정의
+
+==================================================
+SECTION 04
+LEVEL 3
+REAL DATASET
+============
+
+목적:
+
+실제 브랜드 데이터 입력
+
+1차 대상:
+
+농심
+
+삼양
+
+오뚜기
+
+팔도
+
+빙그레
+
+롯데
+
+동원
+
+해태
+
+동서
+
+코카콜라
+
+롯데칠성
+
+남양
+
+매일
+
+서울우유
+
+데이터 범위:
+
+브랜드
+
+상품
+
+이미지
+
+패키지
+
+대표색상
+
+행사배너
+
+완료 조건:
+
+실제 데이터 입력
+
+==================================================
+SECTION 05
+LEVEL 4
+BARCODE LINK
+============
+
+목적:
+
+바코드와 Visual Dataset 연결
+
+구조:
+
+BARCODE
+
+↓
+
+PRODUCT
+
+↓
+
+BRAND
+
+↓
+
+IMAGE
+
+↓
+
+PACKAGE
+
+↓
+
+BANNER
+
+예시:
+
+8801043014832
+
+↓
+
+신라면
+
+↓
+
+농심
+
+완료 조건:
+
+바코드 → 시각지식 연결
+
+==================================================
+SECTION 06
+LEVEL 5
+AI REASONING
+============
+
+목적:
+
+자동 추론
+
+예시:
+
+입력
+
+8801043014832
+
+↓
+
+AI
+
+상품명
+
+브랜드
+
+카테고리
+
+대표이미지
+
+대표패키지
+
+행사배너
+
+추천썸네일
+
+자동 추론
+
+완료 조건:
+
+AI 자동 해석 가능
+
+==================================================
+SECTION 07
+FINAL ARCHITECTURE
+==================
+
+LEVEL 1
+
+ENGINE
+
+↓
+
+LEVEL 2
+
+MASTER DATASET
+
+↓
+
+LEVEL 3
+
+REAL DATA
+
+↓
+
+LEVEL 4
+
+BARCODE LINK
+
+↓
+
+LEVEL 5
+
+AI REASONING
+
+==================================================
+SECTION 08
+INDEX 등록
+========
+
+METEO_AI_SNAPSHOT_INDEX_FINAL_SNAPSHOT
+
+추가 등록
+
+METEO_AI_VISUAL_ENGINE_ROADMAP_FINAL_SNAPSHOT
+
+==================================================
+금지사항
+====
+
+DB 수정 금지
+
+API 수정 금지
+
+Frontend 수정 금지
+
+기존 스냅샷 삭제 금지
+
+로드맵 순서 변경 금지
+
+==================================================
+최종 선언
+=====
+
+METEO AI 개발 순서
+
+LEVEL 1
+
+ENGINE SNAPSHOT
+
+↓
+
+LEVEL 2
+
+MASTER DATASET SNAPSHOT
+
+↓
+
+LEVEL 3
+
+REAL DATASET
+
+↓
+
+LEVEL 4
+
+BARCODE LINK
+
+↓
+
+LEVEL 5
+
+AI REASONING
+
+본 로드맵을
+METEO AI Visual Engine 개발의
+최상위 기준으로 사용한다.

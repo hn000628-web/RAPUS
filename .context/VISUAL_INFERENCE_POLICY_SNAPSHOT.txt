@@ -1,0 +1,85 @@
+FILE : VISUAL_INFERENCE_POLICY_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : VISUAL INFERENCE POLICY
+PRIORITY : HIGH
+===============
+
+SECTION 01 : POLICY
+
+LOGO 요청
+
+↓
+
+LOGO 조회 허용
+
+PACKAGE 조회 금지
+
+---
+
+PACKAGE 요청
+
+↓
+
+PACKAGE 조회 허용
+
+LOGO 조회 허용
+
+---
+
+BANNER 요청
+
+↓
+
+PRODUCT
+
+LOGO
+
+PACKAGE
+
+조회 허용
+
+---
+
+THUMBNAIL 요청
+
+↓
+
+PRODUCT 우선
+
+==================================================
+
+SECTION 02 : FINAL VALIDATION FLOW
+
+INPUT
+
+↓
+
+NORMALIZATION
+
+↓
+
+INTENT
+
+↓
+
+ROUTER
+
+↓
+
+REFERENCE
+
+↓
+
+GRAPH
+
+↓
+
+RESPONSE
+
+↓
+
+VALIDATION
+
+==================================================
+END OF SNAPSHOT
+===============

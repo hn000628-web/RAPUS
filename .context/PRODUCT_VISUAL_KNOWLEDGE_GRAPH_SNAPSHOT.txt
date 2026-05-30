@@ -1,0 +1,111 @@
+FILE : PRODUCT_VISUAL_KNOWLEDGE_GRAPH_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : PRODUCT VISUAL KNOWLEDGE GRAPH
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+상품 시각지식은
+
+상품
+
+브랜드
+
+카테고리
+
+패키지
+
+색상
+
+로고
+
+이미지
+
+배너
+
+그래프로 연결한다.
+
+==================================================
+
+SECTION 02 : EXAMPLE
+
+신라면
+
+↓
+
+브랜드 : 농심
+
+↓
+
+카테고리 : 라면
+
+↓
+
+패키지 : 봉지
+
+↓
+
+대표색상 : 빨강
+
+↓
+
+로고 : 농심
+
+↓
+
+행사배너
+
+↓
+
+썸네일
+
+↓
+
+상세이미지
+
+==================================================
+
+SECTION 03 : GRAPH STRUCTURE
+
+PRODUCT
+
+↓
+
+BRAND
+
+↓
+
+CATEGORY
+
+↓
+
+PACKAGE
+
+↓
+
+COLOR
+
+↓
+
+LOGO
+
+↓
+
+IMAGE
+
+↓
+
+BANNER
+
+==================================================
+
+SECTION 04 : FINAL RULE
+
+MeteoAI는 상품 시각 추론 시
+
+그래프 연결 정보를 우선 활용한다.
+
+==================================================
+END OF SNAPSHOT
+===============

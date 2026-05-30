@@ -1,0 +1,115 @@
+FILE : MASTER_BRAND_OTTOGI_DATASET_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : MASTER BRAND DATASET
+PRIORITY : HIGH
+===============
+
+SECTION 01
+BRAND MASTER
+============
+
+BRAND_CODE
+
+BRAND_OTTOGI
+
+BRAND_NAME
+
+오뚜기
+
+COUNTRY
+
+KOREA
+
+PRIMARY_COLOR
+
+YELLOW
+
+==================================================
+SECTION 02
+BRAND VISUAL
+============
+
+대표로고
+
+대표색상
+
+대표상품
+
+대표패키지
+
+대표배너
+
+==================================================
+SECTION 03
+BRAND PRODUCT GROUP
+===================
+
+대표상품
+
+진라면
+참깨라면
+3분카레
+오뚜기밥
+
+대표카테고리
+
+라면
+즉석식품
+
+==================================================
+SECTION 04
+PACKAGE GROUP
+=============
+
+봉지
+
+박스
+
+케이스
+
+팔레트
+
+==================================================
+SECTION 05
+BANNER GROUP
+============
+
+메인배너
+
+행사배너
+
+카테고리배너
+
+==================================================
+SECTION 06
+BARCODE EXAMPLE
+===============
+
+실제 바코드 입력 금지
+
+LEVEL 04 BARCODE LINK 단계에서 입력
+
+==================================================
+SECTION 07
+VISUAL ENGINE CONNECTION
+========================
+
+BRAND
+
+↓
+
+PRODUCT
+
+↓
+
+IMAGE
+
+↓
+
+PACKAGE
+
+↓
+
+BANNER
+
+==================================================

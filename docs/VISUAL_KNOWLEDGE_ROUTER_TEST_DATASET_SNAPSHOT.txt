@@ -1,0 +1,165 @@
+FILE : VISUAL_KNOWLEDGE_ROUTER_TEST_DATASET_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : VISUAL KNOWLEDGE ROUTER TEST DATASET
+PRIORITY : HIGH
+===============
+
+SECTION 01
+DATASET PURPOSE
+===============
+
+AI 시각지식 엔진 PASS/FAIL 검증
+
+==================================================
+SECTION 02
+LOGO DATASET
+============
+
+입력
+
+농심 마크
+
+정답
+
+LOGO
+
+---
+
+입력
+
+농심 로고
+
+정답
+
+LOGO
+
+---
+
+입력
+
+농심 상표
+
+정답
+
+LOGO
+
+---
+
+입력
+
+농심 CI
+
+정답
+
+LOGO
+
+==================================================
+SECTION 03
+PRODUCT DATASET
+===============
+
+입력
+
+신라면 사진
+
+정답
+
+PRODUCT
+
+---
+
+입력
+
+컵라면 사진
+
+정답
+
+PRODUCT
+
+---
+
+입력
+
+라면 상품
+
+정답
+
+PRODUCT
+
+==================================================
+SECTION 04
+PACKAGE DATASET
+===============
+
+입력
+
+신라면 박스
+
+정답
+
+PACKAGE
+
+---
+
+입력
+
+포장 이미지
+
+정답
+
+PACKAGE
+
+==================================================
+SECTION 05
+BANNER DATASET
+==============
+
+입력
+
+행사 전단
+
+정답
+
+BANNER
+
+---
+
+입력
+
+행사 배너
+
+정답
+
+BANNER
+
+==================================================
+SECTION 06
+PASS RULE
+=========
+
+100개
+
+PASS 95%
+
+1000개
+
+PASS 98%
+
+==================================================
+SECTION 07
+INDEX 등록
+========
+
+METEO_AI_SNAPSHOT_INDEX_FINAL_SNAPSHOT
+
+추가
+
+VISUAL_KNOWLEDGE_ROUTER_TEST_DATASET_SNAPSHOT
+
+==================================================
+최종 목표
+=====
+
+AI 추론 결과를
+
+실제 데이터셋으로 검증 가능한 상태 확보

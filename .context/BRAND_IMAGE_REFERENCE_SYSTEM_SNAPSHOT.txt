@@ -1,0 +1,101 @@
+FILE : BRAND_IMAGE_REFERENCE_SYSTEM_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : BRAND IMAGE REFERENCE SYSTEM
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+브랜드 이미지는
+
+브랜드
+
+로고
+
+패키지
+
+프로모션
+
+광고
+
+구조로 연결한다.
+
+==================================================
+
+SECTION 02 : BRAND REFERENCE FLOW
+
+BRAND
+
+↓
+
+LOGO
+
+↓
+
+PACKAGE
+
+↓
+
+PROMOTION
+
+↓
+
+AD
+
+==================================================
+
+SECTION 03 : BRAND EXAMPLE
+
+농심
+
+삼양
+
+오뚜기
+
+롯데
+
+코카콜라
+
+칠성
+
+동서
+
+팔도
+
+빙그레
+
+해태
+
+==================================================
+
+SECTION 04 : REFERENCE TYPE
+
+PRIMARY_LOGO
+
+SECONDARY_LOGO
+
+WORD_MARK
+
+SYMBOL_MARK
+
+ICON_MARK
+
+BRAND_COLOR
+
+==================================================
+
+SECTION 05 : FINAL RULE
+
+브랜드 시각자료는
+
+브랜드 정체성
+
+로고 유형
+
+색상 체계
+
+를 분리 관리한다.
+
+==================================================
+END OF SNAPSHOT
+===============

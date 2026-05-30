@@ -1,0 +1,50 @@
+FILE : REAL_PRODUCT_INPUT_BATCH_01_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : REAL PRODUCT INPUT BATCH 01
+PRIORITY : HIGH
+===============
+
+SECTION 02
+REAL_PRODUCT_INPUT_BATCH_01
+===========================
+
+농심
+
+신라면
+안성탕면
+짜파게티
+육개장사발면
+새우깡
+
+---
+
+삼양
+
+삼양라면
+불닭볶음면
+짜짜로니
+
+---
+
+오뚜기
+
+진라면
+참깨라면
+3분카레
+오뚜기밥
+
+---
+
+팔도
+
+팔도비빔면
+왕뚜껑
+도시락
+
+---
+
+빙그레
+
+바나나맛우유
+메로나
+요플레

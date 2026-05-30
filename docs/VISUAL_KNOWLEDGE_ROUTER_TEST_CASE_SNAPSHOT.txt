@@ -1,0 +1,89 @@
+FILE : VISUAL_KNOWLEDGE_ROUTER_TEST_CASE_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : VISUAL KNOWLEDGE ROUTER TEST CASE
+PRIORITY : HIGH
+===============
+
+SECTION 01 : PURPOSE
+
+AI 시각지식 라우터 테스트 체계 정의
+
+==================================================
+
+SECTION 02 : TEST CASE STRUCTURE
+
+입력
+
+↓
+
+정규화
+
+↓
+
+INTENT
+
+↓
+
+ROUTER
+
+↓
+
+REFERENCE
+
+↓
+
+예상 결과
+
+==================================================
+
+SECTION 03 : EXAMPLE
+
+신라면 사진
+
+↓
+
+PRODUCT
+
+↓
+
+PRODUCT_SEARCH
+
+↓
+
+PRODUCT_REFERENCE
+
+↓
+
+PASS
+
+---
+
+농심 로고
+
+↓
+
+LOGO
+
+↓
+
+LOGO_SEARCH
+
+↓
+
+LOGO_REFERENCE
+
+↓
+
+PASS
+
+==================================================
+
+SECTION 04 : RULE
+
+테스트 케이스는 100개 이상 기준으로 관리한다.
+
+PASS 기준은 라우팅 결과와 예상 결과 일치이다.
+
+==================================================
+END OF SNAPSHOT
+===============

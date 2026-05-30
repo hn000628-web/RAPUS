@@ -1,0 +1,64 @@
+FILE : VISUAL_ENGINE_BENCHMARK_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : VISUAL ENGINE BENCHMARK
+PRIORITY : HIGH
+===============
+
+SECTION 01
+PURPOSE
+=======
+
+AI 품질 측정
+
+==================================================
+SECTION 02
+EVALUATION
+==========
+
+NORMALIZATION
+
+INTENT
+
+ROUTING
+
+REFERENCE
+
+GRAPH
+
+RESPONSE
+
+==================================================
+SECTION 03
+PASS RULE
+=========
+
+PASS 기준:
+
+95%
+
+FAIL 기준:
+
+95% 미만
+
+==================================================
+SECTION 04
+LEVEL 2 COMPLETION RULE
+=======================
+
+다음 5개가 모두 존재하면
+
+LEVEL 2 완료
+
+MASTER_BRAND_DATASET
+
+MASTER_PRODUCT_VISUAL_DATASET
+
+MASTER_PACKAGE_DATASET
+
+VISUAL_ROUTER_100_CASE_DATASET
+
+VISUAL_ENGINE_BENCHMARK
+
+==================================================
+END OF SNAPSHOT
+===============

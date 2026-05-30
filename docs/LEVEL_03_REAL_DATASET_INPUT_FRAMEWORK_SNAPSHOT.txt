@@ -1,0 +1,264 @@
+FILE : LEVEL_03_REAL_DATASET_INPUT_FRAMEWORK_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : LEVEL 03 REAL DATASET INPUT FRAMEWORK
+PRIORITY : HIGH
+===============
+
+SECTION 01
+CORE PRINCIPLE
+==============
+
+실제 데이터 입력은
+
+반드시
+
+BRAND
+
+↓
+
+PRODUCT
+
+↓
+
+IMAGE
+
+↓
+
+PACKAGE
+
+↓
+
+BARCODE
+
+순서로 진행한다.
+
+순서 변경 금지
+
+==================================================
+SECTION 02
+STEP 01
+MASTER BRAND INPUT
+==================
+
+1차 브랜드
+
+농심
+
+삼양
+
+오뚜기
+
+팔도
+
+빙그레
+
+롯데
+
+동원
+
+해태
+
+동서
+
+코카콜라
+
+롯데칠성
+
+남양
+
+매일
+
+서울우유
+
+목적:
+
+브랜드 원장 구축
+
+==================================================
+SECTION 03
+STEP 02
+MASTER PRODUCT INPUT
+====================
+
+브랜드별 대표상품 등록
+
+예시
+
+농심
+
+신라면
+
+새우깡
+
+육개장사발면
+
+안성탕면
+
+---
+
+삼양
+
+삼양라면
+
+불닭볶음면
+
+짜짜로니
+
+==================================================
+SECTION 04
+STEP 03
+MASTER IMAGE INPUT
+==================
+
+상품별 이미지 등록
+
+ORIGINAL
+
+PRODUCT
+
+THUMBNAIL
+
+DETAIL
+
+BANNER
+
+규칙:
+
+이미지 참조체계 사용
+
+==================================================
+SECTION 05
+STEP 04
+MASTER PACKAGE INPUT
+====================
+
+FRONT
+
+BACK
+
+LEFT
+
+RIGHT
+
+TOP
+
+BOTTOM
+
+BOX
+
+CASE
+
+PALLET
+
+규칙:
+
+패키지 구조 분리 저장
+
+==================================================
+SECTION 06
+STEP 05
+BARCODE LINK
+============
+
+BARCODE
+
+↓
+
+PRODUCT
+
+↓
+
+BRAND
+
+↓
+
+IMAGE
+
+↓
+
+PACKAGE
+
+연결
+
+==================================================
+SECTION 07
+DATA QUALITY RULE
+=================
+
+브랜드 없는 상품 금지
+
+상품 없는 바코드 금지
+
+상품 없는 이미지 금지
+
+상품 없는 패키지 금지
+
+==================================================
+SECTION 08
+LEVEL 03 COMPLETION RULE
+========================
+
+다음 조건 만족
+
+BRAND DATA 입력
+
+PRODUCT DATA 입력
+
+IMAGE DATA 입력
+
+PACKAGE DATA 입력
+
+BARCODE LINK 완료
+
+↓
+
+LEVEL 03 완료
+
+==================================================
+SECTION 09
+INDEX 등록
+========
+
+METEO_AI_SNAPSHOT_INDEX_FINAL_SNAPSHOT
+
+추가
+
+LEVEL_03_REAL_DATASET_INPUT_FRAMEWORK_SNAPSHOT
+
+==================================================
+최종 목표
+=====
+
+LEVEL 01
+
+ENGINE SNAPSHOT
+
+완료
+
+↓
+
+LEVEL 02
+
+MASTER DATASET SNAPSHOT
+
+완료
+
+↓
+
+LEVEL 03
+
+REAL DATASET INPUT
+
+진행
+
+↓
+
+LEVEL 04
+
+BARCODE LINK
+
+↓
+
+LEVEL 05
+
+AI REASONING

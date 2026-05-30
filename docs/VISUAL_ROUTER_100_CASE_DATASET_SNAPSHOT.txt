@@ -1,0 +1,53 @@
+FILE : VISUAL_ROUTER_100_CASE_DATASET_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : VISUAL ROUTER 100 CASE DATASET
+PRIORITY : HIGH
+===============
+
+SECTION 01
+PURPOSE
+=======
+
+실전 라우터 검증
+
+==================================================
+SECTION 02
+STRUCTURE
+=========
+
+INPUT
+
+NORMALIZATION
+
+INTENT
+
+ROUTER
+
+EXPECTED_RESULT
+
+STATUS
+
+==================================================
+SECTION 03
+RULE
+====
+
+최소 100 CASE
+
+분류:
+
+LOGO
+
+PRODUCT
+
+PACKAGE
+
+BANNER
+
+DETAIL
+
+THUMBNAIL
+
+==================================================
+END OF SNAPSHOT
+===============

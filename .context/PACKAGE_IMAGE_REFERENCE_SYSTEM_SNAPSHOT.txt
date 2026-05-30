@@ -1,0 +1,71 @@
+FILE : PACKAGE_IMAGE_REFERENCE_SYSTEM_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : PACKAGE IMAGE REFERENCE SYSTEM
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+패키지 이미지는
+
+상품 이미지와 구분하여 저장한다.
+
+==================================================
+
+SECTION 02 : PACKAGE CLASSIFICATION
+
+FRONT
+
+BACK
+
+LEFT
+
+RIGHT
+
+TOP
+
+BOTTOM
+
+OPEN
+
+BOX
+
+CASE
+
+PALLET
+
+==================================================
+
+SECTION 03 : EXAMPLE
+
+신라면
+
+FRONT
+
+BACK
+
+BOX
+
+PALLET
+
+---
+
+삼육두유
+
+FRONT
+
+BACK
+
+CASE
+
+==================================================
+
+SECTION 04 : FINAL RULE
+
+AI는 패키지 이미지를
+
+상품 이미지와 구분 저장한다.
+
+==================================================
+END OF FILE
+===========

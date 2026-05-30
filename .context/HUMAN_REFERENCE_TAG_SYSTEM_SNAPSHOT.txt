@@ -1,0 +1,367 @@
+FILE : HUMAN_REFERENCE_TAG_SYSTEM_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : HUMAN REFERENCE TAG SYSTEM
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+이미지 수가 증가하면
+
+폴더보다
+
+태그
+
+가 더 중요하다.
+
+MeteoAI는
+
+폴더
+
+*
+
+태그
+
+기반으로 추론한다.
+
+==================================================
+
+SECTION 02 : TAG STRUCTURE
+
+모든 레퍼런스는
+
+복수 태그 사용
+
+허용
+
+예:
+
+KOREAN
+
+MALE
+
+40S
+
+BUSINESS_OWNER
+
+CONFIDENT
+
+LEADERSHIP
+
+SUIT
+
+STANDING
+
+==================================================
+
+SECTION 03 : NATIONALITY TAG
+
+KOREAN
+
+JAPANESE
+
+CHINESE
+
+AMERICAN
+
+EUROPEAN
+
+GLOBAL
+
+==================================================
+
+SECTION 04 : GENDER TAG
+
+MALE
+
+FEMALE
+
+BOY
+
+GIRL
+
+==================================================
+
+SECTION 05 : AGE TAG
+
+INFANT
+
+CHILD
+
+TEEN
+
+20S
+
+30S
+
+40S
+
+50S
+
+60S
+
+SENIOR
+
+==================================================
+
+SECTION 06 : OCCUPATION TAG
+
+BUSINESS_OWNER
+
+MARKET_MANAGER
+
+STAFF
+
+DEVELOPER
+
+DESIGNER
+
+PASTOR
+
+TEACHER
+
+STUDENT
+
+DOCTOR
+
+NURSE
+
+CREATOR
+
+FREELANCER
+
+==================================================
+
+SECTION 07 : EMOTION TAG
+
+HAPPY
+
+SMILE
+
+CONFIDENT
+
+FOCUSED
+
+SAD
+
+ANGRY
+
+SURPRISED
+
+NEUTRAL
+
+REVERENT
+
+==================================================
+
+SECTION 08 : POSE TAG
+
+STANDING
+
+SITTING
+
+WALKING
+
+RUNNING
+
+PRAYER
+
+WORKING
+
+HANDSHAKE
+
+PRESENTATION
+
+LEADERSHIP
+
+==================================================
+
+SECTION 09 : FASHION TAG
+
+BUSINESS
+
+CASUAL
+
+WORKWEAR
+
+SPORT
+
+SCHOOL
+
+MARKET_STAFF
+
+DEVELOPER
+
+DESIGNER
+
+PASTOR
+
+DOCTOR
+
+==================================================
+
+SECTION 10 : BODY TAG
+
+SLIM
+
+AVERAGE
+
+ATHLETIC
+
+HEAVY
+
+TALL
+
+SHORT
+
+==================================================
+
+SECTION 11 : HAIR TAG
+
+SHORT_HAIR
+
+LONG_HAIR
+
+CURLY
+
+STRAIGHT
+
+BALD
+
+==================================================
+
+SECTION 12 : DESIGN TAG
+
+ANIME
+
+WEBTOON
+
+REALISTIC
+
+CINEMATIC
+
+AD_MODEL
+
+BRAND_MODEL
+
+AVATAR
+
+CHARACTER
+
+==================================================
+
+SECTION 13 : ADULT TAG
+
+ADULT
+
+ADULT_POSE
+
+ADULT_FASHION
+
+ADULT_REFERENCE
+
+---
+
+주의:
+
+ADULT 태그는
+
+성인 참고물 분류용이다.
+
+미성년자 관련 태그와
+
+절대 혼합 금지.
+
+==================================================
+
+SECTION 14 : TAG FILE RULE
+
+모든 이미지:
+
+image.jpg
+
+*
+
+description.txt
+
+*
+
+tags.txt
+
+구조 사용
+
+---
+
+예시:
+
+tags.txt
+
+KOREAN
+
+MALE
+
+40S
+
+BUSINESS_OWNER
+
+CONFIDENT
+
+SUIT
+
+LEADERSHIP
+
+==================================================
+
+SECTION 15 : AI SEARCH RULE
+
+질문:
+
+40대 한국인 사업주
+
+↓
+
+TAG SEARCH
+
+KOREAN
+
+40S
+
+BUSINESS_OWNER
+
+↓
+
+이미지 추출
+
+↓
+
+추론
+
+==================================================
+
+SECTION 16 : FINAL DECLARATION
+
+MeteoAI는
+
+폴더보다
+
+태그를 우선 활용한다.
+
+태그는
+
+사람
+
+감정
+
+직업
+
+의상
+
+자세
+
+디자인
+
+추론을 위한 핵심 데이터이다.
+
+==================================================
+END OF SNAPSHOT
+===============

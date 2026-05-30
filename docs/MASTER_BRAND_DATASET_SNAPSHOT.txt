@@ -1,0 +1,54 @@
+FILE : MASTER_BRAND_DATASET_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : MASTER BRAND DATASET
+PRIORITY : HIGH
+===============
+
+SECTION 01
+PURPOSE
+=======
+
+브랜드 원장
+
+==================================================
+SECTION 02
+STRUCTURE
+=========
+
+BRAND_CODE
+
+BRAND_NAME
+
+COUNTRY
+
+CATEGORY
+
+PRIMARY_COLOR
+
+LOGO_REFERENCE
+
+대표상품
+
+==================================================
+SECTION 03
+EXAMPLE BRAND
+=============
+
+농심
+삼양
+오뚜기
+팔도
+빙그레
+롯데
+동원
+해태
+동서
+코카콜라
+롯데칠성
+남양
+매일
+서울우유
+
+==================================================
+END OF SNAPSHOT
+===============

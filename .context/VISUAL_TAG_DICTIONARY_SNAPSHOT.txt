@@ -1,0 +1,99 @@
+FILE : VISUAL_TAG_DICTIONARY_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : VISUAL TAG DICTIONARY
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+시각 태그는
+
+표준 TAG
+
+설명
+
+허용동의어
+
+금지동의어
+
+기준으로 관리한다.
+
+==================================================
+
+SECTION 02 : TAG DICTIONARY FORMAT
+
+TAG
+
+설명
+
+허용동의어
+
+금지동의어
+
+==================================================
+
+SECTION 03 : STANDARD TAG SET
+
+PRODUCT
+
+PACKAGE
+
+LOGO
+
+THUMBNAIL
+
+BANNER
+
+PROMOTION
+
+EVENT
+
+DETAIL
+
+HERO
+
+AVATAR
+
+QR
+
+ICON
+
+==================================================
+
+SECTION 04 : EXAMPLE
+
+TAG
+
+PRODUCT
+
+설명
+
+상품 시각자료 분류 태그
+
+허용동의어
+
+상품
+
+제품
+
+판매상품
+
+금지동의어
+
+파일
+
+문서
+
+==================================================
+
+SECTION 05 : FINAL RULE
+
+AI는 이미지 분류 시
+
+표준 TAG를 우선 적용하고
+
+허용동의어를 대표어(TAG)로 정규화한다.
+
+==================================================
+END OF SNAPSHOT
+===============

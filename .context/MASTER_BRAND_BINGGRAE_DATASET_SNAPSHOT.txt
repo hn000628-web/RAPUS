@@ -1,0 +1,114 @@
+FILE : MASTER_BRAND_BINGGRAE_DATASET_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : MASTER BRAND DATASET
+PRIORITY : HIGH
+===============
+
+SECTION 01
+BRAND MASTER
+============
+
+BRAND_CODE
+
+BRAND_BINGGRAE
+
+BRAND_NAME
+
+빙그레
+
+COUNTRY
+
+KOREA
+
+PRIMARY_COLOR
+
+GREEN
+
+==================================================
+SECTION 02
+BRAND VISUAL
+============
+
+대표로고
+
+대표색상
+
+대표상품
+
+대표패키지
+
+대표배너
+
+==================================================
+SECTION 03
+BRAND PRODUCT GROUP
+===================
+
+대표상품
+
+바나나맛우유
+메로나
+요플레
+
+대표카테고리
+
+유제품
+아이스크림
+
+==================================================
+SECTION 04
+PACKAGE GROUP
+=============
+
+봉지
+
+박스
+
+케이스
+
+팔레트
+
+==================================================
+SECTION 05
+BANNER GROUP
+============
+
+메인배너
+
+행사배너
+
+카테고리배너
+
+==================================================
+SECTION 06
+BARCODE EXAMPLE
+===============
+
+실제 바코드 입력 금지
+
+LEVEL 04 BARCODE LINK 단계에서 입력
+
+==================================================
+SECTION 07
+VISUAL ENGINE CONNECTION
+========================
+
+BRAND
+
+↓
+
+PRODUCT
+
+↓
+
+IMAGE
+
+↓
+
+PACKAGE
+
+↓
+
+BANNER
+
+==================================================

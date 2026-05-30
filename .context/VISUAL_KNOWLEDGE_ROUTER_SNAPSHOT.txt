@@ -1,0 +1,223 @@
+FILE : VISUAL_KNOWLEDGE_ROUTER_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : VISUAL KNOWLEDGE ROUTER
+PRIORITY : HIGH
+===============
+
+SECTION 01
+CORE PURPOSE
+============
+
+AI 시각지식 참조 순서 정의
+
+AI는 직접 PRODUCT / LOGO / PACKAGE 를 조회하지 않는다.
+
+반드시 ROUTER를 통해 진입한다.
+
+==================================================
+SECTION 02
+FINAL ROUTING FLOW
+==================
+
+사용자 요청
+
+↓
+
+VISUAL_KNOWLEDGE_ROUTER
+
+↓
+
+VISUAL_TAG_DICTIONARY
+
+↓
+
+VISUAL_SYNONYM_MAP
+
+↓
+
+PRODUCT_IMAGE_REFERENCE
+
+↓
+
+LOGO_IMAGE_REFERENCE_SYSTEM
+
+↓
+
+PACKAGE_IMAGE_REFERENCE_SYSTEM
+
+↓
+
+AD_BANNER_REFERENCE_SYSTEM
+
+↓
+
+PRODUCT_VISUAL_KNOWLEDGE_GRAPH
+
+↓
+
+AI RESPONSE
+
+==================================================
+SECTION 03
+REQUEST TYPE ROUTING
+====================
+
+상품 이미지
+
+↓
+
+PRODUCT_IMAGE_REFERENCE
+
+브랜드 로고
+
+↓
+
+LOGO_IMAGE_REFERENCE_SYSTEM
+
+패키지
+
+↓
+
+PACKAGE_IMAGE_REFERENCE_SYSTEM
+
+행사배너
+
+↓
+
+AD_BANNER_REFERENCE_SYSTEM
+
+==================================================
+SECTION 04
+SEARCH PRIORITY
+===============
+
+1순위
+
+VISUAL_TAG_DICTIONARY
+
+2순위
+
+VISUAL_SYNONYM_MAP
+
+3순위
+
+PRODUCT
+
+4순위
+
+LOGO
+
+5순위
+
+PACKAGE
+
+6순위
+
+BANNER
+
+7순위
+
+GRAPH
+
+==================================================
+SECTION 05
+FORBIDDEN FLOW
+==============
+
+AI
+
+↓
+
+PRODUCT_IMAGE_REFERENCE 직접 조회
+
+금지
+
+AI
+
+↓
+
+PACKAGE 직접 조회
+
+금지
+
+AI
+
+↓
+
+LOGO 직접 조회
+
+금지
+
+반드시 ROUTER 경유
+
+==================================================
+SECTION 06
+FUTURE EXTENSION
+================
+
+향후 추가 예정
+
+COLOR_REFERENCE_SYSTEM
+
+PACKAGING_MATERIAL_REFERENCE_SYSTEM
+
+RETAIL_DISPLAY_REFERENCE_SYSTEM
+
+STORE_SHELF_REFERENCE_SYSTEM
+
+PROMOTION_LAYOUT_REFERENCE_SYSTEM
+
+위 스냅샷은 ROUTER 하위로 연결
+
+==================================================
+SECTION 07
+INDEX 등록
+========
+
+METEO_AI_SNAPSHOT_INDEX_FINAL_SNAPSHOT
+
+추가 등록
+
+VISUAL_KNOWLEDGE_ROUTER_SNAPSHOT
+
+==================================================
+금지사항
+====
+
+DB 수정 금지
+
+API 수정 금지
+
+Service 수정 금지
+
+Frontend 수정 금지
+
+기존 스냅샷 수정 금지
+
+==================================================
+최종 목표
+=====
+
+METEO AI
+
+↓
+
+VISUAL_KNOWLEDGE_ROUTER
+
+↓
+
+VISUAL KNOWLEDGE ENGINE
+
+↓
+
+상품원장
+
+이미지원장
+
+로고원장
+
+패키지원장
+
+광고원장
+
+통합 참조

@@ -1,0 +1,35 @@
+FILE : REAL_PACKAGE_INPUT_BATCH_01_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : REAL PACKAGE INPUT BATCH 01
+PRIORITY : HIGH
+===============
+
+SECTION 04
+REAL_PACKAGE_INPUT_BATCH_01
+===========================
+
+PACKAGE TYPE
+
+FRONT
+
+BACK
+
+LEFT
+
+RIGHT
+
+TOP
+
+BOTTOM
+
+BOX
+
+CASE
+
+PALLET
+
+현재 단계
+
+패키지 구조 정의
+
+실제 파일 입력 금지

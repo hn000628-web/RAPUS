@@ -1,0 +1,60 @@
+FILE 05 : MARKET_KNOWLEDGE_RULE.txt
+STATUS : PROJECT LOCK
+ROLE : MARKET KNOWLEDGE RULE
+PRIORITY : HIGH
+===============
+
+SECTION 01 : CORE PRINCIPLE
+
+MARKET 데이터는
+
+지역 마트 운영 추론을 위한 지식 계층이다.
+
+==================================================
+
+SECTION 02 : DATA FIELDS
+
+필수 데이터:
+
+channelCode
+marketName
+regionCode
+businessType
+operationPolicy
+promotionPolicy
+deliveryPolicy
+productPolicy
+sourceCode
+
+==================================================
+
+SECTION 03 : REASONING USE
+
+MARKET 데이터는 다음 추론에 사용한다.
+
+* 행사 추천
+* 상품 노출
+* 매장 운영
+* 고객 안내
+* 배달 정책
+* 지역 상권 분석
+
+==================================================
+
+SECTION 04 : FINAL RULE
+
+MARKET 데이터는
+
+지역성
+
+운영성
+
+상품성
+
+사용자 편의성
+
+을 기준으로 관리한다.
+
+==================================================
+END OF FILE 05
+==============

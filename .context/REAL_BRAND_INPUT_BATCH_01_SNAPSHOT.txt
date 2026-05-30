@@ -1,0 +1,41 @@
+FILE : REAL_BRAND_INPUT_BATCH_01_SNAPSHOT.txt
+STATUS : PROJECT LOCK
+ROLE : REAL BRAND INPUT BATCH 01
+PRIORITY : HIGH
+===============
+
+SECTION 01
+REAL_BRAND_INPUT_BATCH_01
+=========================
+
+1차 브랜드
+
+농심
+
+삼양
+
+오뚜기
+
+팔도
+
+빙그레
+
+롯데칠성
+
+코카콜라
+
+동서
+
+입력
+
+구조
+
+BRAND_CODE
+
+BRAND_NAME
+
+PRIMARY_COLOR
+
+LOGO_REFERENCE
+
+STATUS
