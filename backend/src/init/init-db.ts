@@ -8,6 +8,8 @@ import Database from 'better-sqlite3'
 import * as bcrypt from 'bcrypt'
 import { initSecurityQrAuthSchema } from './security-qr-auth.schema'
 import { initWalletLedgerSchema } from './wallet-ledger.schema'
+import { hanjaEntries } from '../lib/ai/hanja/hanja.entries'
+import { buildSearchTokens } from '../lib/ai/hanja/hanja.index'
 
 export async function initDatabase(){
 
@@ -618,6 +620,12 @@ WHERE email = 'test01@prod.com'
 const ownerAccountEmail =
 'hn0628@naver.com'
 
+// OpenAI 직원 계정군(내부 운영 계정) 권한 고정 목록
+// NOTE: 존재하는 계정만 UPDATE 하며, 계정 생성은 하지 않는다.
+const OPENAI_STAFF_ACCOUNT_EMAILS: string[] = [
+  'hn0628@naver.com',
+]
+
 const ownerAccountInitialPasswordHash =
 bcrypt.hashSync('1234',10)
 
@@ -667,6 +675,21 @@ SET
 WHERE email = ?
 `).run(ownerAccountEmail)
 
+if (OPENAI_STAFF_ACCOUNT_EMAILS.length > 0) {
+  const openAiStaffPlaceholders =
+    OPENAI_STAFF_ACCOUNT_EMAILS.map(() => '?').join(', ')
+
+  db.prepare(`
+  UPDATE users
+  SET
+    corporationGrade = 24,
+    providerGrade = 24,
+    genesisGrade = 24,
+    meteoAiGrade = 24
+  WHERE email IN (${openAiStaffPlaceholders})
+  `).run(...OPENAI_STAFF_ACCOUNT_EMAILS)
+}
+
 db.exec(`
 UPDATE users
 SET phone = '010-1234-1234'
@@ -706,6 +729,145 @@ throw new Error(`failed to ensure owner account: ${ownerAccountEmail}`)
 
 const ownerAccountUserId =
 ownerAccountUserIdRow.id
+
+//======================================================
+// SECTION 02-2 : HONORARY METEO AI STAFF SEED (240,000)
+// ROLE : LARGE-SCALE HONORARY STAFF ACCOUNT PROVISIONING
+// RULE : existing users only updated by email, no reset/drop
+//======================================================
+
+const HONORARY_METEOAI_TOTAL = 240000
+const HONORARY_METEOAI_BATCH_SIZE = 5000
+const HONORARY_METEOAI_GROUP_CODE = 'G70_HONORARY'
+const honoraryDryRun =
+  String(process.env.HONORARY_METEOAI_DRY_RUN ?? 'false').toLowerCase() === 'true'
+
+function buildHonoraryMeteoAiEmail(index: number): string {
+  return `meteoai${String(index).padStart(6, '0')}@rapha.com`
+}
+
+function buildHonoraryMeteoAiDisplayName(index: number): string {
+  return `명예 메테오AI 직원 ${index}`
+}
+
+function buildHonoraryMeteoAiBaseCode(index: number): string {
+  // 12 chars, A-Z0-9 only. "MA" + 10-char base36 payload.
+  return `MA${index.toString(36).toUpperCase().padStart(10, '0')}`
+}
+
+const honorarySeedSampleStartEmail = buildHonoraryMeteoAiEmail(1)
+const honorarySeedSampleEndEmail = buildHonoraryMeteoAiEmail(HONORARY_METEOAI_TOTAL)
+
+const honoraryExistingCountRow = db.prepare(`
+SELECT COUNT(*) AS count
+FROM users
+WHERE email LIKE 'meteoai%@rapha.com'
+`).get() as { count?: number } | undefined
+
+const honoraryExistingCount = honoraryExistingCountRow?.count ?? 0
+const honoraryPlannedInsert = Math.max(0, HONORARY_METEOAI_TOTAL - honoraryExistingCount)
+
+console.log(
+  `[HONORARY_METEOAI] dryRun=${honoraryDryRun} total=${HONORARY_METEOAI_TOTAL} existing=${honoraryExistingCount} plannedInsert=${honoraryPlannedInsert}`
+)
+console.log(
+  `[HONORARY_METEOAI] range=${honorarySeedSampleStartEmail} -> ${honorarySeedSampleEndEmail}`
+)
+
+if (!honoraryDryRun) {
+  const insertHonoraryUserStmt = db.prepare(`
+  INSERT OR IGNORE INTO users(
+    email,
+    passwordHash,
+    baseCode,
+    displayName,
+    phone,
+    accountType,
+    status,
+    type,
+    userGrade,
+    corporationGrade,
+    providerGrade,
+    genesisGrade,
+    meteoAiGrade
+  )
+  VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `)
+
+  const updateHonoraryGradesStmt = db.prepare(`
+  UPDATE users
+  SET
+    type = ?,
+    corporationGrade = 24,
+    providerGrade = 24,
+    genesisGrade = 24,
+    meteoAiGrade = 24
+  WHERE email = ?
+  `)
+
+  const batchInsertTxn = db.transaction((rows: Array<{
+    email: string
+    baseCode: string
+    displayName: string
+  }>) => {
+    for (const row of rows) {
+      insertHonoraryUserStmt.run(
+        row.email,
+        testPassword,
+        row.baseCode,
+        row.displayName,
+        '010-1234-1234',
+        'USER',
+        'ACTIVE',
+        HONORARY_METEOAI_GROUP_CODE,
+        12,
+        24,
+        24,
+        24,
+        24
+      )
+      updateHonoraryGradesStmt.run(HONORARY_METEOAI_GROUP_CODE, row.email)
+    }
+  })
+
+  let batchStart = 1
+  while (batchStart <= HONORARY_METEOAI_TOTAL) {
+    const batchEnd = Math.min(batchStart + HONORARY_METEOAI_BATCH_SIZE - 1, HONORARY_METEOAI_TOTAL)
+    const rows: Array<{ email: string; baseCode: string; displayName: string }> = []
+    for (let sequence = batchStart; sequence <= batchEnd; sequence++) {
+      rows.push({
+        email: buildHonoraryMeteoAiEmail(sequence),
+        baseCode: buildHonoraryMeteoAiBaseCode(sequence),
+        displayName: buildHonoraryMeteoAiDisplayName(sequence),
+      })
+    }
+    batchInsertTxn(rows)
+    console.log(`[HONORARY_METEOAI] batch ${batchStart}-${batchEnd} complete`)
+    batchStart = batchEnd + 1
+  }
+
+  const honoraryAfterCountRow = db.prepare(`
+  SELECT COUNT(*) AS count
+  FROM users
+  WHERE email LIKE 'meteoai%@rapha.com'
+  `).get() as { count?: number } | undefined
+
+  const honoraryGrade24CountRow = db.prepare(`
+  SELECT COUNT(*) AS count
+  FROM users
+  WHERE email LIKE 'meteoai%@rapha.com'
+    AND corporationGrade = 24
+    AND providerGrade = 24
+    AND genesisGrade = 24
+    AND meteoAiGrade = 24
+  `).get() as { count?: number } | undefined
+
+  console.log(
+    `[HONORARY_METEOAI] completed totalRows=${honoraryAfterCountRow?.count ?? 0} fullGrade24Rows=${honoraryGrade24CountRow?.count ?? 0}`
+  )
+} else {
+  console.log('[HONORARY_METEOAI] dry-run mode: no write executed')
+}
 
 //===============================================
 // SECTION 03 : INDUSTRIES (BUSINESS 업종 15종 [FIXED])
@@ -14330,6 +14492,264 @@ UPDATE pos_locations
 SET tableTypeCode = 'STANDARD'
 WHERE tableTypeCode IS NULL
 `)
+
+//==================================================
+// SECTION AI-01 : AI HANJA LIBRARY TABLES
+//==================================================
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS ai_hanja_entries(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  hanja TEXT NOT NULL UNIQUE,
+  mainSound TEXT NOT NULL,
+  level TEXT NOT NULL,
+  meaning TEXT NOT NULL,
+  radical TEXT NOT NULL,
+  strokes INTEGER NOT NULL CHECK(strokes >= 0),
+  totalStrokes INTEGER NOT NULL CHECK(totalStrokes >= 0),
+  unicodeDecimal INTEGER NOT NULL UNIQUE CHECK(unicodeDecimal > 0),
+  unicodeHex TEXT NOT NULL UNIQUE,
+  unicodeEscape TEXT NOT NULL UNIQUE,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+)
+`)
+
+db.exec(`
+CREATE TABLE IF NOT EXISTS ai_hanja_search_tokens(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  entryId INTEGER NOT NULL,
+  tokenType TEXT NOT NULL CHECK(tokenType IN(
+    'hanja',
+    'mainSound',
+    'level',
+    'radical',
+    'strokes',
+    'totalStrokes',
+    'unicodeHex',
+    'unicodeEscape',
+    'unicodeDecimal',
+    'meaning'
+  )),
+  token TEXT NOT NULL,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(entryId, tokenType, token),
+  FOREIGN KEY(entryId) REFERENCES ai_hanja_entries(id) ON DELETE CASCADE
+)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_hanja_entries_hanja
+ON ai_hanja_entries(hanja)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_hanja_entries_unicode_decimal
+ON ai_hanja_entries(unicodeDecimal)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_hanja_entries_unicode_escape
+ON ai_hanja_entries(unicodeEscape)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_hanja_entries_unicode_hex
+ON ai_hanja_entries(unicodeHex)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_hanja_entries_radical
+ON ai_hanja_entries(radical)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_hanja_entries_main_sound
+ON ai_hanja_entries(mainSound)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_hanja_entries_level
+ON ai_hanja_entries(level)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_hanja_entries_strokes
+ON ai_hanja_entries(strokes)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_hanja_search_tokens_type_token
+ON ai_hanja_search_tokens(tokenType, token)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_hanja_search_tokens_entry
+ON ai_hanja_search_tokens(entryId)
+`)
+
+//==================================================
+// SECTION AI-02 : AI HANJA LIBRARY SEED
+//==================================================
+
+function splitSearchToken(raw: string): string[] {
+  const normalized = raw
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\\[\\]{}()"'`,]|\s+/g, ' ')
+
+  const matched = normalized.match(/[\\p{L}\\p{N}]+/gu)
+  if (!matched) {
+    return []
+  }
+
+  const unique = new Set<string>()
+  for (const item of matched) {
+    const token = item.trim()
+    if (token.length > 0) {
+      unique.add(token)
+    }
+  }
+
+  return Array.from(unique)
+}
+
+function buildTypedTokens(raw: string): string[] {
+  return splitSearchToken(raw).filter((token) => token.length > 0)
+}
+
+const insertHanjaEntry = db.prepare(`
+INSERT OR IGNORE INTO ai_hanja_entries(
+  hanja,
+  mainSound,
+  level,
+  meaning,
+  radical,
+  strokes,
+  totalStrokes,
+  unicodeDecimal,
+  unicodeHex,
+  unicodeEscape
+)
+VALUES(?,?,?,?,?,?,?,?,?,?)
+`)
+
+const insertHanjaToken = db.prepare(`
+INSERT OR IGNORE INTO ai_hanja_search_tokens(
+  entryId,
+  tokenType,
+  token
+)
+VALUES(?,?,?)
+`)
+
+const getHanjaEntryId = db.prepare(`
+SELECT id
+FROM ai_hanja_entries
+WHERE hanja = ?
+`)
+
+for (const entry of hanjaEntries) {
+  insertHanjaEntry.run(
+    entry.hanja,
+    entry.mainSound,
+    entry.level,
+    entry.meaning,
+    entry.radical,
+    entry.strokes,
+    entry.totalStrokes,
+    entry.unicodeDecimal,
+    entry.unicodeHex,
+    entry.unicodeEscape
+  )
+
+  const entryIdRow = getHanjaEntryId.get(entry.hanja) as { id: number } | undefined
+  if (!entryIdRow?.id) {
+    continue
+  }
+
+  const entryId = entryIdRow.id
+  const tokensByField = [
+    { tokenType: 'hanja', tokens: buildTypedTokens(entry.hanja) },
+    { tokenType: 'mainSound', tokens: buildTypedTokens(entry.mainSound) },
+    { tokenType: 'level', tokens: buildTypedTokens(entry.level) },
+    { tokenType: 'radical', tokens: buildTypedTokens(entry.radical) },
+    { tokenType: 'strokes', tokens: [String(entry.strokes)] },
+    { tokenType: 'totalStrokes', tokens: [String(entry.totalStrokes)] },
+    { tokenType: 'unicodeHex', tokens: buildTypedTokens(entry.unicodeHex) },
+    { tokenType: 'unicodeEscape', tokens: buildTypedTokens(entry.unicodeEscape) },
+    { tokenType: 'unicodeDecimal', tokens: [String(entry.unicodeDecimal)] },
+  ]
+
+  const legacyTokens = new Set(buildSearchTokens(entry))
+  for (const field of tokensByField) {
+    for (const token of field.tokens) {
+      if (!token) {
+        continue
+      }
+      if (!legacyTokens.has(token)) {
+        continue
+      }
+      insertHanjaToken.run(entryId, field.tokenType, token)
+    }
+  }
+
+  const meaningTokens = buildTypedTokens(entry.meaning)
+  for (const token of meaningTokens) {
+    if (token && legacyTokens.has(token)) {
+      insertHanjaToken.run(entryId, 'meaning', token)
+    }
+  }
+}
+
+const aiHanjaEntriesCount = db.prepare(`
+SELECT COUNT(1) AS count
+FROM ai_hanja_entries
+`).get() as { count: number }
+
+const aiHanjaTokensCount = db.prepare(`
+SELECT COUNT(1) AS count
+FROM ai_hanja_search_tokens
+`).get() as { count: number }
+
+const aiHanjaDuplicateHanja = db.prepare(`
+SELECT COUNT(1) AS count
+FROM (
+  SELECT hanja
+  FROM ai_hanja_entries
+  GROUP BY hanja
+  HAVING COUNT(1) > 1
+)
+`).get() as { count: number }
+
+console.log('AI HANJA ENTRIES COUNT:', aiHanjaEntriesCount.count)
+console.log('AI HANJA TOKENS COUNT:', aiHanjaTokensCount.count)
+console.log('AI HANJA DUPLICATE HANJA COUNT:', aiHanjaDuplicateHanja.count)
+console.log('AI HANJA SEED COMPLETE')
+
+const aiHanjaQueryHanja = db.prepare(`
+SELECT *
+FROM ai_hanja_entries
+WHERE hanja = '漢'
+`).all()
+
+const aiHanjaQueryUnicode = db.prepare(`
+SELECT *
+FROM ai_hanja_entries
+WHERE unicodeEscape = 'U+6F22'
+`).all()
+
+const aiHanjaQueryToken = db.prepare(`
+SELECT e.*
+FROM ai_hanja_entries e
+JOIN ai_hanja_search_tokens t ON t.entryId = e.id
+WHERE t.token = '집'
+LIMIT 30
+`).all()
+
+console.log('AI HANJA SAMPLE QUERY by hanja=', aiHanjaQueryHanja.length)
+console.log('AI HANJA SAMPLE QUERY by unicodeEscape=', aiHanjaQueryUnicode.length)
+console.log('AI HANJA SAMPLE QUERY by token=', aiHanjaQueryToken.length)
 
 //============== END====================================//
 console.log('===== PRODUCTION DB INIT COMPLETE =====')

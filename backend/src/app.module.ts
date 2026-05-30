@@ -36,6 +36,8 @@ import { MarketEventsModule } from './modules/market-events/market-events.module
 import { MasterProductCategoriesModule } from './modules/master-product-categories/master-product-categories.module';
 import { WalletsModule } from './modules/wallets/wallets.module';
 import { GoodsReceiptsModule } from './modules/goods-receipts/goods-receipts.module';
+import { AiHanjaSearchApi } from './modules/ai/hanja/ai-hanja-search.api'
+import { AiHanjaSearchService } from './modules/ai/hanja/ai-hanja-search.service'
 
 // SECTION 08 : AUTH GUARD
 import { JwtAuthGuard } from './modules/auth/jwt.guard';
@@ -86,11 +88,15 @@ import { ProfileSummaryModule } from './modules/shared/profile-summary.module';
     ProfileSummaryModule
   ],
 
-  controllers: [AppController],
+  controllers: [
+    AppController,
+    AiHanjaSearchApi,
+  ],
 
   providers: [
     AppService,
     JwtAuthGuard,
+    AiHanjaSearchService,
 
     SystemCleanerTask,
     ImageStorageMonitorTask,

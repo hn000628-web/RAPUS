@@ -20,6 +20,20 @@ const db = new Database(dbPath)
 db.pragma('journal_mode = WAL')
 db.pragma('foreign_keys = ON')
 
+function safeAddColumn(
+table: string,
+column: string,
+definition: string,
+) {
+const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+
+const exists = cols.some((c) => c.name === column)
+
+if (!exists) {
+db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+}
+}
+
 db.exec(`
 CREATE TABLE IF NOT EXISTS ai_library_sources(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,6 +64,8 @@ CREATE TABLE IF NOT EXISTS ai_bible_verses(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   sourceId INTEGER NOT NULL,
   verseKey TEXT NOT NULL,
+  canonicalKey TEXT,
+  -- 예: KOR/KJV 공통 매핑 키는 GEN.1.1 형태
   sourceIdText TEXT,
   languageCode TEXT DEFAULT 'ko',
   versionCode TEXT,
@@ -65,6 +81,12 @@ CREATE TABLE IF NOT EXISTS ai_bible_verses(
   FOREIGN KEY(sourceId) REFERENCES ai_library_sources(id)
 )
 `)
+
+safeAddColumn(
+'ai_bible_verses',
+'canonicalKey',
+'TEXT'
+)
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS ai_hanja_dictionary(
@@ -178,6 +200,33 @@ CREATE TABLE IF NOT EXISTS ai_library_embeddings(
 `)
 
 db.exec(`
+CREATE TABLE IF NOT EXISTS ai_knowledge_tokens(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  targetType TEXT NOT NULL,
+  targetId INTEGER NOT NULL,
+  sourceType TEXT,
+  sourceId INTEGER,
+  canonicalKey TEXT,
+  tokenType TEXT NOT NULL CHECK(tokenType IN(
+    'bible_ref',
+    'korean',
+    'english',
+    'hanja',
+    'topic',
+    'strong',
+    'greek',
+    'hebrew'
+  )),
+  token TEXT NOT NULL,
+  normalizedToken TEXT NOT NULL,
+  position INTEGER,
+  weight REAL NOT NULL DEFAULT 1,
+  createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY(sourceId) REFERENCES ai_library_sources(id)
+)
+`)
+
+db.exec(`
 CREATE INDEX IF NOT EXISTS idx_ai_library_sources_source_type
 ON ai_library_sources(sourceType)
 `)
@@ -200,6 +249,11 @@ ON ai_bible_verses(bookCode, chapter, verse)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_ai_bible_verses_source_id
 ON ai_bible_verses(sourceId)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_bible_verses_source_canonical_key
+ON ai_bible_verses(sourceId, canonicalKey)
 `)
 
 db.exec(`
@@ -230,6 +284,31 @@ ON ai_interpretation_links(fromEntryType, fromEntryId)
 db.exec(`
 CREATE INDEX IF NOT EXISTS idx_ai_library_embeddings_target
 ON ai_library_embeddings(targetType, targetId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_knowledge_tokens_token
+ON ai_knowledge_tokens(token)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_knowledge_tokens_target
+ON ai_knowledge_tokens(targetType, targetId)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_knowledge_tokens_canonical
+ON ai_knowledge_tokens(canonicalKey)
+`)
+
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_ai_knowledge_tokens_type_norm
+ON ai_knowledge_tokens(tokenType, normalizedToken)
+`)
+
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_knowledge_tokens_unique_entry
+ON ai_knowledge_tokens(targetType, targetId, tokenType, normalizedToken, position)
 `)
 
 db.close()

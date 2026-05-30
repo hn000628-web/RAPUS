@@ -1,0 +1,104 @@
+﻿LLM FOUNDATION LAYER V1 HANJA SNAPSHOT
+=====================================
+
+STATUS: COMPLETE
+SCOPE: HANJA
+ROOT: C:\Users\kjm\social-platform
+
+SECTION 01: 원본 CSV
+- 파일: .context\knowledge\hanja\원본_hanja_1S_5978_unicode.csv
+- 목적: 한자 5,978건의 기본 레코드 원본 소스
+- 컬럼: hanja, mainSound, level, meaning, radical, strokes, totalStrokes, unicodeDecimal, unicodeHex, unicodeEscape
+- 보존 규칙: 원본 CSV는 수정 없이 유지
+
+SECTION 02: Unicode 정합화
+- 검증 기준: ord(문자) = unicodeDecimal, format(ord, "X") = unicodeHex, `U+` + Hex = unicodeEscape
+- 정합화 상태: 통과
+- 보조 점검: 한자 길이 1글자 규칙 유지, null 미존재
+
+SECTION 03: TypeScript 라이브러리
+- 생성/확인 파일:
+  - .context\knowledge\hanja\hanja.types.ts
+  - .context\knowledge\hanja\hanja.entries.ts
+  - .context\knowledge\hanja\hanja.index.ts
+  - .context\knowledge\hanja\hanja.search.ts
+- 핵심 역할:
+  - 타입: HanjaEntry / HanjaSearchResult / 검색 옵션
+  - 엔트리 배열: 5,978건의 정규화된 한자 데이터
+  - 인덱스: byHanja, byUnicodeEscape, byUnicodeDecimal 포함
+  - 검색 유틸: 의미 토큰 기반 정렬/검색 보조
+
+SECTION 04: Backend 모듈화
+- 서비스: [backend/src/modules/ai/hanja/ai-hanja-search.service.ts]
+  - 단일 조회/토큰 조회/타입 조회/복합 검색 API 호출용 핵심 로직
+  - SQLite 호환 쿼리 사용
+  - score(정규화 점수), matchedTokens, matchedBy 계산
+- API: [backend/src/modules/ai/hanja/ai-hanja-search.api.ts]
+  - GET /api/ai/hanja/search/hanja
+  - GET /api/ai/hanja/search/unicode/escape
+  - GET /api/ai/hanja/search/unicode/decimal
+  - GET /api/ai/hanja/search/token
+  - GET /api/ai/hanja/search/token-type
+  - GET /api/ai/hanja/search/advanced
+- 모듈 등록: [backend/src/app.module.ts]에 Controller/Provider 등록 완료
+
+SECTION 05: DB 스키마
+- 테이블: ai_hanja_entries
+- 테이블: ai_hanja_search_tokens
+- DB 루트: backend/data/prod.sqlite
+- 스키마 형태:
+  - ai_hanja_entries: 한자 엔트리 본체
+  - ai_hanja_search_tokens: 토큰 기반 검색 보조
+- 인덱스 및 정합성: 정규식/UNIQUE/FK 조건으로 중복/비정상 입력 억제
+
+SECTION 06: DB 적재 결과
+- ai_hanja_entries: 5,978
+- ai_hanja_search_tokens: 17,934
+- 입력 중복/NULL/형식 오류: 미발생
+
+SECTION 07: Search Service
+- 파일: backend/src/modules/ai/hanja/ai-hanja-search.service.ts
+- 제공 메서드:
+  - findByHanja(hanja)
+  - findByUnicodeEscape(unicodeEscape)
+  - findByUnicodeDecimal(decimal)
+  - searchByToken(token, limit)
+  - searchByTokenType(tokenType, token, limit)
+  - search({ query, level, radical, strokes, limit })
+- 핵심 특징:
+  - 숫자 쿼리 fallback(unicodeDecimal/strokes/totalStrokes)
+  - 토큰 매칭 결과 점수화
+  - 중복 행 병합 후 정렬
+
+SECTION 08: Search API
+- 라우팅 prefix: /api/ai/hanja/search
+- 응답 규격: { ok: true, data: ..., count? }
+- 실패 요청 검증: 필수 파라미터 미입력/잘못된 tokenType에 대해 BadRequest 반환
+- SQLite 호환성: PostgreSQL 전용 문법 미사용
+
+SECTION 09: 검증 결과
+- ai_hanja_entries count: 5978
+- ai_hanja_search_tokens count: 17934
+- unicode 중복: 0
+- NULL issue: 0
+- hanja length issue (length!=1): 0
+- API build: PASS (backend build)
+- Search API: PASS (실제 호출 샘플 검증)
+- tokenType 존재성: unicodeDecimal/strokes/totalStrokes 위주 샘플 토큰 확인됨
+
+SECTION 10: 현재 상태 선언
+- LLM Foundation Layer v1 HANJA has been stabilized and fixed.
+- Source 원본/CSV, TS 변환 산출물, DB, Service, API는 상호 정합 상태.
+- 현재 상태: 운영 전 단계의 검색기반 LLM 보조지식 레이어 기반 준비 완료.
+
+SECTION 11: 금지사항 점검
+- 코드 수정: 금지됨 (본 작업에서는 문서 생성만 수행)
+- DB 수정: 금지됨 (본 작업에서는 DB 변경 없음)
+- API 수정: 금지됨 (본 작업에서는 추가 API 문서화 없음)
+- 기존 파일 삭제: 금지됨
+- UTF-8 인코딩: 유지
+
+SECTION 12: 다음 단계 권고
+- 실제 LLM 호출 모듈에서 이 스냅샷 기준으로 한자 검색 기능을 정식 사용
+- 성능 튜닝: tokenType 우선순위/점수 가중치 튜닝
+- 검색 질의 캐시 정책과 응답 캐시 적용 검토

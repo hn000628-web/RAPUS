@@ -4,6 +4,13 @@
 ※ 기본 수정은 우선적으로 [AI]가 [파일루트안내] + [코드 출력] 해주면 [사용자가 직접 수정] = 단일 파일 기준
 ※ 파일 3개이상 동시 수정은 [AI]가 [자동수정] 모드 제안/ 물론 사용자는 AI가 코드를 출력해주면 직접 수정할 수는 있음 
 
+
+[AI 라이브러리 개발]
+- 원본_hanja_1S_5978
+
+
+
+
 [SNAPSHOT]
 .context/SNAPSHOT/stable-snapshots/POS_UI_CSS_STANDARD_SNAPSHOT.txt
 -> 기본적인 포스의 UI_CSS 기본값

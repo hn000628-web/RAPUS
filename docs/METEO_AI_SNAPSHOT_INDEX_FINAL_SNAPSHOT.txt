@@ -742,3 +742,59 @@ SNAPSHOT:
 
 ROLE:
 성경 권위 존중 및 독립적 신학 거버넌스 운영 기준 고정
+
+==================================================
+SECTION 37 : HUMAN BEHAVIOR FRAMEWORK
+==================================================
+
+CATEGORY:
+HUMAN_INSIGHT
+
+SNAPSHOT:
+
+* HUMAN_BEHAVIOR_FRAMEWORK_SNAPSHOT
+
+ROLE:
+인간 행동의 다요인 구조(생각/감정/욕구/환경/습관/관계) 해석 기준
+
+==================================================
+SECTION 38 : COGNITIVE DECISION FRAMEWORK
+==================================================
+
+CATEGORY:
+HUMAN_INSIGHT
+
+SNAPSHOT:
+
+* COGNITIVE_DECISION_FRAMEWORK_SNAPSHOT
+
+ROLE:
+판단 결과와 함께 판단 과정(경험/감정/기억/신념/환경) 해석 기준
+
+==================================================
+SECTION 39 : MOTIVATION AND HABIT
+==================================================
+
+CATEGORY:
+HUMAN_INSIGHT
+
+SNAPSHOT:
+
+* MOTIVATION_AND_HABIT_SNAPSHOT
+
+ROLE:
+동기-행동-반복-강화-습관 흐름 해석 및 습관 재설계 기준
+
+==================================================
+SECTION 40 : EMOTION AND AFFECT FRAMEWORK
+==================================================
+
+CATEGORY:
+HUMAN_INSIGHT
+
+SNAPSHOT:
+
+* EMOTION_AND_AFFECT_FRAMEWORK_SNAPSHOT
+
+ROLE:
+감정/정서가 인간 판단·행동·관계에 미치는 영향 해석 기준

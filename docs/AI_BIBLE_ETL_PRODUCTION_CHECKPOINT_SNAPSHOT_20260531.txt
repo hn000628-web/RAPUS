@@ -1,0 +1,46 @@
+﻿TITLE: AI Bible ETL Final Production Transition Checkpoint
+DATE: 2026-05-31
+STATUS: LOCKED
+
+[Scope]
+- DB: backend/data/ai-library.sqlite
+- Importer: backend/src/init/ai-library-importers/import-bible.ts
+- Check: backend/src/init/check-ai-library-db.ts
+
+[Core Metrics]
+1) ai_bible_verses row count: 93,258
+2) build status: PASS
+3) db:check:ai status: PASS
+4) canonicalKey null/empty: 0/93,258
+5) duplicate(sourceId+verseKey): 0
+6) duplicate(sourceId+canonicalKey): 0
+
+[DryRun Full]
+- scannedRows: 124,347
+- validRows: 124,347
+- invalidRows: 0
+
+[Write Rehearsal Sample 100]
+- scannedRows: 100
+- validRows: 100
+- invalidRows: 0
+- UPSERT row delta: 0 (re-run 기준)
+
+[Canonical Policy]
+- canonicalKey format: ^[A-Z0-9]{3}\.\d+\.\d+$
+
+[Source Distribution]
+- BIBLE_KO: 31,077
+- BIBLE_KH: 31,079
+- BIBLE_KJV: 31,102
+
+[Backup Files]
+- before: backend/data/backups/ai-library.before-bible-full-import.20260531_034912.sqlite
+- after: backend/data/backups/ai-library.after-bible-full-import.20260531_040905.sqlite
+
+[Verification Notes]
+- db:check:ai canonicalKey format check: PASS
+- db:check:ai duplicate checks: PASS
+- db:check:ai null/empty canonicalKey check: PASS
+
+END OF SNAPSHOT
