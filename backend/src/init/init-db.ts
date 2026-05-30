@@ -114,6 +114,24 @@ adultVerificationProvider TEXT,
 
 adultVerificationExpiresAt TEXT,
 
+socialCode TEXT
+CHECK(socialCode IS NULL OR length(socialCode)=48),
+
+socialVerifiedAt TEXT,
+
+socialVerificationProvider TEXT
+CHECK(
+  socialVerificationProvider IS NULL
+  OR socialVerificationProvider IN(
+    'PASS',
+    'NICE',
+    'KCB',
+    'KAKAO_CERT'
+  )
+),
+
+socialVerificationVersion TEXT,
+
 createdAt TEXT DEFAULT CURRENT_TIMESTAMP
 
 )
@@ -241,6 +259,9 @@ if (usersNeedsGradeMax24Migration) {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_users_baseCode
       ON users(baseCode);
 
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_users_socialCode
+      ON users(socialCode);
+
       CREATE INDEX IF NOT EXISTS idx_users_meteo_ai_grade
       ON users(meteoAiGrade);
     `)
@@ -307,6 +328,38 @@ safeAddColumn(
   'TEXT'
 )
 
+safeAddColumn(
+  'users',
+  'socialCode',
+  'TEXT CHECK(socialCode IS NULL OR length(socialCode)=48)'
+)
+
+safeAddColumn(
+  'users',
+  'socialVerifiedAt',
+  'TEXT'
+)
+
+safeAddColumn(
+  'users',
+  'socialVerificationProvider',
+  `TEXT CHECK(
+    socialVerificationProvider IS NULL
+    OR socialVerificationProvider IN(
+      'PASS',
+      'NICE',
+      'KCB',
+      'KAKAO_CERT'
+    )
+  )`
+)
+
+safeAddColumn(
+  'users',
+  'socialVerificationVersion',
+  'TEXT'
+)
+
 db.exec(`
 
 CREATE INDEX IF NOT EXISTS idx_users_adult_verification_status
@@ -325,6 +378,13 @@ db.exec(`
 
 CREATE INDEX IF NOT EXISTS idx_users_meteo_ai_grade
 ON users(meteoAiGrade)
+
+`)
+
+db.exec(`
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_socialCode
+ON users(socialCode)
 
 `)
 

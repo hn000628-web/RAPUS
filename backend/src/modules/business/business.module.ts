@@ -25,6 +25,8 @@ import { BusinessProfileService } from './business-profile.service'
 // BUSINESS HOURS
 import { BusinessHoursController } from './hours/business-hours.controller'
 import { BusinessHoursService } from './hours/business-hours.service'
+import { BusinessProductsController } from './products/business-products.controller'
+import { BusinessProductsService } from './products/business-products.service'
 
 // BUSINESS MEDIA
 import { BusinessMediaModule } from './media/business-media.module'
@@ -110,6 +112,7 @@ import { ChannelProfileUtilModule } from '../../utils/channel-profile-util.modul
 
   controllers: [
     BusinessProfileController,
+    BusinessProductsController,
     MenuController,
     MenuConfigController,
     BusinessHoursController
@@ -117,6 +120,7 @@ import { ChannelProfileUtilModule } from '../../utils/channel-profile-util.modul
 
   providers: [
     BusinessProfileService,
+    BusinessProductsService,
     MenuService,
     BusinessHoursService
   ],
@@ -124,6 +128,7 @@ import { ChannelProfileUtilModule } from '../../utils/channel-profile-util.modul
   exports: [
     MenuService,
     BusinessProfileService,
+    BusinessProductsService,
     BusinessHoursService,
 
     // MODULE EXPORTS

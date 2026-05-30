@@ -130,13 +130,21 @@ export default function BusinessMyPage({
       secondaryDescription: '데모 디자인 및 서비스 신청',
       href: '/profile/business/premium-design'
     },
+    {
+      key: 'business-meteo-ai-view',
+      label: '메테오AI',
+      description: '실제 사용자 홈',
+      secondaryDescription: 'AI 비즈니스 파트너',
+      href: '/meteo-ai'
+    },
     ...(accountInfo.corporationGrade >= 24
       ? [
           {
-            key: 'business-meteo-ai-view',
-            label: '메테오AI',
-            description: '메테오AI 운영 허브로 이동',
-            href: '/admin/meteo-ai'
+            key: 'business-meteo-ai-admin-view',
+            label: '메테오AI_admin',
+            description: 'AI 운영/설정 관리',
+            secondaryDescription: 'meteoAiGrade >= 24 또는 OWNER_ACCOUNT 권한 정책',
+            href: '/meteo-ai-admin'
           } satisfies BusinessProfileActionItem
         ]
       : [])
@@ -427,3 +435,4 @@ function ManagementCard({
     </div>
   )
 }
+

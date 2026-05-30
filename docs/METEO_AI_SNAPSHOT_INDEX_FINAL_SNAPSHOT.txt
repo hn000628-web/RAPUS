@@ -686,3 +686,59 @@ LEVEL 03 실데이터 입력 배치 구조 고정
 ==================================================
 END OF SNAPSHOT
 ===============
+
+==================================================
+SECTION 33 : SOCIAL CODE IDENTITY GOVERNANCE
+==================================================
+
+CATEGORY:
+IDENTITY_SECURITY
+
+SNAPSHOT:
+
+* SOCIAL_CODE_IDENTITY_GOVERNANCE_SNAPSHOT
+
+ROLE:
+socialCode 본인인증/권한거버넌스 절대 기준 고정
+
+==================================================
+SECTION 34 : HUMAN DESIRE SIN MERCY THEOLOGICAL FRAMEWORK
+==================================================
+
+CATEGORY:
+THEOLOGY
+
+SNAPSHOT:
+
+* HUMAN_DESIRE_SIN_MERCY_THEOLOGICAL_FRAMEWORK_SNAPSHOT
+
+ROLE:
+인간 욕망/죄/회복/긍휼에 대한 신학적 해석 프레임워크 고정
+
+==================================================
+SECTION 35 : BIBLICAL MARRIAGE ETHICS
+==================================================
+
+CATEGORY:
+THEOLOGY
+
+SNAPSHOT:
+
+* BIBLICAL_MARRIAGE_ETHICS_SNAPSHOT
+
+ROLE:
+성경적 결혼/가정/언약 윤리 해석 기준 고정
+
+==================================================
+SECTION 36 : BIBLICAL AUTHORITY GOVERNANCE
+==================================================
+
+CATEGORY:
+THEOLOGY
+
+SNAPSHOT:
+
+* BIBLICAL_AUTHORITY_GOVERNANCE_SNAPSHOT
+
+ROLE:
+성경 권위 존중 및 독립적 신학 거버넌스 운영 기준 고정

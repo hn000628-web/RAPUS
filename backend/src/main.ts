@@ -132,20 +132,24 @@ policy:'no-referrer-when-downgrade'
 SECTION 06 CORS
 ====================================== */
 
+const allowedCorsOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://121.148.251.122:3000'
+]
+
+if (
+  process.env.FRONTEND_URL &&
+  !allowedCorsOrigins.includes(process.env.FRONTEND_URL)
+) {
+  allowedCorsOrigins.push(process.env.FRONTEND_URL)
+}
+
 app.enableCors({
 
 origin:
 
-process.env.FRONTEND_URL ?
-
-process.env.FRONTEND_URL :
-
-[
-
-'http://localhost:3000',
-'http://localhost:3001'
-
-],
+allowedCorsOrigins,
 
 methods:[
 

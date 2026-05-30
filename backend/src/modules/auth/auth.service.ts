@@ -211,7 +211,7 @@ const DEFAULT_BUSINESS_MENU_CONFIGS: BusinessDefaultMenuConfig[] = [
 
 const EMERGENCY_QR_TOKEN_TTL_SECONDS = 180
 const ADMIN_HEARTBEAT_INTERVAL_MS = 10000
-const ADMIN_SESSION_EXPIRE_MS = 30000
+const ADMIN_SESSION_EXPIRE_MS = 30 * 60 * 1000
 
 @Injectable()
 export class AuthService {

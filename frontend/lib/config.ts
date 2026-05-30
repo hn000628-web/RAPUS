@@ -16,7 +16,7 @@ export const API_BASE_URL =
 (
 process.env.NEXT_PUBLIC_API_URL ||
 
-'http://localhost:4000'
+'http://121.148.251.122:4000'
 
 )
 .replace(/\/$/,'')
